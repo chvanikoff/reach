@@ -3,6 +3,8 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
 
   use Reach.Smell.Check
 
+  alias Reach.Smell.Source
+
   @logger_functions ~w(debug info notice warning error critical alert emergency log)a
   @sentinels [-1, :not_found, :missing, :error]
 
@@ -22,17 +24,28 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
   end
 
   defp findings(function) do
-    guard_equality_findings(function) ++
+    context = function_context(function)
+
+    guard_equality_findings(context) ++
       map_update_then_fetch(function) ++
-      redundant_negated_guard(function) ++
-      destructure_reconstruct(function) ++
-      length_in_guard(function)
+      redundant_negated_guard(context) ++
+      destructure_reconstruct(context) ++
+      length_in_guard(context)
   end
 
-  defp guard_equality_findings(function) do
-    function.children
-    |> Enum.filter(&(&1.type == :clause and &1.meta[:kind] == :function_clause))
-    |> Enum.flat_map(&guard_equalities(&1, function))
+  defp function_context(function) do
+    clauses =
+      Enum.filter(function.children, &(&1.type == :clause and &1.meta[:kind] == :function_clause))
+
+    %{
+      function: function,
+      all_nodes: IR.all_nodes(function),
+      function_clauses: clauses
+    }
+  end
+
+  defp guard_equality_findings(%{function: function, function_clauses: clauses}) do
+    Enum.flat_map(clauses, &guard_equalities(&1, function))
   end
 
   defp guard_equalities(clause, _function) do
@@ -128,11 +141,7 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
 
   # --- Redundant negated guard ---
 
-  defp redundant_negated_guard(function) do
-    clauses =
-      function.children
-      |> Enum.filter(&(&1.type == :clause and &1.meta[:kind] == :function_clause))
-
+  defp redundant_negated_guard(%{function: function, function_clauses: clauses}) do
     clauses
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.flat_map(fn [prev, curr] -> check_guard_pair(prev, curr, function) end)
@@ -183,9 +192,7 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
 
   # --- Destructure then reconstruct ---
 
-  defp destructure_reconstruct(function) do
-    all_nodes = IR.all_nodes(function)
-
+  defp destructure_reconstruct(%{all_nodes: all_nodes}) do
     all_nodes
     |> Enum.filter(&(&1.type == :clause and &1.meta[:kind] in [:case_clause, :function_clause]))
     |> Enum.flat_map(&check_clause_destructure/1)
@@ -245,14 +252,9 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
 
   # --- Length in guard ---
 
-  defp length_in_guard(function) do
-    function.children
-    |> Enum.filter(&function_clause?/1)
-    |> Enum.flat_map(&clause_length_guard_findings(&1, function))
+  defp length_in_guard(%{function: function, function_clauses: clauses}) do
+    Enum.flat_map(clauses, &clause_length_guard_findings(&1, function))
   end
-
-  defp function_clause?(%{type: :clause, meta: %{kind: :function_clause}}), do: true
-  defp function_clause?(_), do: false
 
   defp clause_length_guard_findings(clause, function) do
     clause.children
@@ -299,19 +301,18 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
   # --- File-level semantic idioms ---
 
   defp module_files(project) do
-    project.nodes
-    |> Enum.map(fn {_, node} -> node.source_span && node.source_span[:file] end)
+    project
+    |> Source.module_files()
     |> Enum.filter(&(&1 && File.regular?(&1)))
-    |> Enum.uniq()
   end
 
   defp scan_file(file) do
     ast = file |> File.read!() |> Code.string_to_quoted!()
+    blocks = block_statements(ast)
 
-    map_has_key_then_get(ast, file) ++
-      map_get_sentinel(ast, file) ++
-      length_based_indexing(ast, file) ++
-      invalid_keyword_access(ast, file)
+    single_pass_file_findings(ast, file) ++
+      map_get_sentinel(blocks, file) ++
+      length_based_indexing(blocks, file)
   rescue
     _ -> []
   end
@@ -350,26 +351,27 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
     String.contains?(source, "require Logger") or String.contains?(source, "import Logger")
   end
 
-  defp map_has_key_then_get(ast, file) do
-    ast
-    |> collect_nodes(fn
-      {:if, meta, [condition, clauses]} ->
-        with {:ok, map, key} <- map_has_key_call(condition),
-             true <- subtree_has_map_read?(Keyword.get(clauses, :do), map, key) do
-          file_finding(
-            :suboptimal,
-            "Map.has_key?/2 followed by Map.get/fetch performs two lookups; use Map.fetch/2 or pattern matching",
-            file,
-            meta
-          )
-        else
-          _ -> nil
-        end
-
-      _ ->
-        nil
+  defp single_pass_file_findings(ast, file) do
+    collect_nodes(ast, fn node ->
+      map_has_key_then_get_finding(node, file) || invalid_keyword_access_finding(node, file)
     end)
   end
+
+  defp map_has_key_then_get_finding({:if, meta, [condition, clauses]}, file) do
+    with {:ok, map, key} <- map_has_key_call(condition),
+         true <- subtree_has_map_read?(Keyword.get(clauses, :do), map, key) do
+      file_finding(
+        :suboptimal,
+        "Map.has_key?/2 followed by Map.get/fetch performs two lookups; use Map.fetch/2 or pattern matching",
+        file,
+        meta
+      )
+    else
+      _ -> nil
+    end
+  end
+
+  defp map_has_key_then_get_finding(_node, _file), do: nil
 
   defp map_has_key_call({{:., _, [{:__aliases__, _, [:Map]}, :has_key?]}, _, [map, key]}),
     do: {:ok, map, key}
@@ -383,9 +385,7 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
       Macro.prewalk(ast, false, fn
         {{:., _, [{:__aliases__, _, [:Map]}, fun]}, _, [read_map, read_key | _]} = node, _acc
         when fun in [:get, :fetch, :fetch!] ->
-          {node,
-           Macro.to_string(read_map) == Macro.to_string(map) and
-             Macro.to_string(read_key) == Macro.to_string(key)}
+          {node, same_ast?(read_map, map) and same_ast?(read_key, key)}
 
         node, acc ->
           {node, acc}
@@ -394,10 +394,8 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
     found?
   end
 
-  defp map_get_sentinel(ast, file) do
-    ast
-    |> block_statements()
-    |> Enum.flat_map(&sentinel_findings_in_statements(&1, file))
+  defp map_get_sentinel(blocks, file) do
+    Enum.flat_map(blocks, &sentinel_findings_in_statements(&1, file))
   end
 
   defp sentinel_findings_in_statements(statements, file) do
@@ -452,10 +450,8 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
     found?
   end
 
-  defp length_based_indexing(ast, file) do
-    ast
-    |> block_statements()
-    |> Enum.flat_map(fn statements ->
+  defp length_based_indexing(blocks, file) do
+    Enum.flat_map(blocks, fn statements ->
       lengths =
         statements
         |> Enum.flat_map(fn
@@ -498,30 +494,44 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
     end)
   end
 
-  defp invalid_keyword_access(ast, file) do
-    collect_nodes(ast, fn
-      {{:., meta, [{:__aliases__, _, [:Keyword]}, :get]}, _, [_opts, key, _default]}
-      when is_integer(key) ->
-        file_finding(
-          :bug_risk,
-          "Keyword keys must be atoms; integer key access is not list indexing",
-          file,
-          meta
-        )
-
-      {{:., meta, [{:__aliases__, _, [:Keyword]}, fun]}, _, [_opts, key]}
-      when fun in [:fetch, :fetch!] and is_integer(key) ->
-        file_finding(
-          :bug_risk,
-          "Keyword keys must be atoms; integer key access is not list indexing",
-          file,
-          meta
-        )
-
-      _ ->
-        nil
-    end)
+  defp invalid_keyword_access_finding(
+         {{:., meta, [{:__aliases__, _, [:Keyword]}, :get]}, _, [_opts, key, _default]},
+         file
+       )
+       when is_integer(key) do
+    file_finding(
+      :bug_risk,
+      "Keyword keys must be atoms; integer key access is not list indexing",
+      file,
+      meta
+    )
   end
+
+  defp invalid_keyword_access_finding(
+         {{:., meta, [{:__aliases__, _, [:Keyword]}, fun]}, _, [_opts, key]},
+         file
+       )
+       when fun in [:fetch, :fetch!] and is_integer(key) do
+    file_finding(
+      :bug_risk,
+      "Keyword keys must be atoms; integer key access is not list indexing",
+      file,
+      meta
+    )
+  end
+
+  defp invalid_keyword_access_finding(_node, _file), do: nil
+
+  defp same_ast?(left, right), do: strip_meta(left) == strip_meta(right)
+
+  defp strip_meta({left, _meta, right}) when is_list(right) or is_atom(right),
+    do: {strip_meta(left), [], strip_meta(right)}
+
+  defp strip_meta(tuple) when is_tuple(tuple),
+    do: tuple |> Tuple.to_list() |> strip_meta() |> List.to_tuple()
+
+  defp strip_meta(list) when is_list(list), do: Enum.map(list, &strip_meta/1)
+  defp strip_meta(other), do: other
 
   defp literal_value({:-, _, [value]}) when is_integer(value), do: -value
 
