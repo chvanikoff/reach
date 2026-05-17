@@ -10,6 +10,8 @@ defmodule Reach.Smell.PatternCheck do
       import ExAST.Query
       import Reach.Smell.PatternCheck, only: [smell: 3]
 
+      alias Reach.Smell.Source
+
       @pattern_check_source __ENV__.file
 
       Module.register_attribute(__MODULE__, :smell_patterns, accumulate: true)
@@ -26,32 +28,13 @@ defmodule Reach.Smell.PatternCheck do
         file = module.source_span && module.source_span[:file]
 
         if file && File.regular?(file) && Path.expand(file) != Path.expand(@pattern_check_source) do
-          zipper = cached_zipper(file)
+          zipper = Source.cached_zipper(file)
           find_pattern_smells(zipper, file) ++ find_query_smells(zipper, file)
         else
           []
         end
       rescue
         _ -> []
-      end
-
-      defp cached_zipper(file) do
-        key = {:reach_smell_zipper, file}
-
-        case Process.get(key) do
-          nil ->
-            zipper =
-              file
-              |> File.read!()
-              |> Sourceror.parse_string!()
-              |> Sourceror.Zipper.zip()
-
-            Process.put(key, zipper)
-            zipper
-
-          zipper ->
-            zipper
-        end
       end
     end
   end
@@ -81,6 +64,14 @@ defmodule Reach.Smell.PatternCheck do
 
   defmacro __before_compile__(_env) do
     quote do
+      def __reach_pattern_check__ do
+        %{
+          source: @pattern_check_source,
+          patterns: @smell_patterns,
+          queries: @smell_query_names
+        }
+      end
+
       defp find_pattern_smells(zipper, file) do
         named =
           @smell_patterns

@@ -4,13 +4,19 @@ defmodule Reach.Check.Smells do
   """
 
   alias Reach.Config
+  alias Reach.Smell.PatternRunner
 
   def run(project, config \\ []) do
     config = Config.normalize(config)
-    Enum.flat_map(Reach.Smell.Registry.checks(), &run_check(&1, project, config))
+    {pattern_checks, checks} = Enum.split_with(Reach.Smell.Registry.checks(), &pattern_check?/1)
+
+    PatternRunner.run(project, pattern_checks) ++
+      Enum.flat_map(checks, &run_check(&1, project, config))
   end
 
   def analyze(project), do: run(project)
+
+  defp pattern_check?(check), do: function_exported?(check, :__reach_pattern_check__, 0)
 
   defp run_check(check, project, config) do
     if function_exported?(check, :run, 2),
