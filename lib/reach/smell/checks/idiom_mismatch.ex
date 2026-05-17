@@ -317,17 +317,25 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
   end
 
   defp missing_logger_requires(project) do
-    project.nodes
-    |> Enum.map(fn {_id, node} -> node end)
-    |> Enum.filter(fn node ->
-      node.type == :call and node.meta[:module] == Logger and
-        node.meta[:function] in @logger_functions and node.source_span
-    end)
-    |> Enum.reject(fn node ->
-      node.source_span[:file]
-      |> File.read!()
-      |> logger_available?()
-    end)
+    logger_calls =
+      project.nodes
+      |> Enum.map(fn {_id, node} -> node end)
+      |> Enum.filter(fn node ->
+        node.type == :call and node.meta[:module] == Logger and
+          node.meta[:function] in @logger_functions and node.source_span
+      end)
+
+    logger_available_by_file =
+      logger_calls
+      |> Enum.map(& &1.source_span[:file])
+      |> Enum.uniq()
+      |> Map.new(fn file ->
+        available? = file |> File.read!() |> logger_available?()
+        {file, available?}
+      end)
+
+    logger_calls
+    |> Enum.reject(fn node -> Map.get(logger_available_by_file, node.source_span[:file]) end)
     |> Enum.map(fn node ->
       file_finding(
         :missing_require,
