@@ -3,12 +3,13 @@ defmodule Reach.Check.ArchitecturePolicyTest do
 
   import ExUnit.CaptureIO
 
-  alias Mix.Tasks.Reach.Check
+  alias Reach.CLI.Commands.Check
 
   test "reach.check validates an empty architecture policy" do
-    with_reach_config(~S([layers: [cli: "Mix.Tasks.*", core: "Reach.*"]]))
+    project = architecture_project()
+    with_reach_config(~S([layers: [cli: "Fixture.CLI.*", core: "Fixture.Core.*"]]))
 
-    output = capture_io(fn -> Check.run(["--arch", "--format", "json"]) end)
+    output = capture_io(fn -> Check.run(arch: true, format: "json", project: project) end)
 
     assert {:ok, data} = Jason.decode(output)
     assert data["status"] == "ok"
@@ -16,8 +17,10 @@ defmodule Reach.Check.ArchitecturePolicyTest do
   end
 
   test "reach.check accepts grouped architecture policy" do
+    project = architecture_project()
+
     with_reach_config(~S([
-      layers: [cli: "Mix.Tasks.*", core: "Reach.*"],
+      layers: [cli: "Fixture.CLI.*", core: "Fixture.Core.*"],
       deps: [forbidden: []],
       calls: [forbidden: []],
       effects: [allowed: []],
@@ -26,7 +29,7 @@ defmodule Reach.Check.ArchitecturePolicyTest do
       source: [forbidden_modules: [], forbidden_files: []]
     ]))
 
-    output = capture_io(fn -> Check.run(["--arch", "--format", "json"]) end)
+    output = capture_io(fn -> Check.run(arch: true, format: "json", project: project) end)
 
     assert {:ok, data} = Jason.decode(output)
     assert data["status"] == "ok"
@@ -34,19 +37,22 @@ defmodule Reach.Check.ArchitecturePolicyTest do
   end
 
   test "reach.check runs each requested check mode" do
-    with_reach_config(~S([layers: [cli: "Mix.Tasks.*", core: "Reach.*"]]))
+    path = dead_code_fixture()
+    project = Reach.Project.from_sources([path])
+    with_reach_config(~S([layers: [fixture: "DeadCodeFixture"]]))
 
-    output = capture_io(fn -> Check.run(["--arch", "--smells"]) end)
+    output =
+      capture_io(fn -> Check.run([arch: true, dead_code: true, project: project], [path]) end)
 
     assert output =~ "Architecture Policy"
-    assert output =~ "Cross-Function Smell Detection"
+    assert output =~ "Dead Code"
   end
 
   test "reach.check rejects multiple modes for json output" do
     with_reach_config(~S([layers: [cli: "Mix.Tasks.*", core: "Reach.*"]]))
 
     assert_raise Mix.Error, ~r/JSON output supports one reach.check mode/, fn ->
-      Check.run(["--arch", "--smells", "--format", "json"])
+      Check.run(arch: true, smells: true, format: "json")
     end
   end
 
@@ -55,7 +61,7 @@ defmodule Reach.Check.ArchitecturePolicyTest do
     with_reach_config(~S([]))
 
     assert_raise Mix.Error, ~r/Smell check failed: \d+ finding\(s\)/, fn ->
-      capture_io(fn -> Check.run(["--smells", "--strict", path]) end)
+      capture_io(fn -> Check.run([smells: true, strict: true], [path]) end)
     end
   end
 
@@ -64,7 +70,7 @@ defmodule Reach.Check.ArchitecturePolicyTest do
     with_reach_config(~S([smells: [strict: true]]))
 
     assert_raise Mix.Error, ~r/Smell check failed: \d+ finding\(s\)/, fn ->
-      capture_io(fn -> Check.run(["--smells", path]) end)
+      capture_io(fn -> Check.run([smells: true], [path]) end)
     end
   end
 
@@ -72,7 +78,7 @@ defmodule Reach.Check.ArchitecturePolicyTest do
     with_reach_config("[unknown: true, layers: :bad]")
 
     assert_raise Mix.Error, ~r/Architecture policy failed/, fn ->
-      capture_io(fn -> Check.run(["--arch", "--format", "json"]) end)
+      capture_io(fn -> Check.run(arch: true, format: "json") end)
     end
   end
 
@@ -80,7 +86,7 @@ defmodule Reach.Check.ArchitecturePolicyTest do
     with_reach_config("[deps: [forbidden: :bad, unknown: []]]")
 
     assert_raise Mix.Error, ~r/Architecture policy failed/, fn ->
-      capture_io(fn -> Check.run(["--arch", "--format", "json"]) end)
+      capture_io(fn -> Check.run(arch: true, format: "json") end)
     end
   end
 
@@ -88,49 +94,55 @@ defmodule Reach.Check.ArchitecturePolicyTest do
     with_reach_config(~S([forbidden_calls: :bad]))
 
     assert_raise Mix.Error, ~r/Architecture policy failed/, fn ->
-      capture_io(fn -> Check.run(["--arch", "--format", "json"]) end)
+      capture_io(fn -> Check.run(arch: true, format: "json") end)
     end
   end
 
   test "reach.check reports forbidden call violations" do
-    with_reach_config(
-      ~S([forbidden_calls: [{"Reach.CLI.Commands.Check", ["Reach.Config.read"]}]])
-    )
+    project = architecture_project()
+
+    with_reach_config(~S([forbidden_calls: [{"Fixture.CLI.Command", ["Fixture.Config.read"]}]]))
 
     assert_raise Mix.Error, ~r/Architecture policy failed/, fn ->
-      capture_io(fn -> Check.run(["--arch", "--format", "json"]) end)
+      capture_io(fn -> Check.run(arch: true, format: "json", project: project) end)
     end
   end
 
   test "reach.check reports grouped forbidden call violations" do
+    project = architecture_project()
+
     with_reach_config(
-      ~S([calls: [forbidden: [{"Reach.CLI.Commands.Check", ["Reach.Config.read"]}]]])
+      ~S([calls: [forbidden: [{"Fixture.CLI.Command", ["Fixture.Config.read"]}]]])
     )
 
     assert_raise Mix.Error, ~r/Architecture policy failed/, fn ->
-      capture_io(fn -> Check.run(["--arch", "--format", "json"]) end)
+      capture_io(fn -> Check.run(arch: true, format: "json", project: project) end)
     end
   end
 
   test "reach.check reports forbidden source violations" do
+    project = architecture_project()
+
     with_reach_config(~S([
       source: [
-        forbidden_modules: ["Reach.CLI.Commands.Check"],
-        forbidden_files: ["lib/reach/cli/commands/check.ex"]
+        forbidden_modules: ["Fixture.CLI.Command"],
+        forbidden_files: ["**/command.ex"]
       ]
     ]))
 
     assert_raise Mix.Error, ~r/Architecture policy failed/, fn ->
-      capture_io(fn -> Check.run(["--arch", "--format", "json"]) end)
+      capture_io(fn -> Check.run(arch: true, format: "json", project: project) end)
     end
   end
 
   test "reach.check allows forbidden call exceptions" do
+    project = architecture_project()
+
     with_reach_config(
-      ~S([forbidden_calls: [{"Reach.CLI.Commands.Check", ["File.exists?"], except: ["Reach.CLI.Commands.Check"]}]])
+      ~S([forbidden_calls: [{"Fixture.CLI.Command", ["Fixture.Config.read"], except: ["Fixture.CLI.Command"]}]])
     )
 
-    output = capture_io(fn -> Check.run(["--arch", "--format", "json"]) end)
+    output = capture_io(fn -> Check.run(arch: true, format: "json", project: project) end)
 
     assert {:ok, data} = Jason.decode(output)
     assert data["status"] == "ok"
@@ -138,15 +150,86 @@ defmodule Reach.Check.ArchitecturePolicyTest do
   end
 
   test "reach.check reports public and internal boundary violations" do
+    project = architecture_project()
+
     with_reach_config(~S([
-        public_api: ["Reach"],
-        internal: ["Reach.IR.*"],
-        internal_callers: [{"Reach.IR.*", ["Reach.Project"]}]
+        public_api: ["Fixture"],
+        internal: ["Fixture.Internal.*"],
+        internal_callers: [{"Fixture.Internal.*", ["Fixture.Core.Allowed"]}]
       ]))
 
     assert_raise Mix.Error, ~r/Architecture policy failed/, fn ->
-      capture_io(fn -> Check.run(["--arch", "--format", "json"]) end)
+      capture_io(fn -> Check.run(arch: true, format: "json", project: project) end)
     end
+  end
+
+  defp architecture_project do
+    dir = Path.join(System.tmp_dir!(), "reach-arch-fixture-#{System.unique_integer()}")
+    File.mkdir_p!(dir)
+
+    write_fixture(dir, "config.ex", ~S'''
+    defmodule Fixture.Config do
+      def read, do: :ok
+    end
+    ''')
+
+    write_fixture(dir, "service.ex", ~S'''
+    defmodule Fixture.Core.Service do
+      def run, do: :ok
+    end
+    ''')
+
+    write_fixture(dir, "secret.ex", ~S'''
+    defmodule Fixture.Internal.Secret do
+      def ping, do: :pong
+    end
+    ''')
+
+    command_path =
+      write_fixture(dir, "command.ex", ~S'''
+      defmodule Fixture.CLI.Command do
+        def run do
+          Fixture.Config.read()
+          Fixture.Core.Service.run()
+          Fixture.Internal.Secret.ping()
+        end
+      end
+      ''')
+
+    on_exit(fn -> File.rm_rf(dir) end)
+
+    dir
+    |> Path.join("*.ex")
+    |> Path.wildcard()
+    |> case do
+      [] -> [command_path]
+      paths -> paths
+    end
+    |> Reach.Project.from_sources()
+  end
+
+  defp write_fixture(dir, name, source) do
+    path = Path.join(dir, name)
+    File.write!(path, source)
+    path
+  end
+
+  defp dead_code_fixture do
+    dir = Path.join(System.tmp_dir!(), "reach-dead-code-fixture-#{System.unique_integer()}")
+    File.mkdir_p!(dir)
+    path = Path.join(dir, "sample.ex")
+
+    File.write!(path, """
+    defmodule DeadCodeFixture do
+      def run do
+        String.downcase("VALUE")
+        :ok
+      end
+    end
+    """)
+
+    on_exit(fn -> File.rm_rf(dir) end)
+    path
   end
 
   defp smell_fixture(body) do
