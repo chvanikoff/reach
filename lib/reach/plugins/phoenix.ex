@@ -9,7 +9,10 @@ defmodule Reach.Plugins.Phoenix do
 
   @impl true
   def smell_checks do
-    [Reach.Plugins.Phoenix.Smells.AssignAsyncCapturesSocket]
+    [
+      Reach.Plugins.Phoenix.Smells.AssignAsyncCapturesSocket,
+      Reach.Plugins.Phoenix.Smells.RawHTML
+    ]
   end
 
   @assign_modules [nil, Phoenix.Component, Phoenix.LiveView]
