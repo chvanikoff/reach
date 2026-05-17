@@ -7,6 +7,11 @@ defmodule Reach.Plugins.Ecto do
 
   import Reach.Plugins.Helpers, only: [find_vars_in: 1]
 
+  @impl true
+  def smell_checks do
+    [Reach.Plugins.Ecto.Smells.FloatMoney]
+  end
+
   @repo_write_fns [
     :insert,
     :insert!,

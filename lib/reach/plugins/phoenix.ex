@@ -7,6 +7,11 @@ defmodule Reach.Plugins.Phoenix do
 
   import Reach.Plugins.Helpers, only: [find_vars_in: 1]
 
+  @impl true
+  def smell_checks do
+    [Reach.Plugins.Phoenix.Smells.AssignAsyncCapturesSocket]
+  end
+
   @assign_modules [nil, Phoenix.Component, Phoenix.LiveView]
 
   @pure_local [
