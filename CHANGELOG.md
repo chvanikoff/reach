@@ -2,9 +2,22 @@
 
 ## Unreleased
 
+## 2.3.5
+
+### New
+
+- **Strict smell gates** — `mix reach.check --smells --strict` now fails when non-baseline smell findings are present. Projects can also enable this with `smells: [strict: true]` in `.reach.exs`.
+- **Check baselines** — `mix reach.check` supports `--baseline PATH`, `--write-baseline PATH`, and `checks: [baseline: PATH]` to suppress known architecture/smell findings while failing on new ones.
+
+### Changed
+
+- **Combined checks** — `mix reach.check --arch --smells` now runs all requested check modes and shares one project analysis where possible.
+- **Dogfooding** — Reach now runs strict smell checking against itself in CI with tuned smell thresholds and an explicit baseline file.
+
 ### Fixed
 
 - **Optional JavaScript support** — compiling Reach without QuickBEAM no longer emits warnings about the unavailable JavaScript frontend.
+- **Self-smells** — fixed actionable smell findings in Reach's own code and prevented pattern smell declarations from flagging themselves.
 
 ## 2.3.4
 
