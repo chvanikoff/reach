@@ -24,7 +24,9 @@ Reach detects structural code smells in two layers:
 
 **Pattern smells** use ExAST's `~p` sigil to match source-level AST patterns — pipe anti-patterns, collection idiom misuse, config phase mistakes. These run per-file via Sourceror zipper traversal.
 
-**Semantic smells** use Reach's own IR with effects, data flow, call graph, and clone evidence — redundant computation, loop anti-patterns, dual key access, fixed-shape maps, behaviour candidates, return-contract drift.
+**Semantic smells** use Reach's own IR with effects, data flow, call graph, and clone evidence — redundant computation, loop anti-patterns, dual key access, fixed-shape maps, behaviour candidates, return-contract drift, unsafe dynamic atom creation, and unsafe `binary_to_term/1`.
+
+**AST smells** use Sourceror source AST when the source shape matters more than IR — compile-time file reads without `@external_resource`, Ecto implicit cross joins, interpolated SQL, and unpinned Ecto query values.
 
 Pattern smells are declared with a DSL:
 
@@ -42,6 +44,23 @@ smell(
 ```
 
 Semantic smells use the standard `Reach.Smell.Check` behaviour with IR helpers like `inside_loop?/2`, `callback_body/1`, and `statement_pairs/1`.
+
+AST-backed smells can use `Reach.Smell.ASTCheck` and implement `scan_ast/2`:
+
+```elixir
+defmodule MyApp.ReachSmells.NoCompileTimeRead do
+  use Reach.Smell.ASTCheck
+
+  alias Reach.Smell.Finding
+
+  @impl true
+  def kinds, do: [:my_app_compile_time_read]
+
+  defp scan_ast(ast, file) do
+    # inspect Sourceror AST and return Finding structs
+  end
+end
+```
 
 Projects can also define local semantic smell checks and enable them with `smells: [custom_checks: [...]]` in `.reach.exs`.
 

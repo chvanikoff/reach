@@ -387,6 +387,31 @@ smells: [
 
 Custom checks run alongside Reach's built-in smell checks and participate in `--strict` and baseline filtering. A custom check must implement `Reach.Smell.Check` and define `run/1`. See the custom smells guide for a deeper walkthrough.
 
+### Built-in smell examples
+
+Reach combines generic Elixir smells with plugin-provided Phoenix, Ecto, and Oban checks. Examples include:
+
+| Kind | Example flagged pattern | Prefer |
+| --- | --- | --- |
+| `unsafe_atom_creation` | `String.to_atom(input)` | explicit mapping or `String.to_existing_atom/1` |
+| `unsafe_binary_to_term` | `:erlang.binary_to_term(payload)` | `:erlang.binary_to_term(payload, [:safe])` for untrusted input |
+| `missing_external_resource` | `@schema File.read!("priv/schema.json")` | add matching `@external_resource "priv/schema.json"` |
+| `ecto_float_money` | `field :amount, :float` / `add :price, :float` | integer cents or `Decimal` |
+| `ecto_repo_call_in_loop` | `Enum.map(users, &Repo.get(Order, &1.order_id))` | preload or batch query |
+| `ecto_filter_after_repo_all` | `Repo.all(User) |> Enum.filter(...)` | push predicates into the Ecto query |
+| `ecto_count_after_repo_all` | `Repo.all(User) |> length()` | `Repo.aggregate/3`, `Repo.exists?/1`, or query aggregate |
+| `ecto_interpolated_fragment` | `fragment("name = '#{name}'")` | `fragment("name = ?", ^name)` |
+| `ecto_interpolated_repo_query` | `Repo.query("select ... #{input}")` | parameterized SQL |
+| `ecto_implicit_cross_join` | `from u in User, p in Post` | explicit `join:` with `on:` |
+| `ecto_unpinned_query_value` | `where: u.id == user_id` | `where: u.id == ^user_id` |
+| `oban_atom_args` | `%Oban.Job{args: %{user_id: id}}` | match string keys: `%{"user_id" => id}` |
+| `oban_struct_args` | `MyWorker.new(%{user: %User{}})` | store IDs / JSON primitives |
+| `phoenix_assign_async_captures_socket` | `assign_async(socket, :x, fn -> socket.assigns.x end)` | copy needed assign values before the callback |
+| `phoenix_assign_new_refreshed_value` | `assign_new(socket, :current_user, ...)` inside `mount/3` | use `assign/3` for values refreshed every mount |
+| `phoenix_pubsub_subscribe_without_connected` | `Phoenix.PubSub.subscribe(...)` in `mount/3` | guard with `if connected?(socket)` |
+
+Some intentionally context-sensitive checks, such as dynamic `Phoenix.HTML.raw/1`, are kept available as direct check modules but are not enabled by the default Phoenix plugin because real applications often use them in sanitizer, markdown, or compiler helpers.
+
 ### `smells[:fixed_shape_map]` and `smells[:behaviour_candidate]`
 
 Use smell-specific thresholds when a codebase intentionally uses small map contracts, when you want stronger pressure toward structs/contracts, or when behaviour-candidate hints are too noisy for small module families.

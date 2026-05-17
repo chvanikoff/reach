@@ -33,13 +33,16 @@ Reach validates that every listed module implements `Reach.Smell.Check`. Custom 
 
 ## Minimal custom smell
 
-A smell check implements `Reach.Smell.Check` and returns a list of `Reach.Smell.Finding` structs.
+A smell check implements `Reach.Smell.Check` and returns a list of `Reach.Smell.Finding` structs. Checks may also expose `kinds/0`; Reach's corpus scan tooling uses it to run selected checks without executing unrelated smell modules.
 
 ```elixir
 defmodule MyApp.ReachSmells.NoFoo do
   @behaviour Reach.Smell.Check
 
   alias Reach.Smell.Finding
+
+  @impl true
+  def kinds, do: [:my_app_no_foo]
 
   @impl true
   def run(project) do
@@ -143,6 +146,43 @@ defmodule MyApp.ReachSmells.NoDebugCalls do
   defp location(_node), do: "unknown"
 end
 ```
+
+## AST-backed source checks
+
+For source-shape rules, use `Reach.Smell.ASTCheck`. It loads each source file once via Sourceror, reuses Reach's AST cache, and calls `scan_ast/2` with the file path.
+
+```elixir
+defmodule MyApp.ReachSmells.MissingTemplateResource do
+  use Reach.Smell.ASTCheck
+
+  alias Reach.Smell.Finding
+
+  @impl true
+  def kinds, do: [:my_app_missing_template_resource]
+
+  defp scan_ast(ast, file) do
+    {_ast, findings} =
+      Macro.prewalk(ast, [], fn
+        {:@, meta, [{:template, _, [path]}]} = node, findings when is_binary(path) ->
+          finding =
+            Finding.new(
+              kind: :my_app_missing_template_resource,
+              message: "template module attribute should declare @external_resource",
+              location: "#{file}:#{meta[:line] || 0}"
+            )
+
+          {node, [finding | findings]}
+
+        node, findings ->
+          {node, findings}
+      end)
+
+    Enum.reverse(findings)
+  end
+end
+```
+
+Prefer AST checks for syntax-sensitive rules such as DSL shape, module attributes, query macros, or literal interpolation. Prefer IR checks for semantic rules involving calls, effects, data flow, or nested function bodies.
 
 ## Baselines and strict mode
 
