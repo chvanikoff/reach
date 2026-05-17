@@ -1,34 +1,16 @@
 defmodule Reach.Plugins.Ecto.Smells.UnpinnedQueryValue do
   @moduledoc "Detects unpinned local variables in Ecto query comparisons."
 
-  @behaviour Reach.Smell.Check
+  use Reach.Smell.ASTCheck
 
   alias Reach.Smell.Finding
-  alias Reach.Smell.Source
 
   @impl true
   def kinds, do: [:ecto_unpinned_query_value]
 
-  @impl true
-  def run(project) do
-    project
-    |> Source.module_files()
-    |> Enum.flat_map(&scan_file/1)
+  defp scan_ast(ast, file) do
+    find_unpinned_values(ast, file)
   end
-
-  defp scan_file(file) when is_binary(file) do
-    if File.regular?(file) do
-      file
-      |> Source.cached_ast()
-      |> find_unpinned_values(file)
-    else
-      []
-    end
-  rescue
-    _ -> []
-  end
-
-  defp scan_file(_file), do: []
 
   defp find_unpinned_values(ast, file) do
     {_ast, findings} =

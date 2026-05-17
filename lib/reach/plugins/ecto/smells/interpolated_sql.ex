@@ -1,34 +1,16 @@
 defmodule Reach.Plugins.Ecto.Smells.InterpolatedSQL do
   @moduledoc "Detects string interpolation in Ecto SQL fragments and raw queries."
 
-  @behaviour Reach.Smell.Check
+  use Reach.Smell.ASTCheck
 
   alias Reach.Smell.Finding
-  alias Reach.Smell.Source
 
   @impl true
   def kinds, do: [:ecto_interpolated_fragment, :ecto_interpolated_repo_query]
 
-  @impl true
-  def run(project) do
-    project
-    |> Source.module_files()
-    |> Enum.flat_map(&scan_file/1)
+  defp scan_ast(ast, file) do
+    find_interpolated_sql(ast, file)
   end
-
-  defp scan_file(file) when is_binary(file) do
-    if File.regular?(file) do
-      file
-      |> Source.cached_ast()
-      |> find_interpolated_sql(file)
-    else
-      []
-    end
-  rescue
-    _ -> []
-  end
-
-  defp scan_file(_file), do: []
 
   defp find_interpolated_sql(ast, file) do
     {_ast, findings} =

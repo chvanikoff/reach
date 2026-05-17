@@ -1,35 +1,18 @@
 defmodule Reach.Smell.Checks.MissingExternalResource do
   @moduledoc "Detects compile-time file reads without matching @external_resource declarations."
 
-  @behaviour Reach.Smell.Check
+  use Reach.Smell.ASTCheck
 
   alias Reach.Smell.Finding
-  alias Reach.Smell.Source
 
   @impl true
   def kinds, do: [:missing_external_resource]
 
-  @impl true
-  def run(project) do
-    project
-    |> Source.module_files()
-    |> Enum.flat_map(&scan_file/1)
+  defp scan_ast(ast, file) do
+    ast
+    |> modules_in_file()
+    |> Enum.flat_map(&find_missing_external_resources(&1, file))
   end
-
-  defp scan_file(file) when is_binary(file) do
-    if File.regular?(file) do
-      file
-      |> Source.cached_ast()
-      |> modules_in_file()
-      |> Enum.flat_map(&find_missing_external_resources(&1, file))
-    else
-      []
-    end
-  rescue
-    _ -> []
-  end
-
-  defp scan_file(_file), do: []
 
   defp modules_in_file(ast) do
     {_ast, modules} =

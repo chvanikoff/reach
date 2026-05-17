@@ -1,34 +1,16 @@
 defmodule Reach.Plugins.Ecto.Smells.ImplicitCrossJoin do
   @moduledoc "Detects Ecto queries that use multiple from generators instead of explicit joins."
 
-  @behaviour Reach.Smell.Check
+  use Reach.Smell.ASTCheck
 
   alias Reach.Smell.Finding
-  alias Reach.Smell.Source
 
   @impl true
   def kinds, do: [:ecto_implicit_cross_join]
 
-  @impl true
-  def run(project) do
-    project
-    |> Source.module_files()
-    |> Enum.flat_map(&scan_file/1)
+  defp scan_ast(ast, file) do
+    find_implicit_cross_joins(ast, file)
   end
-
-  defp scan_file(file) when is_binary(file) do
-    if File.regular?(file) do
-      file
-      |> Source.cached_ast()
-      |> find_implicit_cross_joins(file)
-    else
-      []
-    end
-  rescue
-    _ -> []
-  end
-
-  defp scan_file(_file), do: []
 
   defp find_implicit_cross_joins(ast, file) do
     {_ast, findings} =
