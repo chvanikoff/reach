@@ -31,7 +31,7 @@ Reach detects structural code smells in two layers:
 Pattern smells are declared with a DSL:
 
 ```elixir
-use Reach.Smell.Check.Pattern
+use Reach.Smell.Check.Source
 
 smell ~p[Enum.reverse(_) |> hd()], :suboptimal,
       "traverses twice; use List.last/1"

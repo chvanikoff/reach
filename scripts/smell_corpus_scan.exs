@@ -109,7 +109,7 @@ defmodule Reach.Scripts.SmellCorpusScan do
       {pattern_checks, semantic_checks} = Enum.split_with(checks, &pattern_check?/1)
 
       {pattern_us, pattern_findings} =
-        :timer.tc(fn -> Reach.Smell.PatternRunner.run(project, pattern_checks) end)
+        :timer.tc(fn -> Reach.Smell.SourceRunner.run(project, pattern_checks) end)
 
       {semantic_us, semantic_findings} =
         :timer.tc(fn -> Enum.flat_map(semantic_checks, &run_check(&1, project)) end)

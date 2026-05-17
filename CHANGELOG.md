@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- **Source smell DSL rename** — source-level smell checks now use `Reach.Smell.Check.Source` instead of `Reach.Smell.Check.Pattern`. The unified `smell/4` DSL also supports AST callback rules with `mode: :ast` for hot source-shape checks that need custom matching.
+
 ## 2.3.5
 
 ### New

@@ -68,7 +68,7 @@ defmodule Reach.Smell.ProfileScript do
     IO.puts("")
 
     {pattern_us, pattern_findings} =
-      :timer.tc(fn -> Reach.Smell.PatternRunner.run(project, pattern_checks) end)
+      :timer.tc(fn -> Reach.Smell.SourceRunner.run(project, pattern_checks) end)
 
     {semantic_us, semantic_findings} =
       :timer.tc(fn -> Enum.flat_map(semantic_checks, &run_check(&1, project, config)) end)
@@ -89,7 +89,7 @@ defmodule Reach.Smell.ProfileScript do
   defp profile_checks(project, config, pattern_checks, semantic_checks, limit) do
     pattern_rows =
       Enum.map(pattern_checks, fn check ->
-        {us, findings} = :timer.tc(fn -> Reach.Smell.PatternRunner.run(project, [check]) end)
+        {us, findings} = :timer.tc(fn -> Reach.Smell.SourceRunner.run(project, [check]) end)
         {inspect(check), ms(us), length(findings)}
       end)
 

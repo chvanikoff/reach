@@ -1,26 +1,29 @@
-defmodule Reach.Smell.Check.Pattern do
-  @moduledoc "Macro DSL for ExAST-backed pattern smell checks."
+defmodule Reach.Smell.Check.Source do
+  @moduledoc "Macro DSL for source-backed smell checks."
 
   defmacro __using__(_opts) do
     quote do
       @behaviour Reach.Smell.Check
-      @before_compile Reach.Smell.Check.Pattern
+      @before_compile Reach.Smell.Check.Source
 
       import ExAST.Sigil
       import ExAST.Query
-      import Reach.Smell.Check.Pattern, only: [smell: 3, smell: 4]
+      import Reach.Smell.Check.Source, only: [smell: 3, smell: 4]
 
-      alias Reach.Smell.PatternRunner
+      alias Reach.Smell.SourceRunner
 
       @pattern_check_source __ENV__.file
 
       Module.register_attribute(__MODULE__, :smell_patterns, accumulate: true)
       Module.register_attribute(__MODULE__, :smell_query_names, accumulate: true)
+      Module.register_attribute(__MODULE__, :smell_ast_callbacks, accumulate: true)
 
       @impl true
       def run(project) do
-        PatternRunner.run(project, [__MODULE__])
+        SourceRunner.run(project, [__MODULE__])
       end
+
+      defoverridable run: 1
     end
   end
 
@@ -35,6 +38,19 @@ defmodule Reach.Smell.Check.Pattern do
   defp build_smell(pattern, kind, message, opts, caller) do
     prefilter = Keyword.get(opts, :prefilter, :auto)
 
+    mode = Keyword.get(opts, :mode, :auto)
+
+    if mode == :ast do
+      quote do
+        @smell_ast_callbacks {unquote(pattern), unquote(kind), unquote(message),
+                              unquote(prefilter)}
+      end
+    else
+      build_pattern_smell(pattern, kind, message, prefilter, caller)
+    end
+  end
+
+  defp build_pattern_smell(pattern, kind, message, prefilter, caller) do
     if selector_ast?(pattern) do
       idx = Module.get_attribute(caller.module, :smell_query_counter) || 0
       Module.put_attribute(caller.module, :smell_query_counter, idx + 1)
@@ -58,8 +74,25 @@ defmodule Reach.Smell.Check.Pattern do
   defp selector_ast?({:from, _, _}), do: true
   defp selector_ast?(_), do: false
 
-  defmacro __before_compile__(_env) do
+  defmacro __before_compile__(env) do
+    ast_callbacks = Module.get_attribute(env.module, :smell_ast_callbacks) || []
+
+    ast_matchers =
+      for {callback, _kind, _message, _prefilter} <- ast_callbacks do
+        quote do
+          def __reach_ast_smell_match__(unquote(callback), node), do: unquote(callback)(node)
+        end
+      end
+
     quote do
+      def __reach_ast_smells__ do
+        @smell_ast_callbacks
+      end
+
+      unquote_splicing(ast_matchers)
+
+      def __reach_ast_smell_match__(_callback, _node), do: nil
+
       def __reach_pattern_check__ do
         %{
           source: @pattern_check_source,

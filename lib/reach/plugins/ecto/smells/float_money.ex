@@ -1,7 +1,7 @@
 defmodule Reach.Plugins.Ecto.Smells.FloatMoney do
   @moduledoc "Detects money-like Ecto fields and columns declared as :float."
 
-  use Reach.Smell.Check.Pattern
+  use Reach.Smell.Check.Source
 
   @money_names [
     :amount,

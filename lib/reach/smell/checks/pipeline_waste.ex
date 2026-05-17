@@ -1,7 +1,7 @@
 defmodule Reach.Smell.Checks.PipelineWaste do
   @moduledoc "Pattern-based detection of redundant pipeline operations."
 
-  use Reach.Smell.Check.Pattern
+  use Reach.Smell.Check.Source
 
   smell(
     ~p[Enum.reverse(_) |> Enum.reverse()],
@@ -258,14 +258,46 @@ defmodule Reach.Smell.Checks.PipelineWaste do
   @boolean_ops [:==, :!=, :===, :!==, :>, :<, :>=, :<=, :and, :or, :not, :in]
 
   smell(
-    from(~p[case subject do first -> _; second -> _ end])
-    |> where(
-      match?({op, _, _} when op in @boolean_ops, ^subject) and
-        ((^first in [true, false] and match?({:_, _, _}, ^second)) or
-           (^second in [true, false] and match?({:_, _, _}, ^first)) or
-           (^first in [true, false] and ^second in [true, false]))
-    ),
+    :boolean_case,
     :suboptimal,
-    "case on boolean with true/false clauses; use if/else"
+    "case on boolean with true/false clauses; use if/else",
+    mode: :ast,
+    prefilter: {:all, ["case"]}
   )
+
+  defp boolean_case({:case, meta, [subject, clauses_ast]}) do
+    with {:ok, clauses} <- case_clauses(clauses_ast),
+         true <- boolean_subject?(subject),
+         true <- boolean_case_clauses?(clauses) do
+      {:ok, meta}
+    end
+  end
+
+  defp boolean_case(_node), do: nil
+
+  defp case_clauses(do: clauses) when is_list(clauses), do: {:ok, clauses}
+
+  defp case_clauses([{do_block, clauses}])
+       when is_list(clauses) and elem(do_block, 0) == :__block__, do: {:ok, clauses}
+
+  defp case_clauses(_clauses_ast), do: :error
+
+  defp boolean_subject?({op, _, _}) when op in @boolean_ops, do: true
+  defp boolean_subject?(_subject), do: false
+
+  defp boolean_case_clauses?([
+         {:->, _, [[first], _first_body]},
+         {:->, _, [[second], _second_body]}
+       ]) do
+    (boolean_literal?(first) and wildcard?(second)) or
+      (boolean_literal?(second) and wildcard?(first)) or
+      (boolean_literal?(first) and boolean_literal?(second))
+  end
+
+  defp boolean_case_clauses?(_clauses), do: false
+
+  defp boolean_literal?(value), do: unwrap_literal(value) in [true, false]
+  defp wildcard?(node), do: match?({:_, _, _}, unwrap_literal(node))
+  defp unwrap_literal({:__block__, _meta, [value]}), do: value
+  defp unwrap_literal(value), do: value
 end
