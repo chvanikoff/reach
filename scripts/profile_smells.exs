@@ -15,10 +15,12 @@ defmodule Reach.Smell.ProfileScript do
           checks: :boolean,
           patterns: :boolean,
           queries: :boolean,
+          repo: :string,
+          glob: :keep,
           limit: :integer,
           help: :boolean
         ],
-        aliases: [c: :checks, p: :patterns, q: :queries, l: :limit, h: :help]
+        aliases: [c: :checks, p: :patterns, q: :queries, r: :repo, g: :glob, l: :limit, h: :help]
       )
 
     if opts[:help] == true or invalid != [] do
@@ -32,12 +34,15 @@ defmodule Reach.Smell.ProfileScript do
     IO.puts("""
     Usage: mix run scripts/profile_smells.exs [options]
 
-    Profiles smell checks against the current project.
+    Profiles smell checks against the current project or a source repo.
 
     Options:
       --checks, -c     show per-check timings (default when no detail flags are passed)
       --patterns, -p   show per-pattern-check timings
       --queries, -q    show per-query timings inside ExAST pattern checks
+      --repo PATH, -r  profile sources under PATH instead of current project
+      --glob GLOB, -g  source glob relative to --repo; can be repeated
+                      defaults to lib/**/*.ex and apps/*/lib/**/*.ex
       --limit N, -l N  limit rows per table
       --help, -h       show this help
     """)
@@ -50,12 +55,12 @@ defmodule Reach.Smell.ProfileScript do
     show_patterns? = opts[:patterns] == true
     show_queries? = opts[:queries] == true
 
-    project = Reach.CLI.Project.load(quiet: true)
-    config = Config.read() |> Config.normalize()
+    {project, config} = load_project(opts)
     checks = Reach.Smell.Registry.checks(project, config)
     {pattern_checks, semantic_checks} = Enum.split_with(checks, &pattern_check?/1)
     files = source_files(project)
 
+    if opts[:repo], do: IO.puts("Repo: #{opts[:repo]}")
     IO.puts("Project nodes: #{map_size(project.nodes)}")
     IO.puts("Source files: #{length(files)}")
     IO.puts("Pattern checks: #{length(pattern_checks)}")
@@ -106,6 +111,31 @@ defmodule Reach.Smell.ProfileScript do
   defp profile_queries(files, pattern_checks, limit) do
     rows = Enum.flat_map(pattern_checks, &profile_check_queries(files, &1))
     table("ExAST selector queries", Enum.sort_by(rows, &elem(&1, 1), :desc), limit)
+  end
+
+  defp load_project(opts) do
+    config = Config.read() |> Config.normalize()
+
+    case opts[:repo] do
+      nil ->
+        {Reach.CLI.Project.load(quiet: true), config}
+
+      repo ->
+        paths = source_paths(repo, opts[:glob] || default_globs())
+        plugins = [Reach.Plugins.Phoenix, Reach.Plugins.Ecto, Reach.Plugins.Oban]
+        {Reach.Project.from_sources(paths, plugins: plugins), config}
+    end
+  end
+
+  defp default_globs, do: ["lib/**/*.ex", "apps/*/lib/**/*.ex"]
+
+  defp source_paths(repo, globs) do
+    repo = Path.expand(repo)
+
+    globs
+    |> Enum.flat_map(fn glob -> Path.wildcard(Path.join(repo, glob)) end)
+    |> Enum.uniq()
+    |> Enum.sort()
   end
 
   defp pattern_check?(check) do
