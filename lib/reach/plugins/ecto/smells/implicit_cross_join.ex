@@ -7,6 +7,9 @@ defmodule Reach.Plugins.Ecto.Smells.ImplicitCrossJoin do
   alias Reach.Smell.Source
 
   @impl true
+  def kinds, do: [:ecto_implicit_cross_join]
+
+  @impl true
   def run(project) do
     project
     |> Source.module_files()

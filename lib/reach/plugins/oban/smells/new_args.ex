@@ -8,6 +8,9 @@ defmodule Reach.Plugins.Oban.Smells.NewArgs do
   alias Reach.Smell.Helpers
 
   @impl true
+  def kinds, do: [:oban_struct_args]
+
+  @impl true
   def run(project) do
     project.nodes
     |> Enum.flat_map(fn

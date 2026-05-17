@@ -32,6 +32,32 @@ defmodule Reach.Plugins.Ecto.Smells.InterpolatedSQLTest do
     assert [%Finding{kind: :ecto_interpolated_repo_query}] = Smells.run(project)
   end
 
+  test "flags interpolated project Repo queries" do
+    project =
+      project_from_file(~S'''
+      defmodule MyApp.Search do
+        def by_name(name) do
+          MyApp.Repo.query("SELECT * FROM users WHERE name = '#{name}'")
+        end
+      end
+      ''')
+
+    assert [%Finding{kind: :ecto_interpolated_repo_query}] = Smells.run(project)
+  end
+
+  test "flags interpolated Ecto.Adapters.SQL queries" do
+    project =
+      project_from_file(~S'''
+      defmodule MyApp.Search do
+        def by_name(name) do
+          Ecto.Adapters.SQL.query!(Repo, "SELECT * FROM users WHERE name = '#{name}'", [])
+        end
+      end
+      ''')
+
+    assert [%Finding{kind: :ecto_interpolated_repo_query}] = Smells.run(project)
+  end
+
   test "allows parameterized raw Repo queries" do
     project =
       project_from_file(~S'''

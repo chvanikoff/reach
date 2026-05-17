@@ -10,6 +10,9 @@ defmodule Reach.Plugins.Ecto.Smells.RepoAllThenEnum do
   @count_fns [:count]
 
   @impl true
+  def kinds, do: [:ecto_filter_after_repo_all, :ecto_count_after_repo_all]
+
+  @impl true
   def run(project) do
     project.nodes
     |> Enum.flat_map(fn

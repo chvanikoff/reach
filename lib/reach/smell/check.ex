@@ -2,6 +2,9 @@ defmodule Reach.Smell.Check do
   @moduledoc "Behaviour and shared helpers for IR-based smell checks."
 
   @callback run(Reach.Project.t()) :: [map()]
+  @callback kinds() :: [atom()]
+
+  @optional_callbacks kinds: 0
 
   defmacro __using__(_opts) do
     quote do

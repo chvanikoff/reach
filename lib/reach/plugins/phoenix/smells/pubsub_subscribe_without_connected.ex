@@ -8,6 +8,9 @@ defmodule Reach.Plugins.Phoenix.Smells.PubSubSubscribeWithoutConnected do
   alias Reach.Smell.Helpers
 
   @impl true
+  def kinds, do: [:phoenix_pubsub_subscribe_without_connected]
+
+  @impl true
   def run(project) do
     project.nodes
     |> Enum.flat_map(fn

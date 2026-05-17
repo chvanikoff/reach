@@ -101,7 +101,11 @@ defmodule Reach.Scripts.SmellCorpusScan do
       {load_us, project} =
         :timer.tc(fn -> Reach.Project.from_sources(paths, plugins: plugins) end)
 
-      checks = Reach.Smell.Registry.checks(project, Reach.Config.normalize([]))
+      checks =
+        project
+        |> Reach.Smell.Registry.checks(Reach.Config.normalize([]))
+        |> filter_checks_by_kind(kinds)
+
       {pattern_checks, semantic_checks} = Enum.split_with(checks, &pattern_check?/1)
 
       {pattern_us, pattern_findings} =
@@ -145,6 +149,33 @@ defmodule Reach.Scripts.SmellCorpusScan do
 
   defp maybe_limit(paths, nil), do: paths
   defp maybe_limit(paths, limit), do: Enum.take(paths, limit)
+
+  defp filter_checks_by_kind(checks, nil), do: checks
+
+  defp filter_checks_by_kind(checks, kinds) do
+    Enum.filter(checks, fn check ->
+      check
+      |> check_kinds()
+      |> Enum.any?(&MapSet.member?(kinds, &1))
+    end)
+  end
+
+  defp check_kinds(check) do
+    cond do
+      pattern_check?(check) -> pattern_check_kinds(check)
+      function_exported?(check, :kinds, 0) -> check.kinds()
+      true -> []
+    end
+  end
+
+  defp pattern_check_kinds(check) do
+    metadata = check.__reach_pattern_check__()
+
+    pattern_kinds = Enum.map(metadata.patterns, fn {_pattern, kind, _message} -> kind end)
+    query_kinds = Enum.map(metadata.queries, fn {_function, kind, _message} -> kind end)
+
+    pattern_kinds ++ query_kinds
+  end
 
   defp pattern_check?(check) do
     Code.ensure_loaded?(check) and function_exported?(check, :__reach_pattern_check__, 0)

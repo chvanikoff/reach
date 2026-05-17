@@ -7,6 +7,9 @@ defmodule Reach.Smell.Checks.UnsafeBinaryToTerm do
   alias Reach.Smell.Helpers
 
   @impl true
+  def kinds, do: [:unsafe_binary_to_term]
+
+  @impl true
   def run(project) do
     project.nodes
     |> Enum.flat_map(fn

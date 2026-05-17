@@ -18,6 +18,9 @@ defmodule Reach.Plugins.Phoenix.Smells.AssignNewRefreshedValue do
                   ])
 
   @impl true
+  def kinds, do: [:phoenix_assign_new_refreshed_value]
+
+  @impl true
   def run(project) do
     project.nodes
     |> Enum.flat_map(fn

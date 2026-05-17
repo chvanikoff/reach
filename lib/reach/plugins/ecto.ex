@@ -14,7 +14,8 @@ defmodule Reach.Plugins.Ecto do
       Reach.Plugins.Ecto.Smells.ImplicitCrossJoin,
       Reach.Plugins.Ecto.Smells.InterpolatedSQL,
       Reach.Plugins.Ecto.Smells.RepoAllThenEnum,
-      Reach.Plugins.Ecto.Smells.RepoCallInLoop
+      Reach.Plugins.Ecto.Smells.RepoCallInLoop,
+      Reach.Plugins.Ecto.Smells.UnpinnedQueryValue
     ]
   end
 

@@ -7,6 +7,9 @@ defmodule Reach.Smell.Checks.MissingExternalResource do
   alias Reach.Smell.Source
 
   @impl true
+  def kinds, do: [:missing_external_resource]
+
+  @impl true
   def run(project) do
     project
     |> Source.module_files()

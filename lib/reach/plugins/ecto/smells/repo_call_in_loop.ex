@@ -11,6 +11,9 @@ defmodule Reach.Plugins.Ecto.Smells.RepoCallInLoop do
   @repo_modules [Repo, Ecto.Repo]
 
   @impl true
+  def kinds, do: [:ecto_repo_call_in_loop]
+
+  @impl true
   def run(project) do
     project.nodes
     |> Enum.flat_map(fn

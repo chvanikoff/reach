@@ -10,6 +10,9 @@ defmodule Reach.Plugins.Phoenix.Smells.AssignAsyncCapturesSocket do
   @async_fns [:assign_async, :start_async, :stream_async]
 
   @impl true
+  def kinds, do: [:phoenix_assign_async_captures_socket]
+
+  @impl true
   def run(project) do
     project.nodes
     |> Enum.flat_map(fn
