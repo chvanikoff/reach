@@ -41,7 +41,19 @@ smell(
 )
 ```
 
-Semantic smells use the standard `use Reach.Smell.Check` behaviour with IR helpers like `inside_loop?/2`, `callback_body/1`, and `statement_pairs/1`.
+Semantic smells use the standard `Reach.Smell.Check` behaviour with IR helpers like `inside_loop?/2`, `callback_body/1`, and `statement_pairs/1`.
+
+Projects can also define local semantic smell checks and enable them with `smells: [custom_checks: [...]]` in `.reach.exs`.
+
+```elixir
+defmodule MyApp.ReachSmells.NoFoo do
+  @behaviour Reach.Smell.Check
+
+  def run(project) do
+    # return Reach.Smell.Finding structs
+  end
+end
+```
 
 ## Clone analysis
 

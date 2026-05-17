@@ -8,7 +8,9 @@ defmodule Reach.Check.Smells do
 
   def run(project, config \\ []) do
     config = Config.normalize(config)
-    {pattern_checks, checks} = Enum.split_with(Reach.Smell.Registry.checks(), &pattern_check?/1)
+
+    {pattern_checks, checks} =
+      Enum.split_with(Reach.Smell.Registry.checks(config), &pattern_check?/1)
 
     PatternRunner.run(project, pattern_checks) ++
       Enum.flat_map(checks, &run_check(&1, project, config))

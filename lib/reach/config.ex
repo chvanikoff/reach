@@ -81,6 +81,7 @@ defmodule Reach.Config do
   defmodule Smells do
     @moduledoc false
     defstruct strict: false,
+              custom_checks: [],
               fixed_shape_map: nil,
               behaviour_candidate: nil
   end
@@ -257,6 +258,7 @@ defmodule Reach.Config do
       },
       smells: %Smells{
         strict: nested(config, [:smells, :strict], nil, false),
+        custom_checks: nested(config, [:smells, :custom_checks], nil, []),
         fixed_shape_map: %Smells.FixedShapeMap{
           min_keys: nested(config, [:smells, :fixed_shape_map, :min_keys], nil, 3),
           min_occurrences: nested(config, [:smells, :fixed_shape_map, :min_occurrences], nil, 3),
@@ -434,6 +436,7 @@ defmodule Reach.Config do
     |> check(config, [:checks, :baseline], &is_binary/1, "expected string")
     |> check(config, [:smells], &valid_group?/1, "expected keyword list")
     |> check(config, [:smells, :strict], &valid_boolean?/1, "expected boolean")
+    |> check(config, [:smells, :custom_checks], &valid_module_list?/1, "expected list of modules")
     |> check(config, [:smells, :fixed_shape_map], &valid_group?/1, "expected keyword list")
     |> check(config, [:smells, :behaviour_candidate], &valid_group?/1, "expected keyword list")
     |> check(
@@ -617,6 +620,7 @@ defmodule Reach.Config do
     ])
     |> unknown_nested_key_errors(config, [:smells], [
       :strict,
+      :custom_checks,
       :fixed_shape_map,
       :behaviour_candidate
     ])
@@ -684,6 +688,8 @@ defmodule Reach.Config do
 
   defp valid_group?(value), do: Keyword.keyword?(value)
   defp valid_boolean?(value), do: is_boolean(value)
+  defp valid_module_list?(value) when is_list(value), do: Enum.all?(value, &is_atom/1)
+  defp valid_module_list?(_value), do: false
   defp valid_positive_integer?(value), do: is_integer(value) and value > 0
 
   defp valid_similarity?(value) when is_number(value), do: value >= 0.0 and value <= 1.0

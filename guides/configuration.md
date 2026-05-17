@@ -316,6 +316,7 @@ clone_analysis: [
 
 smells: [
   strict: true,
+  custom_checks: [MyApp.ReachSmells.NoFoo],
   fixed_shape_map: [
     min_keys: 3,
     min_occurrences: 3,
@@ -346,6 +347,45 @@ When a baseline is configured, known findings are suppressed before gate failure
 ### `smells[:strict]`
 
 `mix reach.check --smells` is advisory by default. Set `strict: true` or pass `--strict` to fail on non-baseline smell findings.
+
+### `smells[:custom_checks]`
+
+Projects can add local smell checks by implementing `Reach.Smell.Check` in their own application and listing the modules in `.reach.exs`.
+
+```elixir
+defmodule MyApp.ReachSmells.NoFoo do
+  @behaviour Reach.Smell.Check
+
+  alias Reach.Smell.Finding
+
+  @impl true
+  def run(project) do
+    for {_id, node} <- project.nodes,
+        node.type == :call,
+        node.meta[:module] == MyApp.Foo do
+      Finding.new(
+        kind: :my_app_no_foo,
+        message: "Use MyApp.Bar instead of MyApp.Foo",
+        location: location(node)
+      )
+    end
+  end
+
+  defp location(%{source_span: %{file: file, start_line: line}}), do: "#{file}:#{line}"
+  defp location(_node), do: "unknown"
+end
+```
+
+Enable it explicitly:
+
+```elixir
+smells: [
+  strict: true,
+  custom_checks: [MyApp.ReachSmells.NoFoo]
+]
+```
+
+Custom checks run alongside Reach's built-in smell checks and participate in `--strict` and baseline filtering. A custom check must implement `Reach.Smell.Check` and define `run/1`.
 
 ### `smells[:fixed_shape_map]` and `smells[:behaviour_candidate]`
 
