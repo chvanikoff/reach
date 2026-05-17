@@ -16,6 +16,28 @@ defmodule Reach.Plugins.Oban.Smells.NewArgsTest do
     assert :oban_struct_args in kinds
   end
 
+  test "flags local new with struct args inside Oban workers" do
+    project =
+      project_from_string(~S'''
+      defmodule MyWorker do
+        use Oban.Worker
+
+        def enqueue(user), do: new(%{user: %User{id: user.id}})
+      end
+      ''')
+
+    assert [%{kind: :oban_struct_args}] = Smells.run(project)
+  end
+
+  test "allows struct args for unrelated new constructors" do
+    project =
+      project_from_string(
+        "defmodule M do\n  def build(user), do: Thing.new(%{user: %User{id: user.id}})\nend"
+      )
+
+    assert [] = Smells.run(project)
+  end
+
   test "allows primitive args" do
     project =
       project_from_string(

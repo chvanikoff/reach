@@ -9,33 +9,48 @@ defmodule Reach.Plugins.Phoenix.Smells.RawHTML do
   @impl true
   def run(project) do
     project.nodes
-    |> Enum.flat_map(fn
-      {_id,
-       %{type: :call, meta: %{module: Phoenix.HTML, function: :raw}, children: [content]} = call} ->
-        if trusted_content?(content), do: [], else: [finding(call)]
-
-      _entry ->
-        []
-    end)
+    |> Enum.flat_map(fn {_id, node} -> findings_for_node(node) end)
   end
 
-  defp trusted_content?(%{type: :literal, meta: %{value: value}}), do: is_binary(value)
+  defp findings_for_node(call) do
+    if raw_call?(call), do: findings_for_raw_call(call), else: []
+  end
 
-  defp trusted_content?(%{
-         type: :tuple,
-         children: [%{type: :literal, meta: %{value: :safe}} | _]
-       }),
-       do: true
+  defp raw_call?(call) do
+    meta = Map.get(call, :meta, %{})
+    Map.get(call, :type) == :call and meta.module == Phoenix.HTML and meta.function == :raw
+  end
 
-  defp trusted_content?(%{type: :call, meta: %{module: Phoenix.HTML, function: function}})
-       when function in [:html_escape, :safe_to_string],
-       do: true
+  defp findings_for_raw_call(call) do
+    case Map.get(call, :children, []) do
+      [content] -> if trusted_content?(content), do: [], else: [finding(call)]
+      _children -> []
+    end
+  end
 
-  defp trusted_content?(%{type: :call, meta: %{function: function}})
-       when function in [:html_escape, :safe_to_string],
-       do: true
+  defp trusted_content?(content) do
+    literal_string?(content) or safe_tuple?(content) or escaped_call?(content)
+  end
 
-  defp trusted_content?(_content), do: false
+  defp literal_string?(content) do
+    Map.get(content, :type) == :literal and
+      is_binary(Map.get(Map.get(content, :meta, %{}), :value))
+  end
+
+  defp safe_tuple?(content) do
+    Map.get(content, :type) == :tuple and
+      match?([first | _] when is_map(first), Map.get(content, :children, [])) and
+      literal_value(List.first(Map.get(content, :children, []))) == :safe
+  end
+
+  defp escaped_call?(content) do
+    meta = Map.get(content, :meta, %{})
+
+    Map.get(content, :type) == :call and
+      meta.module in [nil, Phoenix.HTML] and meta.function in [:html_escape, :safe_to_string]
+  end
+
+  defp literal_value(node), do: node |> Map.get(:meta, %{}) |> Map.get(:value)
 
   defp finding(call) do
     Finding.new(
