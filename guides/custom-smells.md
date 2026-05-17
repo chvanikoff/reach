@@ -147,9 +147,35 @@ defmodule MyApp.ReachSmells.NoDebugCalls do
 end
 ```
 
+## Source DSL checks
+
+For source-shape rules that are easy to express as patterns or per-node callbacks, use `Reach.Smell.Check.Source`. It supports ExAST patterns/selectors and AST callback rules through the same `smell` macro.
+
+```elixir
+defmodule MyApp.ReachSmells.NoBooleanCase do
+  use Reach.Smell.Check.Source
+
+  smell(
+    :boolean_case,
+    :my_app_boolean_case,
+    "prefer if/else for boolean case expressions",
+    mode: :ast,
+    prefilter: {:all, ["case"]}
+  )
+
+  defp boolean_case({:case, meta, [subject, _clauses]}) do
+    if match?({op, _, _} when op in [:==, :!=, :and, :or], subject), do: {:ok, meta}
+  end
+
+  defp boolean_case(_node), do: nil
+end
+```
+
+Use source DSL checks when a rule is local to one AST node or can be expressed as an ExAST `~p` pattern. Use `Reach.Smell.Check.AST` when the check needs full-file state or a custom traversal.
+
 ## AST-backed source checks
 
-For source-shape rules, use `Reach.Smell.Check.AST`. It loads each source file once via Sourceror, reuses Reach's AST cache, and calls `scan_ast/2` with the file path.
+For full-file source-shape rules, use `Reach.Smell.Check.AST`. It loads each source file once via Sourceror, reuses Reach's AST cache, and calls `scan_ast/2` with the file path.
 
 ```elixir
 defmodule MyApp.ReachSmells.MissingTemplateResource do

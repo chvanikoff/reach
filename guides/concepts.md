@@ -22,13 +22,13 @@ Reach classifies calls into effect categories such as pure, IO, read, write, sen
 
 Reach detects structural code smells in two layers:
 
-**Pattern smells** use ExAST's `~p` sigil to match source-level AST patterns — pipe anti-patterns, collection idiom misuse, config phase mistakes. These run per-file via Sourceror zipper traversal.
+**Source smells** use the `Reach.Smell.Check.Source` DSL for source-level rules. Simple rules use ExAST's `~p` sigil and selectors; hot or shape-sensitive rules can use `smell(..., mode: :ast)` callbacks over Sourceror AST nodes. These run per-file with shared source/AST/zipper caches and inferred source prefilters.
 
 **Semantic smells** use Reach's own IR with effects, data flow, call graph, and clone evidence — redundant computation, loop anti-patterns, dual key access, fixed-shape maps, behaviour candidates, return-contract drift, unsafe dynamic atom creation, and unsafe `binary_to_term/1`.
 
 **AST smells** use Sourceror source AST when the source shape matters more than IR — compile-time file reads without `@external_resource`, Ecto implicit cross joins, interpolated SQL, and unpinned Ecto query values.
 
-Pattern smells are declared with a DSL:
+Source smells are declared with one `smell` DSL:
 
 ```elixir
 use Reach.Smell.Check.Source
@@ -41,6 +41,20 @@ smell(
   :eager_pattern,
   "use Enum.slice/3"
 )
+
+smell(
+  :boolean_case,
+  :suboptimal,
+  "case on boolean with true/false clauses; use if/else",
+  mode: :ast,
+  prefilter: {:all, ["case"]}
+)
+
+defp boolean_case({:case, meta, [subject, clauses]}) do
+  if boolean_subject?(subject) and boolean_case_clauses?(clauses), do: {:ok, meta}
+end
+
+defp boolean_case(_node), do: nil
 ```
 
 Semantic smells use the standard `Reach.Smell.Check` behaviour with IR helpers like `inside_loop?/2`, `callback_body/1`, and `statement_pairs/1`.

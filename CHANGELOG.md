@@ -2,9 +2,26 @@
 
 ## Unreleased
 
+### New
+
+- **Framework smell checks** — added plugin-provided Phoenix, Ecto, and Oban smell checks for LiveView lifecycle mistakes, Ecto query pitfalls, unsafe SQL interpolation, money-like `:float` fields, and Oban argument shape issues.
+- **Security/source smell checks** — added checks for unsafe dynamic atom creation, unsafe `:erlang.binary_to_term/1`, missing `@external_resource` declarations, and conservative Ecto query pinning/cross-join issues.
+- **Custom/plugin smell infrastructure** — projects can provide custom smell modules via `.reach.exs`, and framework plugins can register smell checks through `Reach.Plugin.smell_checks/0`.
+- **Smell corpus tooling** — added `scripts/smell_corpus_scan.exs` for repeatable scans across external repositories with plugin and kind filters.
+- **Smell profiling tooling** — added `scripts/profile_smells.exs` for per-check, per-pattern, and per-query profiling against the current project or an external repo.
+
 ### Changed
 
 - **Source smell DSL rename** — source-level smell checks now use `Reach.Smell.Check.Source` instead of `Reach.Smell.Check.Pattern`. The unified `smell/4` DSL also supports AST callback rules with `mode: :ast` for hot source-shape checks that need custom matching.
+- **Pattern smell performance** — source smell checks infer source prefilters from ExAST selectors, share prefilter normalization through `Reach.Smell.PatternConfig`, and route combined pattern/AST callback rules through `Reach.Smell.SourceRunner`.
+- **Smell performance** — optimized pattern scanning, source AST caching, CLI command tests, architecture policy tests, and the `IdiomMismatch` smell check to reduce repeated full-project/file traversals.
+- **Pattern smell consolidation** — consolidated hot ExAST selectors for boolean `case` and boolean `Map.put/3` tracking; the boolean `case` smell now uses the unified source DSL's AST callback mode.
+
+### Fixed
+
+- **Plugin smell discovery** — plugin smell modules are no longer accidentally auto-discovered as generic built-ins; plugin checks run only through plugin registration.
+- **Real-world false positives** — narrowed noisy Phoenix raw HTML, LiveView `assign_new`, and Oban argument checks based on scans of open-source Elixir projects.
+- **Pattern prefilter safety** — inferred prefilters ignore ExAST predicate internals so DSL-style selectors such as Ecto `field(name, :float)` are not skipped incorrectly.
 
 ## 2.3.5
 
