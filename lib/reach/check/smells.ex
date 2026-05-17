@@ -18,7 +18,9 @@ defmodule Reach.Check.Smells do
 
   def analyze(project), do: run(project)
 
-  defp pattern_check?(check), do: function_exported?(check, :__reach_pattern_check__, 0)
+  defp pattern_check?(check) do
+    Code.ensure_loaded?(check) and function_exported?(check, :__reach_pattern_check__, 0)
+  end
 
   defp run_check(check, project, config) do
     if function_exported?(check, :run, 2),
