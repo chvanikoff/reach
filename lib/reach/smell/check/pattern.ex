@@ -8,7 +8,7 @@ defmodule Reach.Smell.Check.Pattern do
 
       import ExAST.Sigil
       import ExAST.Query
-      import Reach.Smell.Check.Pattern, only: [smell: 3]
+      import Reach.Smell.Check.Pattern, only: [smell: 3, smell: 4]
 
       alias Reach.Smell.PatternRunner
 
@@ -25,20 +25,31 @@ defmodule Reach.Smell.Check.Pattern do
   end
 
   defmacro smell(pattern, kind, message) do
+    build_smell(pattern, kind, message, [], __CALLER__)
+  end
+
+  defmacro smell(pattern, kind, message, opts) do
+    build_smell(pattern, kind, message, opts, __CALLER__)
+  end
+
+  defp build_smell(pattern, kind, message, opts, caller) do
+    prefilter = Keyword.get(opts, :prefilter, [])
+
     if selector_ast?(pattern) do
-      idx = Module.get_attribute(__CALLER__.module, :smell_query_counter) || 0
-      Module.put_attribute(__CALLER__.module, :smell_query_counter, idx + 1)
+      idx = Module.get_attribute(caller.module, :smell_query_counter) || 0
+      Module.put_attribute(caller.module, :smell_query_counter, idx + 1)
       fun_name = :"__smell_query_#{idx}__"
 
       quote do
-        @smell_query_names {unquote(fun_name), unquote(kind), unquote(message)}
+        @smell_query_names {unquote(fun_name), unquote(kind), unquote(message),
+                            unquote(prefilter)}
         @doc false
         @dialyzer {:nowarn_function, [{unquote(fun_name), 0}]}
         def unquote(fun_name)(), do: unquote(pattern)
       end
     else
       quote do
-        @smell_patterns {unquote(pattern), unquote(kind), unquote(message)}
+        @smell_patterns {unquote(pattern), unquote(kind), unquote(message), unquote(prefilter)}
       end
     end
   end

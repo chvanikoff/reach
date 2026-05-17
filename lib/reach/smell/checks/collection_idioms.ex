@@ -205,19 +205,22 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
     from(~p[Enum.count(arg)])
     |> where(not match?({:&, _, _}, ^arg) and not match?({:fn, _, _}, ^arg)),
     :suboptimal,
-    "Enum.count/1 without predicate has protocol dispatch overhead; use length/1 for lists"
+    "Enum.count/1 without predicate has protocol dispatch overhead; use length/1 for lists",
+    prefilter: ["Enum.count"]
   )
 
   smell(
     from(~p[Map.put(_, key, true)]) |> where(not is_atom(^key) and not is_binary(^key)),
     :suboptimal,
-    "Map.put/3 with variable key and boolean value suggests membership tracking; use MapSet"
+    "Map.put/3 with variable key and boolean value suggests membership tracking; use MapSet",
+    prefilter: ["Map.put"]
   )
 
   smell(
     from(~p[Map.put(_, key, false)]) |> where(not is_atom(^key) and not is_binary(^key)),
     :suboptimal,
-    "Map.put/3 with variable key and boolean value suggests membership tracking; use MapSet"
+    "Map.put/3 with variable key and boolean value suggests membership tracking; use MapSet",
+    prefilter: ["Map.put"]
   )
 
   # length(list) == 0 → list == []
@@ -243,13 +246,15 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
   smell(
     from(~p[Regex.replace(_, _, _)]) |> where(piped()),
     :suboptimal,
-    "Regex.replace/3 in a pipe receives the piped string as the regex argument; use String.replace/3"
+    "Regex.replace/3 in a pipe receives the piped string as the regex argument; use String.replace/3",
+    prefilter: ["Regex.replace"]
   )
 
   smell(
     from(~p[Regex.replace(_, _, _, _)]) |> where(piped()),
     :suboptimal,
-    "Regex.replace/4 in a pipe receives the piped string as the regex argument; use String.replace/4"
+    "Regex.replace/4 in a pipe receives the piped string as the regex argument; use String.replace/4",
+    prefilter: ["Regex.replace"]
   )
 
   smell(
@@ -340,7 +345,8 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
     from(~p[Enum.into(_, target)])
     |> where(match?({:%{}, _, []}, ^target)),
     :suboptimal,
-    "Enum.into(enum, %{}): use Map.new/1"
+    "Enum.into(enum, %{}): use Map.new/1",
+    prefilter: ["Enum.into"]
   )
 
   smell(
