@@ -33,7 +33,7 @@ defmodule Reach.Smell.Check.Pattern do
   end
 
   defp build_smell(pattern, kind, message, opts, caller) do
-    prefilter = Keyword.get(opts, :prefilter, [])
+    prefilter = Keyword.get(opts, :prefilter, :auto)
 
     if selector_ast?(pattern) do
       idx = Module.get_attribute(caller.module, :smell_query_counter) || 0
