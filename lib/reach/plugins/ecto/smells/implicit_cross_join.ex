@@ -8,12 +8,8 @@ defmodule Reach.Plugins.Ecto.Smells.ImplicitCrossJoin do
 
   @impl true
   def run(project) do
-    project.nodes
-    |> Enum.flat_map(fn
-      {_id, %{type: :module_def, source_span: source_span}} -> [source_span && source_span[:file]]
-      _entry -> []
-    end)
-    |> Enum.uniq()
+    project
+    |> Source.module_files()
     |> Enum.flat_map(&scan_file/1)
   end
 
