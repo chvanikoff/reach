@@ -189,13 +189,10 @@ defmodule Reach.OTP.GenServer do
   defp var_name(_), do: nil
 
   defp tuple_is_genserver_return?(%Node{type: :tuple, children: children}) do
-    case children do
-      [%Node{type: :literal, meta: %{value: tag}} | _] when tag in [:reply, :noreply, :stop] ->
-        true
-
-      _ ->
-        false
-    end
+    match?(
+      [%Node{type: :literal, meta: %{value: tag}} | _] when tag in [:reply, :noreply, :stop],
+      children
+    )
   end
 
   defp parse_genserver_return(%Node{type: :tuple, children: children}) do

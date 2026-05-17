@@ -33,6 +33,41 @@ defmodule Reach.Check.ArchitecturePolicyTest do
     assert data["violations"] == []
   end
 
+  test "reach.check runs each requested check mode" do
+    with_reach_config(~S([layers: [cli: "Mix.Tasks.*", core: "Reach.*"]]))
+
+    output = capture_io(fn -> Check.run(["--arch", "--smells"]) end)
+
+    assert output =~ "Architecture Policy"
+    assert output =~ "Cross-Function Smell Detection"
+  end
+
+  test "reach.check rejects multiple modes for json output" do
+    with_reach_config(~S([layers: [cli: "Mix.Tasks.*", core: "Reach.*"]]))
+
+    assert_raise Mix.Error, ~r/JSON output supports one reach.check mode/, fn ->
+      Check.run(["--arch", "--smells", "--format", "json"])
+    end
+  end
+
+  test "reach.check --smells --strict fails when findings are present" do
+    path = smell_fixture("def run(items), do: items |> Enum.reverse() |> Enum.reverse()")
+    with_reach_config(~S([]))
+
+    assert_raise Mix.Error, ~r/Smell check failed: \d+ finding\(s\)/, fn ->
+      capture_io(fn -> Check.run(["--smells", "--strict", path]) end)
+    end
+  end
+
+  test "reach.check --smells honors strict config" do
+    path = smell_fixture("def run(items), do: items |> Enum.reverse() |> Enum.reverse()")
+    with_reach_config(~S([smells: [strict: true]]))
+
+    assert_raise Mix.Error, ~r/Smell check failed: \d+ finding\(s\)/, fn ->
+      capture_io(fn -> Check.run(["--smells", path]) end)
+    end
+  end
+
   test "reach.check reports architecture config errors" do
     with_reach_config("[unknown: true, layers: :bad]")
 
@@ -112,6 +147,15 @@ defmodule Reach.Check.ArchitecturePolicyTest do
     assert_raise Mix.Error, ~r/Architecture policy failed/, fn ->
       capture_io(fn -> Check.run(["--arch", "--format", "json"]) end)
     end
+  end
+
+  defp smell_fixture(body) do
+    dir = Path.join(System.tmp_dir!(), "reach-smell-fixture-#{System.unique_integer()}")
+    File.mkdir_p!(dir)
+    path = Path.join(dir, "sample.ex")
+    File.write!(path, "defmodule ReachSmellFixture do\n  #{body}\nend\n")
+    on_exit(fn -> File.rm_rf(dir) end)
+    path
   end
 
   defp with_reach_config(contents) do

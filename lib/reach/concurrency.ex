@@ -78,10 +78,7 @@ defmodule Reach.Concurrency do
   end
 
   defp trap_exit_call?(%Node{type: :call, meta: %{module: Process, function: :flag}} = node) do
-    case node.children do
-      [%Node{type: :literal, meta: %{value: :trap_exit}} | _] -> true
-      _ -> false
-    end
+    match?([%Node{type: :literal, meta: %{value: :trap_exit}} | _], node.children)
   end
 
   defp trap_exit_call?(_), do: false

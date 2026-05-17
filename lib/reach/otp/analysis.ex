@@ -232,10 +232,7 @@ defmodule Reach.OTP.Analysis do
   defp var_named?(_, _), do: false
 
   defp has_update_syntax?(%{children: children}, state_name) do
-    case children do
-      [%{type: :var, meta: %{name: ^state_name}} | _] -> true
-      _ -> false
-    end
+    match?([%{type: :var, meta: %{name: ^state_name}} | _], children)
   end
 
   defp find_hidden_coupling(nodes) do
@@ -338,10 +335,7 @@ defmodule Reach.OTP.Analysis do
   end
 
   defp catch_all_clause?(clause) do
-    case clause.children do
-      [%{type: :var} | _] -> true
-      _ -> false
-    end
+    match?([%{type: :var} | _], clause.children)
   end
 
   defp extract_clause_message_types(func) do

@@ -626,10 +626,7 @@ defmodule Reach.Plugins.Ash do
   end
 
   defp action_matches?(action_call, action_name) do
-    case action_call.children do
-      [%Node{type: :literal, meta: %{value: ^action_name}} | _] -> true
-      _ -> false
-    end
+    match?([%Node{type: :literal, meta: %{value: ^action_name}} | _], action_call.children)
   end
 
   defp changeset_action_name(:for_create), do: :create

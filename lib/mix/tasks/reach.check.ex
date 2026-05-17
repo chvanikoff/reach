@@ -17,6 +17,9 @@ defmodule Mix.Tasks.Reach.Check do
     * `--base` — git base ref for `--changed` (default: auto-detect `main`, `master`, or upstream)
     * `--dead-code` — find unused pure expressions
     * `--smells` — find graph/effect/data-flow performance smells
+    * `--strict` — fail when smell findings are present (or set `smells: [strict: true]`)
+    * `--baseline` — ignore known findings from a Reach baseline file
+    * `--write-baseline` — write current findings to a Reach baseline file
     * `--candidates` — emit advisory refactoring candidates
     * `--top` — limit candidate output for `--candidates`
 
@@ -37,6 +40,9 @@ defmodule Mix.Tasks.Reach.Check do
     base: :string,
     dead_code: :boolean,
     smells: :boolean,
+    strict: :boolean,
+    baseline: :string,
+    write_baseline: :string,
     candidates: :boolean,
     path: :string,
     top: :integer

@@ -194,10 +194,10 @@ defmodule Reach.Check.Changed do
   end
 
   defp git_ref?(ref) do
-    case System.cmd("git", ["rev-parse", "--verify", "--quiet", ref], stderr_to_stdout: true) do
-      {_output, 0} -> true
-      {_output, _status} -> false
-    end
+    match?(
+      {_output, 0},
+      System.cmd("git", ["rev-parse", "--verify", "--quiet", ref], stderr_to_stdout: true)
+    )
   end
 
   defp git_upstream do

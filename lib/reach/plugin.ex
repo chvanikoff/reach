@@ -186,14 +186,16 @@ defmodule Reach.Plugin do
 
   @doc "Runs embedded-node analysis hooks for plugins that provide them."
   def run_analyze_embedded(plugins, all_nodes, opts) do
-    {nodes_acc, edges_acc} =
-      Enum.reduce(plugins, {[], []}, fn plugin, {all_nodes_acc, edges_acc} ->
+    {nodes_acc, edges_acc, _added_chunks} =
+      Enum.reduce(plugins, {[], [], []}, fn plugin, {all_nodes_acc, edges_acc, added_chunks} ->
         if exports?(plugin, :analyze_embedded, 2) do
-          accumulated = all_nodes ++ List.flatten(all_nodes_acc)
+          accumulated = [all_nodes | Enum.reverse(added_chunks)] |> List.flatten()
           {new_nodes, new_edges} = plugin.analyze_embedded(accumulated, opts)
-          {[new_nodes | all_nodes_acc], [new_edges | edges_acc]}
+          flat_nodes = List.flatten(new_nodes)
+
+          {[new_nodes | all_nodes_acc], [new_edges | edges_acc], [flat_nodes | added_chunks]}
         else
-          {all_nodes_acc, edges_acc}
+          {all_nodes_acc, edges_acc, added_chunks}
         end
       end)
 

@@ -31,10 +31,7 @@ defmodule Reach.Analysis do
   defp mix_task_module?(nil), do: false
 
   defp mix_task_module?(module) when is_atom(module) do
-    case Module.split(module) do
-      ["Mix", "Tasks" | _] -> true
-      _ -> false
-    end
+    match?(["Mix", "Tasks" | _], Module.split(module))
   end
 
   defp mix_task_file?(nil), do: false

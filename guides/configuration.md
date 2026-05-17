@@ -303,6 +303,10 @@ Configure optional structural clone evidence. Reach uses clone evidence to raise
 
 
 ```elixir
+checks: [
+  baseline: ".reach-baseline.json"
+]
+
 clone_analysis: [
   provider: :ex_dna,
   min_mass: 30,
@@ -311,6 +315,7 @@ clone_analysis: [
 ]
 
 smells: [
+  strict: true,
   fixed_shape_map: [
     min_keys: 3,
     min_occurrences: 3,
@@ -326,6 +331,21 @@ smells: [
 ```
 
 Reach runs ExDNA when the package is available; package consumers can disable clone evidence with `provider: false` or tune clone mass/similarity when needed.
+
+### `checks[:baseline]`
+
+Use a baseline to adopt `reach.check` gates in an existing codebase without hiding new issues. Baselines apply across check modes such as architecture violations and smell findings.
+
+```bash
+mix reach.check --arch --smells --write-baseline .reach-baseline.json
+mix reach.check --arch --smells --baseline .reach-baseline.json
+```
+
+When a baseline is configured, known findings are suppressed before gate failure is evaluated. New architecture violations still fail `--arch`, and new smell findings fail when `--strict` or `smells: [strict: true]` is enabled.
+
+### `smells[:strict]`
+
+`mix reach.check --smells` is advisory by default. Set `strict: true` or pass `--strict` to fail on non-baseline smell findings.
 
 ### `smells[:fixed_shape_map]` and `smells[:behaviour_candidate]`
 

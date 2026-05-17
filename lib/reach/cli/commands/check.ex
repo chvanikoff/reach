@@ -17,41 +17,67 @@ defmodule Reach.CLI.Commands.Check do
     * `--base` — git base ref for `--changed` (default: auto-detect `main`, `master`, or upstream)
     * `--dead-code` — find unused pure expressions
     * `--smells` — find graph/effect/data-flow performance smells
+    * `--strict` — fail when smell findings are present (or set `smells: [strict: true]`)
+    * `--baseline` — ignore known findings from a Reach baseline file
+    * `--write-baseline` — write current findings to a Reach baseline file
     * `--candidates` — emit advisory refactoring candidates
     * `--top` — limit candidate output for `--candidates`
 
   """
 
   alias Reach.Check.Architecture
+  alias Reach.Check.Baseline
   alias Reach.Check.Candidates
   alias Reach.Check.Changed
+  alias Reach.Check.Finding
   alias Reach.CLI.Commands.Check.DeadCode
   alias Reach.CLI.Commands.Check.Smells
   alias Reach.CLI.Project
   alias Reach.CLI.Render.Check, as: CheckRender
   alias Reach.Config
 
+  @check_modes [:arch, :changed, :dead_code, :smells, :candidates]
+
   def run(opts, positional \\ []) do
-    cond do
-      opts[:arch] ->
-        run_arch(opts)
-
-      opts[:changed] ->
-        run_changed(opts)
-
-      opts[:dead_code] ->
-        DeadCode.run(opts, positional, "reach.check")
-
-      opts[:smells] ->
-        Smells.run(opts, positional, "reach.check")
-
-      opts[:candidates] ->
-        run_candidates(opts, positional)
-
-      true ->
-        run_default(opts)
+    case selected_modes(opts) do
+      [] -> run_default(opts)
+      [mode] -> run_mode(mode, opts, positional)
+      modes -> run_modes(modes, opts, positional)
     end
   end
+
+  defp selected_modes(opts) do
+    Enum.filter(@check_modes, &opts[&1])
+  end
+
+  defp run_modes(modes, opts, positional) do
+    if opts[:format] == "json" do
+      Mix.raise("JSON output supports one reach.check mode at a time")
+    end
+
+    opts = maybe_put_shared_project(opts, modes, positional)
+    Enum.each(modes, &run_mode(&1, opts, positional))
+  end
+
+  defp maybe_put_shared_project(opts, modes, []) do
+    if share_project?(opts, modes) do
+      Keyword.put(opts, :project, Project.load(quiet: false))
+    else
+      opts
+    end
+  end
+
+  defp maybe_put_shared_project(opts, _modes, _positional), do: opts
+
+  defp share_project?(opts, modes) do
+    is_nil(opts[:path]) and :arch in modes and :smells in modes
+  end
+
+  defp run_mode(:arch, opts, _positional), do: run_arch(opts)
+  defp run_mode(:changed, opts, _positional), do: run_changed(opts)
+  defp run_mode(:dead_code, opts, positional), do: DeadCode.run(opts, positional, "reach.check")
+  defp run_mode(:smells, opts, positional), do: Smells.run(opts, positional, "reach.check")
+  defp run_mode(:candidates, opts, positional), do: run_candidates(opts, positional)
 
   defp run_default(opts) do
     if Config.read() != [] do
@@ -67,18 +93,42 @@ defmodule Reach.CLI.Commands.Check do
     result =
       case Architecture.config_violations(config) do
         [] ->
-          project = Project.load(quiet: opts[:format] == "json")
+          project = opts[:project] || Project.load(quiet: opts[:format] == "json")
           Architecture.run(project, config)
 
         violations ->
           %{config: ".reach.exs", status: "failed", violations: violations}
       end
 
+    config = Config.normalize(config)
+    finding_count = length(result.violations)
+    findings = Enum.map(result.violations, &Finding.from_arch_violation/1)
+
+    if write_path = Baseline.write_path(opts) do
+      Baseline.write(write_path, :arch, findings)
+    end
+
+    {new_findings, baseline_findings} = Baseline.filter(findings, Baseline.path(opts, config))
+    result = %{result | violations: filter_violations(result.violations, new_findings)}
+
+    result =
+      Map.merge(result, %{finding_count: finding_count, baseline_count: length(baseline_findings)})
+
     CheckRender.render_result(result, opts[:format], &CheckRender.render_arch_text/1)
 
     if result.violations != [] do
       Mix.raise("Architecture policy failed")
     end
+  end
+
+  defp filter_violations(violations, findings) do
+    allowed = MapSet.new(Enum.map(findings, & &1.fingerprint))
+
+    Enum.filter(violations, fn violation ->
+      violation
+      |> Finding.from_arch_violation()
+      |> then(&MapSet.member?(allowed, &1.fingerprint))
+    end)
   end
 
   defp run_changed(opts) do

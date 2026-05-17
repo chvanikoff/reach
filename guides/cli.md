@@ -50,8 +50,15 @@ mix reach.check --arch
 mix reach.check --changed --base main
 mix reach.check --dead-code
 mix reach.check --smells
+mix reach.check --smells --strict
+mix reach.check --arch --smells --baseline .reach-baseline.json
+mix reach.check --arch --smells --write-baseline .reach-baseline.json
 mix reach.check --candidates
 ```
+
+`--arch` is a failing gate by default. `--smells` is advisory by default; add `--strict` or set `smells: [strict: true]` in `.reach.exs` to fail when non-baseline smell findings are present.
+
+Use `--baseline PATH` to suppress known `reach.check` findings while still failing on new findings. Use `--write-baseline PATH` to write the current findings for the selected check modes. JSON output supports one check mode at a time.
 
 ## `mix reach.otp`
 

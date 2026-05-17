@@ -63,6 +63,8 @@ Run release checks:
 ```bash
 mix reach.check --arch
 mix reach.check --changed --base main
+mix reach.check --smells --strict
+mix reach.check --arch --smells --write-baseline .reach-baseline.json
 mix reach.check --candidates
 ```
 

@@ -204,7 +204,12 @@ defmodule Reach.CLI.Format do
 
   def indent(text, n \\ 2) do
     pad = String.duplicate(" ", n)
-    String.split(text, "\n") |> Enum.map_join("\n", &(pad <> &1))
+
+    text
+    |> String.split("\n")
+    |> Enum.map(fn line -> [pad, line] end)
+    |> Enum.intersperse("\n")
+    |> IO.iodata_to_binary()
   end
 
   def tag(:warning), do: yellow("⚠")

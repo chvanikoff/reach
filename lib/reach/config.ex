@@ -73,9 +73,15 @@ defmodule Reach.Config do
               max_clones: 50
   end
 
+  defmodule Checks do
+    @moduledoc false
+    defstruct baseline: nil
+  end
+
   defmodule Smells do
     @moduledoc false
-    defstruct fixed_shape_map: nil,
+    defstruct strict: false,
+              fixed_shape_map: nil,
               behaviour_candidate: nil
   end
 
@@ -120,6 +126,7 @@ defmodule Reach.Config do
             source: nil,
             risk: nil,
             candidates: nil,
+            checks: nil,
             smells: nil,
             clone_analysis: nil
 
@@ -133,6 +140,7 @@ defmodule Reach.Config do
     :source,
     :risk,
     :candidates,
+    :checks,
     :smells,
     :clone_analysis,
     :forbidden_deps,
@@ -191,6 +199,7 @@ defmodule Reach.Config do
         source: config.source || %Source{},
         risk: normalize_risk(config.risk),
         candidates: normalize_candidates(config.candidates),
+        checks: normalize_checks(config.checks),
         smells: normalize_smells(config.smells),
         clone_analysis: normalize_clone_analysis(config.clone_analysis)
     }
@@ -239,6 +248,7 @@ defmodule Reach.Config do
             nested(config, [:candidates, :limits, :representative_calls_per_edge], nil, 3)
         }
       },
+      checks: %Checks{baseline: nested(config, [:checks, :baseline], nil, nil)},
       clone_analysis: %CloneAnalysis{
         provider: nested(config, [:clone_analysis, :provider], nil, :ex_dna),
         min_mass: nested(config, [:clone_analysis, :min_mass], nil, 30),
@@ -246,6 +256,7 @@ defmodule Reach.Config do
         max_clones: nested(config, [:clone_analysis, :max_clones], nil, 50)
       },
       smells: %Smells{
+        strict: nested(config, [:smells, :strict], nil, false),
         fixed_shape_map: %Smells.FixedShapeMap{
           min_keys: nested(config, [:smells, :fixed_shape_map, :min_keys], nil, 3),
           min_occurrences: nested(config, [:smells, :fixed_shape_map, :min_occurrences], nil, 3),
@@ -278,6 +289,9 @@ defmodule Reach.Config do
 
   defp normalize_clone_analysis(%CloneAnalysis{} = clone_analysis), do: clone_analysis
   defp normalize_clone_analysis(_clone_analysis), do: %CloneAnalysis{}
+
+  defp normalize_checks(%Checks{} = checks), do: checks
+  defp normalize_checks(_checks), do: %Checks{}
 
   defp normalize_smells(%Smells{} = smells) do
     %{
@@ -416,7 +430,10 @@ defmodule Reach.Config do
       &valid_positive_integer?/1,
       "expected positive integer"
     )
+    |> check(config, [:checks], &valid_group?/1, "expected keyword list")
+    |> check(config, [:checks, :baseline], &is_binary/1, "expected string")
     |> check(config, [:smells], &valid_group?/1, "expected keyword list")
+    |> check(config, [:smells, :strict], &valid_boolean?/1, "expected boolean")
     |> check(config, [:smells, :fixed_shape_map], &valid_group?/1, "expected keyword list")
     |> check(config, [:smells, :behaviour_candidate], &valid_group?/1, "expected keyword list")
     |> check(
@@ -595,7 +612,11 @@ defmodule Reach.Config do
       :representative_calls,
       :representative_calls_per_edge
     ])
+    |> unknown_nested_key_errors(config, [:checks], [
+      :baseline
+    ])
     |> unknown_nested_key_errors(config, [:smells], [
+      :strict,
       :fixed_shape_map,
       :behaviour_candidate
     ])
@@ -662,6 +683,7 @@ defmodule Reach.Config do
   end
 
   defp valid_group?(value), do: Keyword.keyword?(value)
+  defp valid_boolean?(value), do: is_boolean(value)
   defp valid_positive_integer?(value), do: is_integer(value) and value > 0
 
   defp valid_similarity?(value) when is_number(value), do: value >= 0.0 and value <= 1.0

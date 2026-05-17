@@ -323,7 +323,7 @@ defmodule Reach.Check.Architecture do
   defp module_namespace(module) do
     module
     |> module_name()
-    |> String.split(".")
+    |> String.split(".", parts: 2)
     |> List.first()
   end
 

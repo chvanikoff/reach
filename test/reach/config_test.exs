@@ -29,6 +29,7 @@ defmodule Reach.ConfigTest do
                    high_risk_reason_count: 2
                  ]
                ],
+               checks: [baseline: ".reach-baseline.json"],
                candidates: [
                  thresholds: [
                    mixed_effect_count: 3,
@@ -42,6 +43,7 @@ defmodule Reach.ConfigTest do
                  ]
                ],
                smells: [
+                 strict: true,
                  fixed_shape_map: [
                    min_keys: 4,
                    min_occurrences: 5,
@@ -80,12 +82,14 @@ defmodule Reach.ConfigTest do
     assert config.risk.changed.wide_transitive_callers == 9
     assert config.risk.changed.branch_heavy == 7
     assert config.risk.changed.high_risk_reason_count == 2
+    assert config.checks.baseline == ".reach-baseline.json"
     assert config.candidates.thresholds.mixed_effect_count == 3
     assert config.candidates.thresholds.branchy_function_branches == 9
     assert config.candidates.thresholds.high_risk_direct_callers == 5
     assert config.candidates.limits.per_kind == 30
     assert config.candidates.limits.representative_calls == 12
     assert config.candidates.limits.representative_calls_per_edge == 2
+    assert config.smells.strict == true
     assert config.smells.fixed_shape_map.min_keys == 4
     assert config.smells.fixed_shape_map.min_occurrences == 5
     assert config.smells.fixed_shape_map.evidence_limit == 6

@@ -239,7 +239,12 @@ defmodule Reach.CLI.Render.Map do
   end
 
   defp render_cross_function_flow(row) do
-    labels = row.labels |> Enum.map_join(", ", fn {label, count} -> "#{label}=#{count}" end)
+    labels =
+      row.labels
+      |> Enum.map(fn {label, count} -> [to_string(label), "=", to_string(count)] end)
+      |> Enum.intersperse(", ")
+      |> IO.iodata_to_binary()
+
     variables = Enum.join(row.variables, ", ")
     IO.puts("    #{Format.bright(row.from)} → #{Format.bright(row.to)} edges=#{row.edges}")
     IO.puts("      labels: #{labels}")
