@@ -637,7 +637,7 @@ defmodule Reach.Effects do
     defp read_inferred_sig(module, function, arity) do
       with path when is_list(path) <- :code.which(module),
            {:ok, {_, [{~c"ExCk", chunk}]}} <- :beam_lib.chunks(path, [~c"ExCk"]),
-           {_version, %{exports: exports}} <- :erlang.binary_to_term(chunk),
+           {_version, %{exports: exports}} <- :erlang.binary_to_term(chunk, [:safe]),
            {_, %{sig: sig}} <- List.keyfind(exports, {function, arity}, 0) do
         sig
       else

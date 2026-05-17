@@ -7,7 +7,10 @@ defmodule Reach.Plugins.Oban do
 
   @impl true
   def smell_checks do
-    [Reach.Plugins.Oban.Smells.AtomArgs]
+    [
+      Reach.Plugins.Oban.Smells.AtomArgs,
+      Reach.Plugins.Oban.Smells.NewArgs
+    ]
   end
 
   @impl true

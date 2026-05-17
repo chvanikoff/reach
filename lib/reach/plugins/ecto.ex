@@ -11,6 +11,7 @@ defmodule Reach.Plugins.Ecto do
   def smell_checks do
     [
       Reach.Plugins.Ecto.Smells.FloatMoney,
+      Reach.Plugins.Ecto.Smells.RepoAllThenEnum,
       Reach.Plugins.Ecto.Smells.RepoCallInLoop
     ]
   end
