@@ -46,8 +46,15 @@ defmodule Reach.Smell.PatternConfig do
 
   defp inferred_prefilter(term, :auto) do
     case term |> remote_call_tokens() |> Enum.uniq() do
-      [] -> structural_prefilter(term)
+      [] -> fallback_prefilter(term)
       tokens -> tokens
+    end
+  end
+
+  defp fallback_prefilter(term) do
+    case structural_prefilter(term) do
+      [] -> term |> local_call_tokens() |> Enum.uniq()
+      prefilter -> prefilter
     end
   end
 
@@ -85,6 +92,31 @@ defmodule Reach.Smell.PatternConfig do
   end
 
   defp remote_call_tokens(_term, tokens), do: tokens
+
+  defp local_call_tokens(term), do: local_call_tokens(term, [])
+
+  defp local_call_tokens(%ExAST.Selector{steps: steps}, tokens),
+    do: local_call_tokens(steps, tokens)
+
+  defp local_call_tokens(%ExAST.Selector.Predicate{}, tokens), do: tokens
+
+  defp local_call_tokens({name, _meta, args}, tokens) when is_atom(name) and is_list(args) do
+    args
+    |> Enum.reduce(tokens, &local_call_tokens/2)
+    |> then(&[Atom.to_string(name) | &1])
+  end
+
+  defp local_call_tokens(tuple, tokens) when is_tuple(tuple) do
+    tuple
+    |> Tuple.to_list()
+    |> Enum.reduce(tokens, &local_call_tokens/2)
+  end
+
+  defp local_call_tokens(list, tokens) when is_list(list),
+    do: Enum.reduce(list, tokens, &local_call_tokens/2)
+
+  defp local_call_tokens(map, tokens) when is_map(map), do: tokens
+  defp local_call_tokens(_term, tokens), do: tokens
 
   defp structural_tokens(term), do: structural_tokens(term, [])
 

@@ -3,8 +3,10 @@ defmodule Reach.Plugins.Ecto.Smells.FloatMoneyTest do
 
   alias Reach.Check.Smells
   alias Reach.Plugins.Ecto
+  alias Reach.Plugins.Ecto.Smells.FloatMoney
   alias Reach.Project
   alias Reach.Smell.Finding
+  alias Reach.Smell.PatternConfig
 
   test "plugin-provided ExAST pattern smells run through the smell registry" do
     project =
@@ -19,6 +21,25 @@ defmodule Reach.Plugins.Ecto.Smells.FloatMoneyTest do
       ''')
 
     assert [%Finding{kind: :ecto_float_money}] = Smells.run(project)
+  end
+
+  test "inferred prefilter uses selector steps and ignores predicate internals" do
+    %{queries: queries} = FloatMoney.__reach_pattern_check__()
+
+    field_query =
+      Enum.find(queries, fn {_fun_name, _kind, message, _prefilter} ->
+        message =~ "schema field"
+      end)
+
+    {_fun_name, _kind, _message, prefilter} =
+      PatternConfig.normalize_query(FloatMoney, field_query)
+
+    refute PatternConfig.source_matches?("defmodule M do\n  false\nend", prefilter)
+
+    assert PatternConfig.source_matches?(
+             "defmodule M do\n  field :amount, :float\nend",
+             prefilter
+           )
   end
 
   test "ignores non-money field names" do

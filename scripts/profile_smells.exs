@@ -11,8 +11,14 @@ defmodule Reach.Smell.ProfileScript do
   def main(argv) do
     {opts, _argv, invalid} =
       OptionParser.parse(argv,
-        strict: [checks: :boolean, patterns: :boolean, queries: :boolean, help: :boolean],
-        aliases: [c: :checks, p: :patterns, q: :queries, h: :help]
+        strict: [
+          checks: :boolean,
+          patterns: :boolean,
+          queries: :boolean,
+          limit: :integer,
+          help: :boolean
+        ],
+        aliases: [c: :checks, p: :patterns, q: :queries, l: :limit, h: :help]
       )
 
     if opts[:help] == true or invalid != [] do
@@ -32,6 +38,7 @@ defmodule Reach.Smell.ProfileScript do
       --checks, -c     show per-check timings (default when no detail flags are passed)
       --patterns, -p   show per-pattern-check timings
       --queries, -q    show per-query timings inside ExAST pattern checks
+      --limit N, -l N  limit rows per table
       --help, -h       show this help
     """)
 
@@ -67,12 +74,14 @@ defmodule Reach.Smell.ProfileScript do
       {"all", ms(pattern_us + semantic_us), length(pattern_findings) + length(semantic_findings)}
     ])
 
-    if show_checks?, do: profile_checks(project, config, pattern_checks, semantic_checks)
-    if show_patterns?, do: profile_patterns(files, pattern_checks)
-    if show_queries?, do: profile_queries(files, pattern_checks)
+    limit = opts[:limit]
+
+    if show_checks?, do: profile_checks(project, config, pattern_checks, semantic_checks, limit)
+    if show_patterns?, do: profile_patterns(files, pattern_checks, limit)
+    if show_queries?, do: profile_queries(files, pattern_checks, limit)
   end
 
-  defp profile_checks(project, config, pattern_checks, semantic_checks) do
+  defp profile_checks(project, config, pattern_checks, semantic_checks, limit) do
     pattern_rows =
       Enum.map(pattern_checks, fn check ->
         {us, findings} = :timer.tc(fn -> Reach.Smell.PatternRunner.run(project, [check]) end)
@@ -85,18 +94,18 @@ defmodule Reach.Smell.ProfileScript do
         {inspect(check), ms(us), length(findings)}
       end)
 
-    table("Pattern checks", Enum.sort_by(pattern_rows, &elem(&1, 1), :desc))
-    table("Semantic checks", Enum.sort_by(semantic_rows, &elem(&1, 1), :desc))
+    table("Pattern checks", Enum.sort_by(pattern_rows, &elem(&1, 1), :desc), limit)
+    table("Semantic checks", Enum.sort_by(semantic_rows, &elem(&1, 1), :desc), limit)
   end
 
-  defp profile_patterns(files, pattern_checks) do
+  defp profile_patterns(files, pattern_checks, limit) do
     rows = Enum.flat_map(pattern_checks, &profile_pattern_check(files, &1))
-    table("ExAST pattern groups", Enum.sort_by(rows, &elem(&1, 1), :desc))
+    table("ExAST pattern groups", Enum.sort_by(rows, &elem(&1, 1), :desc), limit)
   end
 
-  defp profile_queries(files, pattern_checks) do
+  defp profile_queries(files, pattern_checks, limit) do
     rows = Enum.flat_map(pattern_checks, &profile_check_queries(files, &1))
-    table("ExAST selector queries", Enum.sort_by(rows, &elem(&1, 1), :desc))
+    table("ExAST selector queries", Enum.sort_by(rows, &elem(&1, 1), :desc), limit)
   end
 
   defp pattern_check?(check) do
@@ -186,13 +195,17 @@ defmodule Reach.Smell.ProfileScript do
 
   defp ms(us), do: System.convert_time_unit(us, :microsecond, :millisecond)
 
-  defp table(title, rows) do
+  defp table(title, rows), do: table(title, rows, nil)
+
+  defp table(title, rows, limit) do
     IO.puts(title)
     IO.puts(String.duplicate("-", String.length(title)))
 
     if rows == [] do
       IO.puts("(none)\n")
     else
+      rows = limit_rows(rows, limit)
+
       label_width =
         rows |> Enum.map(fn {label, _time, _count} -> String.length(label) end) |> Enum.max()
 
@@ -206,6 +219,9 @@ defmodule Reach.Smell.ProfileScript do
       IO.puts("")
     end
   end
+
+  defp limit_rows(rows, limit) when is_integer(limit) and limit > 0, do: Enum.take(rows, limit)
+  defp limit_rows(rows, _limit), do: rows
 end
 
 Reach.Smell.ProfileScript.main(System.argv())
