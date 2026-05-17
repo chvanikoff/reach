@@ -96,6 +96,7 @@ defmodule Reach.MixProject do
       "guides/json-output.md",
       "guides/configuration.md",
       "guides/concepts.md",
+      "guides/custom-smells.md",
       "guides/validation.md",
       "guides/recipes.md",
       "guides/contributing.md",
@@ -108,7 +109,7 @@ defmodule Reach.MixProject do
     [
       Introduction: ["guides/overview.md", "guides/installation.md", "guides/quickstart.md"],
       "Canonical CLI": ["guides/cli.md", "guides/json-output.md"],
-      Configuration: ["guides/configuration.md"],
+      Configuration: ["guides/configuration.md", "guides/custom-smells.md"],
       Concepts: ["guides/concepts.md"],
       Validation: ["guides/validation.md"],
       Recipes: ["guides/recipes.md"],

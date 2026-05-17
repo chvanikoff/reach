@@ -22,6 +22,8 @@ Reach 2.x is organized around five canonical Mix tasks:
 
 For machine consumers, use `--format json`. Canonical commands emit pure JSON envelopes with stable command names.
 
+Projects can extend smell checks with local `Reach.Smell.Check` modules. See the custom smells guide for examples.
+
 ## Design goals
 
 Reach reports evidence. It does not auto-edit your code. Refactoring candidates are advisory and include graph/effect/architecture evidence so humans can decide what is safe.

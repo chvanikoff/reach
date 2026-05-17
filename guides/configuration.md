@@ -385,7 +385,7 @@ smells: [
 ]
 ```
 
-Custom checks run alongside Reach's built-in smell checks and participate in `--strict` and baseline filtering. A custom check must implement `Reach.Smell.Check` and define `run/1`.
+Custom checks run alongside Reach's built-in smell checks and participate in `--strict` and baseline filtering. A custom check must implement `Reach.Smell.Check` and define `run/1`. See the custom smells guide for a deeper walkthrough.
 
 ### `smells[:fixed_shape_map]` and `smells[:behaviour_candidate]`
 
