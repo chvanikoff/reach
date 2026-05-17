@@ -1,8 +1,8 @@
 defmodule Reach.Plugins.Phoenix.Smells.AssignNewRefreshedValueTest do
   use ExUnit.Case, async: true
 
-  alias Reach.Check.Smells
   alias Reach.Plugins.Phoenix
+  alias Reach.Plugins.Phoenix.Smells.AssignNewRefreshedValue
   alias Reach.Project
   alias Reach.Smell.Finding
 
@@ -16,7 +16,8 @@ defmodule Reach.Plugins.Phoenix.Smells.AssignNewRefreshedValueTest do
       end
       ''')
 
-    assert [%Finding{kind: :phoenix_assign_new_refreshed_value}] = Smells.run(project)
+    assert [%Finding{kind: :phoenix_assign_new_refreshed_value}] =
+             AssignNewRefreshedValue.run(project)
   end
 
   test "allows assign_new for ordinary lazy defaults" do
@@ -29,7 +30,7 @@ defmodule Reach.Plugins.Phoenix.Smells.AssignNewRefreshedValueTest do
       end
       ''')
 
-    assert [] = Smells.run(project)
+    assert [] = AssignNewRefreshedValue.run(project)
   end
 
   defp project_from_file(source) do

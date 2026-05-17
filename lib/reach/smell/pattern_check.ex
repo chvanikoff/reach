@@ -19,14 +19,19 @@ defmodule Reach.Smell.PatternCheck do
 
       @impl true
       def run(project) do
-        for {_, node} <- project.nodes, node.type == :module_def, result <- scan_module(node) do
-          result
-        end
+        project.nodes
+        |> Enum.flat_map(fn
+          {_, %{type: :module_def, source_span: source_span}} ->
+            [source_span && source_span[:file]]
+
+          _entry ->
+            []
+        end)
+        |> Enum.uniq()
+        |> Enum.flat_map(&scan_file/1)
       end
 
-      defp scan_module(module) do
-        file = module.source_span && module.source_span[:file]
-
+      defp scan_file(file) do
         if file && File.regular?(file) && Path.expand(file) != Path.expand(@pattern_check_source) do
           zipper = Source.cached_zipper(file)
           find_pattern_smells(zipper, file) ++ find_query_smells(zipper, file)

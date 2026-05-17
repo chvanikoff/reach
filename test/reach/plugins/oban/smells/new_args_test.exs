@@ -5,15 +5,6 @@ defmodule Reach.Plugins.Oban.Smells.NewArgsTest do
   alias Reach.Plugins.Oban
   alias Reach.Project
 
-  test "flags atom keys when enqueuing Oban jobs" do
-    project =
-      project_from_string(
-        "defmodule M do\n  def enqueue(user), do: MyWorker.new(%{user_id: user.id})\nend"
-      )
-
-    assert [%{kind: :oban_atom_keys_in_new_args}] = Smells.run(project)
-  end
-
   test "flags struct values when enqueuing Oban jobs" do
     project =
       project_from_string(
@@ -25,10 +16,10 @@ defmodule Reach.Plugins.Oban.Smells.NewArgsTest do
     assert :oban_struct_args in kinds
   end
 
-  test "allows string keys and primitive values" do
+  test "allows primitive args" do
     project =
       project_from_string(
-        "defmodule M do\n  def enqueue(user), do: MyWorker.new(%{\"user_id\" => user.id})\nend"
+        "defmodule M do\n  def enqueue(user), do: MyWorker.new(%{user_id: user.id})\nend"
       )
 
     assert [] = Smells.run(project)

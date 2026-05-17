@@ -23,6 +23,25 @@ defmodule Reach.Smell.Checks.UnsafeBinaryToTermTest do
     assert [] = Smells.run(project)
   end
 
+  test "honors Sobelow BinToTerm suppressions" do
+    project =
+      project_from_file(
+        "defmodule M do\n  # sobelow_skip [\"Misc.BinToTerm\"]\n  def parse(input), do: :erlang.binary_to_term(input)\nend"
+      )
+
+    assert [] = Smells.run(project)
+  end
+
+  defp project_from_file(source) do
+    dir = Path.join(System.tmp_dir!(), "reach-bin-to-term-smell-#{System.unique_integer()}")
+    File.mkdir_p!(dir)
+    path = Path.join(dir, "sample.ex")
+    File.write!(path, source)
+    on_exit(fn -> File.rm_rf(dir) end)
+
+    Project.from_sources([path])
+  end
+
   defp project_from_string(source) do
     graph = Reach.string_to_graph!(source)
 

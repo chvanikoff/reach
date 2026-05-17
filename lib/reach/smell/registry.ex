@@ -16,6 +16,7 @@ defmodule Reach.Smell.Registry do
     :reach
     |> Application.spec(:modules)
     |> List.wrap()
+    |> Enum.reject(&plugin_check?/1)
     |> Enum.filter(&check?/1)
     |> Enum.sort()
   end
@@ -36,6 +37,15 @@ defmodule Reach.Smell.Registry do
         Mix.raise("Configured smell check #{inspect(check)} must implement Reach.Smell.Check")
       end
     end)
+  end
+
+  defp plugin_check?(module) do
+    module
+    |> Module.split()
+    |> Enum.take(2)
+    |> Kernel.==(["Reach", "Plugins"])
+  rescue
+    _ -> false
   end
 
   defp check?(module) do

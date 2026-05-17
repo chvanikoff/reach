@@ -19,24 +19,8 @@ defmodule Reach.Plugins.Oban.Smells.NewArgs do
   end
 
   defp findings_for_args(call, args) do
-    []
-    |> maybe_add_atom_key_finding(call, has_atom_key?(args))
-    |> maybe_add_struct_finding(call, has_struct_value?(args))
+    maybe_add_struct_finding([], call, has_struct_value?(args))
   end
-
-  defp maybe_add_atom_key_finding(findings, call, true) do
-    [
-      Finding.new(
-        kind: :oban_atom_keys_in_new_args,
-        message:
-          "Oban job args are JSON-encoded with string keys; use string keys when enqueuing jobs",
-        location: Helpers.location(call)
-      )
-      | findings
-    ]
-  end
-
-  defp maybe_add_atom_key_finding(findings, _call, false), do: findings
 
   defp maybe_add_struct_finding(findings, call, true) do
     [
@@ -50,16 +34,6 @@ defmodule Reach.Plugins.Oban.Smells.NewArgs do
   end
 
   defp maybe_add_struct_finding(findings, _call, false), do: findings
-
-  defp has_atom_key?(%{type: :map, children: fields}) do
-    Enum.any?(fields, fn
-      %{type: :map_field, children: [%{type: :literal, meta: %{value: key}}, _value]} ->
-        is_atom(key)
-
-      _field ->
-        false
-    end)
-  end
 
   defp has_struct_value?(%{type: :map, children: fields}) do
     Enum.any?(fields, fn

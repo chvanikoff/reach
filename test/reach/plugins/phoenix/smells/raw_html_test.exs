@@ -1,8 +1,8 @@
 defmodule Reach.Plugins.Phoenix.Smells.RawHTMLTest do
   use ExUnit.Case, async: true
 
-  alias Reach.Check.Smells
   alias Reach.Plugins.Phoenix
+  alias Reach.Plugins.Phoenix.Smells.RawHTML
   alias Reach.Project
   alias Reach.Smell.Finding
 
@@ -16,7 +16,7 @@ defmodule Reach.Plugins.Phoenix.Smells.RawHTMLTest do
       end
       ''')
 
-    assert [%Finding{kind: :phoenix_raw_html}] = Smells.run(project)
+    assert [%Finding{kind: :phoenix_raw_html}] = RawHTML.run(project)
   end
 
   test "allows raw/1 with literal content" do
@@ -29,7 +29,7 @@ defmodule Reach.Plugins.Phoenix.Smells.RawHTMLTest do
       end
       ''')
 
-    assert [] = Smells.run(project)
+    assert [] = RawHTML.run(project)
   end
 
   defp project_from_file(source) do
