@@ -6,6 +6,11 @@ defmodule Reach.Plugins.Oban do
   alias Reach.IR.Node
 
   @impl true
+  def smell_checks do
+    [Reach.Plugins.Oban.Smells.AtomArgs]
+  end
+
+  @impl true
   def behaviour_label(callbacks) do
     if :perform in callbacks, do: "Oban.Worker"
   end

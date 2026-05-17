@@ -89,6 +89,7 @@ defmodule Reach.Plugin do
   @callback parse_file(path :: Path.t(), opts :: keyword()) ::
               {:ok, [Node.t()]} | {:error, term()}
 
+  @callback smell_checks() :: [module()]
   @callback trace_pattern(pattern :: String.t()) :: (Node.t() -> boolean()) | nil
   @callback behaviour_label(callbacks :: [atom()]) :: String.t() | nil
   @callback ignore_call_edge?(Graph.Edge.t()) :: boolean()
@@ -99,6 +100,7 @@ defmodule Reach.Plugin do
                       source_extensions: 0,
                       source_language: 1,
                       parse_file: 2,
+                      smell_checks: 0,
                       trace_pattern: 1,
                       behaviour_label: 1,
                       ignore_call_edge?: 1
@@ -200,6 +202,15 @@ defmodule Reach.Plugin do
       end)
 
     {nodes_acc |> List.flatten() |> Enum.reverse(), edges_acc |> List.flatten() |> Enum.reverse()}
+  end
+
+  @doc "Returns smell checks contributed by plugins."
+  def smell_checks(plugins) do
+    plugins
+    |> Enum.flat_map(fn plugin ->
+      if exports?(plugin, :smell_checks, 0), do: plugin.smell_checks(), else: []
+    end)
+    |> Enum.uniq()
   end
 
   @doc "Compiles a framework-specific trace pattern, if a plugin recognizes it."

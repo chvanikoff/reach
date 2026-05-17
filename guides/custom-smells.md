@@ -235,6 +235,23 @@ end
 
 For higher-confidence tests, parse a small source fixture with Reach and run the check against the resulting project.
 
+## Framework-specific smells
+
+Framework-specific smells belong in plugins rather than generic `Reach.Smell.*` modules. A plugin can expose smell modules with `smell_checks/0`:
+
+```elixir
+defmodule Reach.Plugins.MyFramework do
+  @behaviour Reach.Plugin
+
+  @impl true
+  def smell_checks do
+    [Reach.Plugins.MyFramework.Smells.NoLegacyAPI]
+  end
+end
+```
+
+Plugin smell checks still implement `Reach.Smell.Check`, run through the same registry as built-in and project-local checks, and participate in strict mode and baselines. This keeps framework policy near framework semantics such as effect classification, trace presets, and graph edges.
+
 ## Best practices
 
 - Keep checks focused: one rule per module is easier to baseline and explain.

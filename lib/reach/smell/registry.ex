@@ -3,10 +3,12 @@ defmodule Reach.Smell.Registry do
 
   alias Reach.Smell.Check
 
-  def checks(config \\ nil) do
-    config
-    |> custom_checks()
-    |> Kernel.++(builtin_checks())
+  def checks(config \\ nil), do: checks(nil, config)
+
+  def checks(project, config) do
+    builtin_checks()
+    |> Kernel.++(plugin_checks(project))
+    |> Kernel.++(custom_checks(config))
     |> Enum.uniq()
   end
 
@@ -17,6 +19,11 @@ defmodule Reach.Smell.Registry do
     |> Enum.filter(&check?/1)
     |> Enum.sort()
   end
+
+  defp plugin_checks(%{plugins: plugins}),
+    do: plugins |> Reach.Plugin.smell_checks() |> validate_custom_checks()
+
+  defp plugin_checks(_project), do: []
 
   defp custom_checks(%{smells: %{custom_checks: checks}}), do: validate_custom_checks(checks)
   defp custom_checks(_config), do: []
