@@ -150,10 +150,10 @@ defmodule Reach.CLI.Commands.Check do
   defp load_candidates_project(opts, positional) do
     path = opts[:path] || List.first(positional)
 
-    if path do
-      Project.load(paths: [path], quiet: opts[:format] == "json")
-    else
-      Project.load(quiet: opts[:format] == "json")
+    cond do
+      opts[:project] -> opts[:project]
+      path -> Project.load(paths: [path], quiet: opts[:format] == "json")
+      true -> Project.load(quiet: opts[:format] == "json")
     end
   end
 end

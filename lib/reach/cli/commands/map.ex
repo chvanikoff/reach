@@ -71,8 +71,13 @@ defmodule Reach.CLI.Commands.Map do
     |> Enum.uniq()
   end
 
-  defp load_project(nil, opts), do: Project.load(quiet: opts[:format] == "json")
-  defp load_project(path, opts), do: Project.load(paths: [path], quiet: opts[:format] == "json")
+  defp load_project(path, opts) do
+    cond do
+      opts[:project] -> opts[:project]
+      is_nil(path) -> Project.load(quiet: opts[:format] == "json")
+      true -> Project.load(paths: [path], quiet: opts[:format] == "json")
+    end
+  end
 
   defp graph_data(project, sections, opts, path) do
     %{

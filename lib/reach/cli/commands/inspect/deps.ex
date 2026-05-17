@@ -8,7 +8,7 @@ defmodule Reach.CLI.Commands.Inspect.Deps do
   alias Reach.Project.Query
 
   def run_target(raw_target, opts, command \\ "reach.inspect") do
-    project = Project.load(quiet: opts[:format] == "json")
+    project = opts[:project] || Project.load(quiet: opts[:format] == "json")
     target = Query.resolve_target(project, raw_target)
 
     unless target do

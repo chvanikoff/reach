@@ -87,7 +87,7 @@ defmodule Reach.CLI.Commands.Inspect do
     do: Slice.run_target(target, opts, command: "reach.inspect")
 
   defp run_why(target, opts) do
-    project = Project.load(quiet: opts[:format] == "json")
+    project = opts[:project] || Project.load(quiet: opts[:format] == "json")
     result = Why.result(project, target, opts[:why], opts[:depth] || 6)
     InspectRender.render_why(result, opts[:format] || "text")
   end
@@ -154,7 +154,7 @@ defmodule Reach.CLI.Commands.Inspect do
   defp resolve_graph_target!(target, opts) do
     case Query.parse_file_line(target) do
       {file, line} ->
-        project = Project.load(paths: [file], quiet: opts[:format] == "json")
+        project = opts[:project] || Project.load(paths: [file], quiet: opts[:format] == "json")
         func = Query.find_function_at_location(project, file, line)
 
         if func do
@@ -164,15 +164,22 @@ defmodule Reach.CLI.Commands.Inspect do
         end
 
       nil ->
-        project = Project.load(quiet: opts[:format] == "json")
+        project = opts[:project] || Project.load(quiet: opts[:format] == "json")
         resolve_function!(project, target)
     end
   end
 
   defp load_target_project(target, opts) do
-    case Query.parse_file_line(target) do
-      {file, _line} -> Project.load(paths: [file], quiet: opts[:format] == "json")
-      nil -> Project.load(quiet: opts[:format] == "json")
+    cond do
+      opts[:project] ->
+        opts[:project]
+
+      parsed = Query.parse_file_line(target) ->
+        {file, _line} = parsed
+        Project.load(paths: [file], quiet: opts[:format] == "json")
+
+      true ->
+        Project.load(quiet: opts[:format] == "json")
     end
   end
 
