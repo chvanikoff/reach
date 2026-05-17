@@ -258,30 +258,14 @@ defmodule Reach.Smell.Checks.PipelineWaste do
   @boolean_ops [:==, :!=, :===, :!==, :>, :<, :>=, :<=, :and, :or, :not, :in]
 
   smell(
-    from(~p[case subject do true -> _; false -> _ end])
-    |> where(match?({op, _, _} when op in @boolean_ops, ^subject)),
+    from(~p[case subject do first -> _; second -> _ end])
+    |> where(
+      match?({op, _, _} when op in @boolean_ops, ^subject) and
+        ((^first in [true, false] and match?({:_, _, _}, ^second)) or
+           (^second in [true, false] and match?({:_, _, _}, ^first)) or
+           (^first in [true, false] and ^second in [true, false]))
+    ),
     :suboptimal,
     "case on boolean with true/false clauses; use if/else"
-  )
-
-  smell(
-    from(~p[case subject do false -> _; true -> _ end])
-    |> where(match?({op, _, _} when op in @boolean_ops, ^subject)),
-    :suboptimal,
-    "case on boolean with false/true clauses; use if/else"
-  )
-
-  smell(
-    from(~p[case subject do true -> _; _ -> _ end])
-    |> where(match?({op, _, _} when op in @boolean_ops, ^subject)),
-    :suboptimal,
-    "case on boolean with true/_ clauses; use if/else"
-  )
-
-  smell(
-    from(~p[case subject do false -> _; _ -> _ end])
-    |> where(match?({op, _, _} when op in @boolean_ops, ^subject)),
-    :suboptimal,
-    "case on boolean with false/_ clauses; use if/else"
   )
 end

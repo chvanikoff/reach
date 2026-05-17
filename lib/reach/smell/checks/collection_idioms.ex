@@ -209,13 +209,8 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
   )
 
   smell(
-    from(~p[Map.put(_, key, true)]) |> where(not is_atom(^key) and not is_binary(^key)),
-    :suboptimal,
-    "Map.put/3 with variable key and boolean value suggests membership tracking; use MapSet"
-  )
-
-  smell(
-    from(~p[Map.put(_, key, false)]) |> where(not is_atom(^key) and not is_binary(^key)),
+    from(~p[Map.put(_, key, value)])
+    |> where(not is_atom(^key) and not is_binary(^key) and ^value in [true, false]),
     :suboptimal,
     "Map.put/3 with variable key and boolean value suggests membership tracking; use MapSet"
   )
