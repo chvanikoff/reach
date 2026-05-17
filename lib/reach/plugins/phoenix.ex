@@ -11,6 +11,7 @@ defmodule Reach.Plugins.Phoenix do
   def smell_checks do
     [
       Reach.Plugins.Phoenix.Smells.AssignAsyncCapturesSocket,
+      Reach.Plugins.Phoenix.Smells.AssignNewRefreshedValue,
       Reach.Plugins.Phoenix.Smells.PubSubSubscribeWithoutConnected
     ]
   end

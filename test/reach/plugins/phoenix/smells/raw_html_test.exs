@@ -11,7 +11,7 @@ defmodule Reach.Plugins.Phoenix.Smells.RawHTMLTest do
       project_from_file(~S'''
       defmodule MyAppWeb.CommentHTML do
         def body(assigns) do
-          raw(assigns.comment.body)
+          Phoenix.HTML.raw(assigns.comment.body)
         end
       end
       ''')
@@ -19,12 +19,38 @@ defmodule Reach.Plugins.Phoenix.Smells.RawHTMLTest do
     assert [%Finding{kind: :phoenix_raw_html}] = RawHTML.run(project)
   end
 
+  test "allows local raw/1 with dynamic content to avoid import/name false positives" do
+    project =
+      project_from_file(~S'''
+      defmodule MyAppWeb.CommentHTML do
+        def body(assigns) do
+          raw(assigns.comment.body)
+        end
+      end
+      ''')
+
+    assert [] = RawHTML.run(project)
+  end
+
+  test "allows escaped content" do
+    project =
+      project_from_file(~S'''
+      defmodule MyAppWeb.CommentHTML do
+        def body(comment) do
+          Phoenix.HTML.raw(Phoenix.HTML.html_escape(comment.body))
+        end
+      end
+      ''')
+
+    assert [] = RawHTML.run(project)
+  end
+
   test "allows raw/1 with literal content" do
     project =
       project_from_file(~S'''
       defmodule MyAppWeb.IconHTML do
         def icon do
-          raw("<svg></svg>")
+          Phoenix.HTML.raw("<svg></svg>")
         end
       end
       ''')

@@ -20,6 +20,19 @@ defmodule Reach.Plugins.Phoenix.Smells.AssignNewRefreshedValueTest do
              AssignNewRefreshedValue.run(project)
   end
 
+  test "allows assign_new for current user in on_mount hooks" do
+    project =
+      project_from_file(~S'''
+      defmodule MyAppWeb.InitAssigns do
+        def on_mount(:default, _params, _session, socket) do
+          {:cont, assign_new(socket, :current_user, fn -> nil end)}
+        end
+      end
+      ''')
+
+    assert [] = AssignNewRefreshedValue.run(project)
+  end
+
   test "allows assign_new for ordinary lazy defaults" do
     project =
       project_from_file(~S'''
