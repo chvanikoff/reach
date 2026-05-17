@@ -1,7 +1,7 @@
 defmodule Reach.Smell.Checks.CollectionIdioms do
   @moduledoc "Pattern-based detection of suboptimal collection operations."
 
-  use Reach.Smell.PatternCheck
+  use Reach.Smell.Check.Pattern
 
   smell(
     ~p[Enum.reverse(_) |> hd()],

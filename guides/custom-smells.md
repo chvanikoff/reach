@@ -149,11 +149,11 @@ end
 
 ## AST-backed source checks
 
-For source-shape rules, use `Reach.Smell.ASTCheck`. It loads each source file once via Sourceror, reuses Reach's AST cache, and calls `scan_ast/2` with the file path.
+For source-shape rules, use `Reach.Smell.Check.AST`. It loads each source file once via Sourceror, reuses Reach's AST cache, and calls `scan_ast/2` with the file path.
 
 ```elixir
 defmodule MyApp.ReachSmells.MissingTemplateResource do
-  use Reach.Smell.ASTCheck
+  use Reach.Smell.Check.AST
 
   alias Reach.Smell.Finding
 

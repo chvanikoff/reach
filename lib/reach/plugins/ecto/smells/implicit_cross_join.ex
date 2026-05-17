@@ -1,7 +1,7 @@
 defmodule Reach.Plugins.Ecto.Smells.ImplicitCrossJoin do
   @moduledoc "Detects Ecto queries that use multiple from generators instead of explicit joins."
 
-  use Reach.Smell.ASTCheck
+  use Reach.Smell.Check.AST
 
   alias Reach.Smell.Finding
 

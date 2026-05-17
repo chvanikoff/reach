@@ -1,7 +1,7 @@
 defmodule Reach.Smell.Checks.MissingExternalResource do
   @moduledoc "Detects compile-time file reads without matching @external_resource declarations."
 
-  use Reach.Smell.ASTCheck
+  use Reach.Smell.Check.AST
 
   alias Reach.Smell.Finding
 

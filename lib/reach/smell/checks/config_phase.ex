@@ -1,7 +1,7 @@
 defmodule Reach.Smell.Checks.ConfigPhase do
   @moduledoc "Detects compile-time/runtime config phase mismatches."
 
-  use Reach.Smell.PatternCheck
+  use Reach.Smell.Check.Pattern
 
   smell(
     ~p[@_ Application.get_env(_, _)],

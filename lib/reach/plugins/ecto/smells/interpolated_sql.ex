@@ -1,7 +1,7 @@
 defmodule Reach.Plugins.Ecto.Smells.InterpolatedSQL do
   @moduledoc "Detects string interpolation in Ecto SQL fragments and raw queries."
 
-  use Reach.Smell.ASTCheck
+  use Reach.Smell.Check.AST
 
   alias Reach.Smell.Finding
 

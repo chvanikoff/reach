@@ -1,7 +1,7 @@
 defmodule Reach.Smell.Checks.PipelineWaste do
   @moduledoc "Pattern-based detection of redundant pipeline operations."
 
-  use Reach.Smell.PatternCheck
+  use Reach.Smell.Check.Pattern
 
   smell(
     ~p[Enum.reverse(_) |> Enum.reverse()],

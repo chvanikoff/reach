@@ -1,7 +1,7 @@
 defmodule Reach.Plugins.Ecto.Smells.UnpinnedQueryValue do
   @moduledoc "Detects unpinned local variables in Ecto query comparisons."
 
-  use Reach.Smell.ASTCheck
+  use Reach.Smell.Check.AST
 
   alias Reach.Smell.Finding
 

@@ -31,7 +31,7 @@ Reach detects structural code smells in two layers:
 Pattern smells are declared with a DSL:
 
 ```elixir
-use Reach.Smell.PatternCheck
+use Reach.Smell.Check.Pattern
 
 smell ~p[Enum.reverse(_) |> hd()], :suboptimal,
       "traverses twice; use List.last/1"
@@ -45,11 +45,11 @@ smell(
 
 Semantic smells use the standard `Reach.Smell.Check` behaviour with IR helpers like `inside_loop?/2`, `callback_body/1`, and `statement_pairs/1`.
 
-AST-backed smells can use `Reach.Smell.ASTCheck` and implement `scan_ast/2`:
+AST-backed smells can use `Reach.Smell.Check.AST` and implement `scan_ast/2`:
 
 ```elixir
 defmodule MyApp.ReachSmells.NoCompileTimeRead do
-  use Reach.Smell.ASTCheck
+  use Reach.Smell.Check.AST
 
   alias Reach.Smell.Finding
 

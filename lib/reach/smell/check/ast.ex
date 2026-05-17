@@ -1,4 +1,4 @@
-defmodule Reach.Smell.ASTCheck do
+defmodule Reach.Smell.Check.AST do
   @moduledoc "Shared behaviour for smell checks that scan source files with Sourceror AST."
 
   defmacro __using__(_opts) do
