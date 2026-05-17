@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.4.0
+
 ### New
 
 - **Framework smell checks** — added plugin-provided Phoenix, Ecto, and Oban smell checks for LiveView lifecycle mistakes, Ecto query pitfalls, unsafe SQL interpolation, money-like `:float` fields, and Oban argument shape issues.
