@@ -9,7 +9,10 @@ defmodule Reach.Plugins.Ecto do
 
   @impl true
   def smell_checks do
-    [Reach.Plugins.Ecto.Smells.FloatMoney]
+    [
+      Reach.Plugins.Ecto.Smells.FloatMoney,
+      Reach.Plugins.Ecto.Smells.RepoCallInLoop
+    ]
   end
 
   @repo_write_fns [

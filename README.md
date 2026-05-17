@@ -185,7 +185,7 @@ A handful of Reach smell patterns overlap with Credo refactoring checks (`MapJoi
 
 ## Acknowledgements
 
-Some structural smell patterns were informed by public [Credence](https://github.com/Cinderella-Man/credence) rules and [Clippy](https://rust-lang.github.io/rust-clippy/) lint categories. Reach implements them over its own IR/project model and keeps them advisory.
+Some structural smell patterns were informed by public [Credence](https://github.com/Cinderella-Man/credence) rules and [Clippy](https://rust-lang.github.io/rust-clippy/) lint categories. Framework-specific smell ideas are also informed by the public [claude-elixir-phoenix](https://github.com/oliver-kriska/claude-elixir-phoenix) rule set. Reach implements them over its own IR/project model and keeps them advisory.
 
 ## License
 
