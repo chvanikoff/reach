@@ -42,11 +42,14 @@ defmodule Reach.Plugins.Phoenix do
     :live_render,
     :live_component,
     :on_mount,
-    :embed_templates,
+    :sigil_H,
+    :sigil_p
+  ]
+
+  @compile_time_dsl [
     :attr,
     :slot,
-    :sigil_H,
-    :sigil_p,
+    :embed_templates,
     :plug,
     :get,
     :post,
@@ -54,6 +57,7 @@ defmodule Reach.Plugins.Phoenix do
     :delete,
     :patch,
     :pipe_through,
+    :pipeline,
     :scope,
     :live,
     :resources,
@@ -63,6 +67,10 @@ defmodule Reach.Plugins.Phoenix do
   @pure_remote_modules [Phoenix.Component, Phoenix.LiveView, Phoenix.Controller, Plug.Conn]
 
   @impl true
+  def classify_effect(%Node{type: :call, meta: %{kind: :local, function: fun}})
+      when fun in @compile_time_dsl,
+      do: :write
+
   def classify_effect(%Node{type: :call, meta: %{kind: :local, function: fun}})
       when fun in @pure_local,
       do: :pure

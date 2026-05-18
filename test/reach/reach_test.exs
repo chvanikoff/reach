@@ -526,6 +526,99 @@ defmodule ReachTest do
       assert Enum.any?(dead, &(&1.meta[:function] == :upcase))
     end
 
+    test "Phoenix compile-time DSL calls are not flagged as dead" do
+      old_plugins = :persistent_term.get(:reach_effect_plugins, nil)
+      :persistent_term.put(:reach_effect_plugins, [Reach.Plugins.Phoenix])
+
+      try do
+        graph =
+          Reach.string_to_graph!("""
+          defmodule ReproComponent do
+            use Phoenix.Component
+
+            attr :id, :string, required: true
+            attr :label, :string, default: ""
+            slot :inner_block, required: true
+
+            def card(assigns), do: assigns
+          end
+
+          defmodule ReproRouter do
+            use Phoenix.Router
+
+            pipeline :browser do
+              plug :accepts, ["html"]
+            end
+
+            scope "/" do
+              pipe_through :browser
+              get "/health", ReproController, :health
+            end
+          end
+          """)
+
+        dead = Reach.dead_code(graph)
+        dead_fns = Enum.map(dead, & &1.meta[:function])
+
+        refute :attr in dead_fns
+        refute :slot in dead_fns
+        refute :pipeline in dead_fns
+        refute :plug in dead_fns
+        refute :scope in dead_fns
+        refute :pipe_through in dead_fns
+        refute :get in dead_fns
+      after
+        if old_plugins,
+          do: :persistent_term.put(:reach_effect_plugins, old_plugins),
+          else: :persistent_term.erase(:reach_effect_plugins)
+      end
+    end
+
+    test "Ecto schema and migration DSL calls are not flagged as dead" do
+      old_plugins = :persistent_term.get(:reach_effect_plugins, nil)
+      :persistent_term.put(:reach_effect_plugins, [Reach.Plugins.Ecto])
+
+      try do
+        graph =
+          Reach.string_to_graph!("""
+          defmodule ReproSchema do
+            use Ecto.Schema
+
+            schema "items" do
+              field :name, :string
+              has_many :children, Child
+              timestamps()
+            end
+          end
+
+          defmodule ReproMigration do
+            use Ecto.Migration
+
+            def change do
+              create table(:items) do
+                add :name, :string
+                timestamps()
+              end
+            end
+          end
+          """)
+
+        dead = Reach.dead_code(graph)
+        dead_fns = Enum.map(dead, & &1.meta[:function])
+
+        refute :schema in dead_fns
+        refute :field in dead_fns
+        refute :has_many in dead_fns
+        refute :timestamps in dead_fns
+        refute :create in dead_fns
+        refute :add in dead_fns
+      after
+        if old_plugins,
+          do: :persistent_term.put(:reach_effect_plugins, old_plugins),
+          else: :persistent_term.erase(:reach_effect_plugins)
+      end
+    end
+
     test "guard calls are not flagged as dead" do
       graph =
         Reach.string_to_graph!("""

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Phoenix/Ecto dead-code false positives** — `--dead-code` no longer reports compile-time DSL macros such as `Phoenix.Component.attr/3`, `slot/3`, Phoenix router macros, Ecto schema fields, or migration table/column declarations as unused results.
+
 ## 2.4.0
 
 ### New

@@ -153,6 +153,23 @@ defmodule Reach.Plugins.Ecto do
     :timestamps
   ]
 
+  @migration_dsl [
+    :create,
+    :alter,
+    :drop,
+    :drop_if_exists,
+    :create_if_not_exists,
+    :add,
+    :remove,
+    :modify,
+    :rename,
+    :timestamps,
+    :index,
+    :unique_index,
+    :constraint,
+    :execute
+  ]
+
   @impl true
   def trace_pattern(pattern) when pattern in ["Repo", "Repo.query"] do
     fn node ->
@@ -175,8 +192,11 @@ defmodule Reach.Plugins.Ecto do
 
   @impl true
   def classify_effect(%Node{type: :call, meta: %{kind: :local, function: fun}})
-      when fun in @query_dsl or fun in @query_expr or
-             fun in @changeset_fns or fun in @schema_fns,
+      when fun in @schema_fns or fun in @migration_dsl,
+      do: :write
+
+  def classify_effect(%Node{type: :call, meta: %{kind: :local, function: fun}})
+      when fun in @query_dsl or fun in @query_expr or fun in @changeset_fns,
       do: :pure
 
   def classify_effect(%Node{type: :call, meta: %{kind: :remote, module: mod, function: _fun}})
