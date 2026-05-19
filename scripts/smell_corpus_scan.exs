@@ -128,13 +128,10 @@ defmodule Reach.Scripts.SmellCorpusScan do
       }
     rescue
       exception ->
-        %{
-          repo: repo,
-          files: length(paths),
-          error: Exception.format(:error, exception, __STACKTRACE__),
-          count: 0,
-          findings: []
-        }
+        error_result(repo, paths, Exception.format(:error, exception, __STACKTRACE__))
+    catch
+      :exit, reason ->
+        error_result(repo, paths, Exception.format_exit(reason))
     end
   end
 
@@ -149,6 +146,16 @@ defmodule Reach.Scripts.SmellCorpusScan do
 
   defp maybe_limit(paths, nil), do: paths
   defp maybe_limit(paths, limit), do: Enum.take(paths, limit)
+
+  defp error_result(repo, paths, error) do
+    %{
+      repo: repo,
+      files: length(paths),
+      error: error,
+      count: 0,
+      findings: []
+    }
+  end
 
   defp filter_checks_by_kind(checks, nil), do: checks
 
@@ -171,11 +178,14 @@ defmodule Reach.Scripts.SmellCorpusScan do
   defp pattern_check_kinds(check) do
     metadata = check.__reach_pattern_check__()
 
-    pattern_kinds = Enum.map(metadata.patterns, fn {_pattern, kind, _message} -> kind end)
-    query_kinds = Enum.map(metadata.queries, fn {_function, kind, _message} -> kind end)
+    pattern_kinds = Enum.map(metadata.patterns, &smell_metadata_kind/1)
+    query_kinds = Enum.map(metadata.queries, &smell_metadata_kind/1)
 
     pattern_kinds ++ query_kinds
   end
+
+  defp smell_metadata_kind({_matcher, kind, _message}), do: kind
+  defp smell_metadata_kind({_matcher, kind, _message, _prefilter}), do: kind
 
   defp pattern_check?(check) do
     Code.ensure_loaded?(check) and function_exported?(check, :__reach_pattern_check__, 0)

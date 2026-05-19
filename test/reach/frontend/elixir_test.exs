@@ -17,6 +17,20 @@ defmodule Reach.Frontend.ElixirTest do
     assert output == ""
   end
 
+  test "parses pipe-shaped macro heads without crashing" do
+    source = """
+    defmodule Sample do
+      defmacro {input1, input2} |> {transform1, transform2} do
+        quote do
+          {unquote(input1), unquote(transform1), unquote(input2), unquote(transform2)}
+        end
+      end
+    end
+    """
+
+    assert {:ok, [_node]} = ElixirFrontend.parse(source, file: "sample.ex")
+  end
+
   describe "literals" do
     test "integer" do
       [node] = IR.from_string!("42")

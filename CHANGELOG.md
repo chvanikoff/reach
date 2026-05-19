@@ -2,9 +2,15 @@
 
 ## Unreleased
 
+### New
+
+- **Conversion idiom smell checks** — added conservative checks for identity float arithmetic and one-shot `List.to_tuple/1` + `elem/2` access.
+
 ### Fixed
 
 - **Phoenix/Ecto dead-code false positives** — `--dead-code` no longer reports compile-time DSL macros such as `Phoenix.Component.attr/3`, `slot/3`, Phoenix router macros, Ecto schema fields, or migration table/column declarations as unused results.
+- **Corpus scan robustness** — `scripts/smell_corpus_scan.exs` now reports per-repository exits as scan errors instead of aborting the whole corpus run, and selected-kind filtering handles source smell metadata.
+- **Pipe-shaped macro heads** — the Elixir frontend no longer crashes on unusual macro heads that use `|>` as a user-defined operator pattern.
 
 ## 2.4.0
 

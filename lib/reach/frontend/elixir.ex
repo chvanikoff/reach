@@ -933,6 +933,10 @@ defmodule Reach.Frontend.Elixir do
     {fun, meta, [left]}
   end
 
+  defp desugar_pipe(left, right) do
+    {:__reach_pipe__, [], [left, right]}
+  end
+
   defp split_with_clauses(args) do
     Enum.split_while(args, fn
       {:<-, _, _} -> true
