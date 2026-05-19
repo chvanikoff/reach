@@ -111,10 +111,10 @@ defmodule Reach.ProjectTest do
       path_b = write_file("lib/cache_b.ex", "defmodule CacheB do\n  def only_b, do: 2\nend\n")
 
       project_a = CLIProject.load(paths: [path_a], quiet: true)
-      assert Query.resolve_target(project_a, "only_a/0") == {nil, :only_a, 0}
+      assert Query.resolve_target(project_a, "only_a/0") == {CacheA, :only_a, 0}
 
       project_b = CLIProject.load(paths: [path_b], quiet: true)
-      assert Query.resolve_target(project_b, "only_b/0") == {nil, :only_b, 0}
+      assert Query.resolve_target(project_b, "only_b/0") == {CacheB, :only_b, 0}
       assert Query.resolve_target(project_b, "only_a/0") == nil
     end
   end

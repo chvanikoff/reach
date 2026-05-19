@@ -27,7 +27,7 @@ defmodule Reach.CLI.JSONOutputTest do
       end)
 
     data = decode_json(output)
-    assert data["target"] == "candidate/2"
+    assert data["target"] == "Demo.Main.candidate/2"
     assert is_list(data["candidates"])
   end
 
@@ -41,7 +41,7 @@ defmodule Reach.CLI.JSONOutputTest do
 
     data = decode_json(output)
     assert data["command"] == "reach.inspect"
-    assert data["target"] == "context/1"
+    assert data["target"] == "Demo.Main.context/1"
     assert is_map(data["deps"])
     assert is_map(data["data"])
   end

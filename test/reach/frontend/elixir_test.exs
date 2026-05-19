@@ -31,6 +31,79 @@ defmodule Reach.Frontend.ElixirTest do
     assert {:ok, [_node]} = ElixirFrontend.parse(source, file: "sample.ex")
   end
 
+  test "does not treat quoted definitions as definitions in the surrounding module" do
+    source = """
+    defmodule Vibe.TUI do
+      defp render_ast(block) do
+        quote do
+          def render(assigns), do: unquote(block)
+        end
+      end
+    end
+    """
+
+    assert {:ok, [module]} = ElixirFrontend.parse(source, file: "sample.ex")
+
+    functions =
+      module
+      |> IR.all_nodes()
+      |> Enum.filter(&(&1.type == :function_def))
+      |> Enum.map(& &1.meta.name)
+
+    assert functions == [:render_ast]
+  end
+
+  test "assigns modules to functions inside defprotocol" do
+    source = """
+    defprotocol Vibe.Markdown do
+      def to_markdown(term)
+    end
+    """
+
+    assert {:ok, [module]} = ElixirFrontend.parse(source, file: "sample.ex")
+    assert module.type == :module_def
+    assert module.meta.name == Vibe.Markdown
+
+    function = module |> IR.all_nodes() |> Enum.find(&(&1.type == :function_def))
+    assert function.meta.module == Vibe.Markdown
+    assert function.meta.name == :to_markdown
+  end
+
+  test "assigns modules to functions inside defimpl" do
+    source = """
+    defimpl Vibe.Markdown, for: Vibe.Image do
+      def to_markdown(image), do: inspect(image)
+    end
+    """
+
+    assert {:ok, [module]} = ElixirFrontend.parse(source, file: "sample.ex")
+    assert module.type == :module_def
+    assert module.meta.name == Vibe.Markdown.Vibe.Image
+
+    function = module |> IR.all_nodes() |> Enum.find(&(&1.type == :function_def))
+    assert function.meta.module == Vibe.Markdown.Vibe.Image
+    assert function.meta.name == :to_markdown
+  end
+
+  test "expands nested defmodule names relative to the parent module" do
+    source = """
+    defmodule Vibe.UI.Block do
+      defmodule Overlay do
+        def new, do: %__MODULE__{}
+      end
+    end
+    """
+
+    assert {:ok, [parent]} = ElixirFrontend.parse(source, file: "sample.ex")
+
+    nested =
+      parent
+      |> IR.all_nodes()
+      |> Enum.find(&(&1.type == :module_def and &1.meta.name != Vibe.UI.Block))
+
+    assert nested.meta.name == Vibe.UI.Block.Overlay
+  end
+
   describe "literals" do
     test "integer" do
       [node] = IR.from_string!("42")

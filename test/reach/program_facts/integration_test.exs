@@ -141,7 +141,7 @@ defmodule Reach.ProgramFactsIntegrationTest do
       entry =
         data
         |> get_in(["sections", "depth"])
-        |> Enum.find(&(&1["function"] == "entry/1"))
+        |> Enum.find(&String.ends_with?(&1["function"], ".entry/1"))
 
       assert entry, "expected #{inspect(policy)} to expose entry/1 in depth metrics"
       assert entry["depth"] > 0

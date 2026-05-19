@@ -58,7 +58,7 @@ defmodule Reach.Check.ChangedTest do
           )
         end)
 
-      assert [%{id: "normalize/1", clone_siblings: [_ | _]}] = result.changed_functions
+      assert [%{id: "ExampleB.normalize/1", clone_siblings: [_ | _]}] = result.changed_functions
     end)
   end
 

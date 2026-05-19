@@ -118,29 +118,26 @@ defmodule Reach.Frontend.Elixir do
 
   # Module definition
   defp translate({:defmodule, meta, [alias_ast, [do: body]]}, counter, file) do
-    prev_aliases = Process.get(:reach_alias_map, %{})
-    prev_imports = Process.get(:reach_import_map, %{})
-    module = module_name(alias_ast)
+    module = module_name_for_def(alias_ast)
 
-    aliases = collect_aliases(body, module)
-    imports = collect_imports(body)
+    translate_module_body(module, body, meta, counter, file)
+  end
 
-    Process.put(:reach_alias_map, Map.merge(prev_aliases, aliases))
-    Process.put(:reach_import_map, Map.merge(prev_imports, imports))
+  # Protocol definition: defprotocol Protocol
+  defp translate({:defprotocol, meta, [protocol_ast, [do: body]]}, counter, file) do
+    protocol = module_name_for_def(protocol_ast)
 
-    body_node = translate(body, counter, file)
-    merged_body = group_function_clauses(body_node)
+    translate_module_body(protocol, body, meta, counter, file)
+  end
 
-    Process.put(:reach_alias_map, prev_aliases)
-    Process.put(:reach_import_map, prev_imports)
+  # Protocol implementation: defimpl Protocol, for: Target
+  defp translate({:defimpl, meta, [protocol_ast, opts, [do: body]]}, counter, file)
+       when is_list(opts) do
+    protocol = module_name(protocol_ast)
+    target = Keyword.get(opts, :for)
+    module = protocol_impl_module(protocol, target)
 
-    %Node{
-      id: Counter.next(counter),
-      type: :module_def,
-      meta: %{name: module},
-      children: [merged_body],
-      source_span: span_from_meta(meta, file)
-    }
+    translate_module_body(module, body, meta, counter, file)
   end
 
   # Function definitions: def, defp
@@ -162,7 +159,13 @@ defmodule Reach.Frontend.Elixir do
     %Node{
       id: Counter.next(counter),
       type: :function_def,
-      meta: %{name: name, arity: arity, kind: def_kind, has_body: false},
+      meta: %{
+        name: name,
+        arity: arity,
+        kind: def_kind,
+        has_body: false,
+        module: Process.get(:reach_current_module)
+      },
       children: [],
       source_span: span_from_meta(meta, file)
     }
@@ -757,6 +760,23 @@ defmodule Reach.Frontend.Elixir do
     end
   end
 
+  # Quoted code is data, but unquoted expressions execute in the surrounding module.
+  defp translate({:quote, meta, args}, counter, file) do
+    children =
+      args
+      |> quoted_body()
+      |> unquoted_expressions()
+      |> Enum.map(&translate(&1, counter, file))
+
+    %Node{
+      id: Counter.next(counter),
+      type: :quote,
+      meta: %{function: :quote, arity: 1, kind: :macro},
+      children: children,
+      source_span: span_from_meta(meta, file)
+    }
+  end
+
   # Remote call: Module.function(args)
   defp translate({{:., meta, [module, fun_name]}, call_meta, args}, counter, file)
        when is_atom(fun_name) do
@@ -839,6 +859,34 @@ defmodule Reach.Frontend.Elixir do
 
   defp group_function_clauses(node), do: node
 
+  defp translate_module_body(module, body, meta, counter, file) do
+    prev_aliases = Process.get(:reach_alias_map, %{})
+    prev_imports = Process.get(:reach_import_map, %{})
+    prev_module = Process.get(:reach_current_module)
+
+    aliases = collect_aliases(body, module)
+    imports = collect_imports(body)
+
+    Process.put(:reach_current_module, module)
+    Process.put(:reach_alias_map, Map.merge(prev_aliases, aliases))
+    Process.put(:reach_import_map, Map.merge(prev_imports, imports))
+
+    body_node = translate(body, counter, file)
+    merged_body = group_function_clauses(body_node)
+
+    Process.put(:reach_current_module, prev_module)
+    Process.put(:reach_alias_map, prev_aliases)
+    Process.put(:reach_import_map, prev_imports)
+
+    %Node{
+      id: Counter.next(counter),
+      type: :module_def,
+      meta: %{name: module},
+      children: [merged_body],
+      source_span: span_from_meta(meta, file)
+    }
+  end
+
   defp translate_function_def(def_kind, meta, head, guards, body, counter, file) do
     {name, arity} = fun_name_arity(head)
     params = fun_params(head)
@@ -871,7 +919,12 @@ defmodule Reach.Frontend.Elixir do
     %Node{
       id: Counter.next(counter),
       type: :function_def,
-      meta: %{name: name, arity: arity, kind: def_kind},
+      meta: %{
+        name: name,
+        arity: arity,
+        kind: def_kind,
+        module: Process.get(:reach_current_module)
+      },
       children: [clause],
       source_span: span_from_meta(meta, file)
     }
@@ -937,6 +990,32 @@ defmodule Reach.Frontend.Elixir do
     {:__reach_pipe__, [], [left, right]}
   end
 
+  defp quoted_body([opts]) when is_list(opts), do: quoted_body(opts)
+
+  defp quoted_body(args) when is_list(args) do
+    case Keyword.fetch(args, :do) do
+      {:ok, body} -> body
+      :error -> nil
+    end
+  end
+
+  defp quoted_body(_args), do: nil
+
+  defp unquoted_expressions(nil), do: []
+
+  defp unquoted_expressions(ast) do
+    {_ast, expressions} =
+      Macro.prewalk(ast, [], fn
+        {kind, _meta, [expr]} = node, expressions when kind in [:unquote, :unquote_splicing] ->
+          {node, [expr | expressions]}
+
+        node, expressions ->
+          {node, expressions}
+      end)
+
+    Enum.reverse(expressions)
+  end
+
   defp split_with_clauses(args) do
     Enum.split_while(args, fn
       {:<-, _, _} -> true
@@ -985,6 +1064,15 @@ defmodule Reach.Frontend.Elixir do
     {[], module_name(module)}
   end
 
+  defp module_name_for_def({:__aliases__, _, [part]} = alias_ast) when is_atom(part) do
+    case Process.get(:reach_current_module) do
+      nil -> module_name(alias_ast)
+      parent -> Module.concat(parent, part)
+    end
+  end
+
+  defp module_name_for_def(alias_ast), do: module_name(alias_ast)
+
   defp module_name({:__aliases__, _, parts}) do
     if Enum.all?(parts, &is_atom/1) do
       raw = Module.concat(parts)
@@ -996,6 +1084,16 @@ defmodule Reach.Frontend.Elixir do
 
   defp module_name(atom) when is_atom(atom), do: atom
   defp module_name(other), do: other
+
+  defp protocol_impl_module(protocol, nil), do: protocol
+
+  defp protocol_impl_module(protocol, {:__aliases__, _, _} = target),
+    do: Module.concat(protocol, module_name(target))
+
+  defp protocol_impl_module(protocol, target) when is_atom(target),
+    do: Module.concat(protocol, target)
+
+  defp protocol_impl_module(protocol, _target), do: protocol
 
   defp resolve_alias(mod) do
     case Process.get(:reach_alias_map, %{}) do

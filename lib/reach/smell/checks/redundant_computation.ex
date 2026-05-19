@@ -103,6 +103,9 @@ defmodule Reach.Smell.Checks.RedundantComputation do
   defp formatting_call?(%{meta: %{function: :inspect, module: Kernel}}), do: true
   defp formatting_call?(_node), do: false
 
+  defp stateful_helper?(%{meta: %{module: Reach.IR.Counter, function: :next}}), do: true
+  defp stateful_helper?(_node), do: false
+
   @excluded_fns MapSet.new(
                   @type_check_fns ++
                     @compiler_directives ++
@@ -117,7 +120,7 @@ defmodule Reach.Smell.Checks.RedundantComputation do
       node.meta[:function] not in @excluded_fns and
       node.meta[:kind] not in @excluded_kinds and
       node.meta[:module] != Access and
-      Effects.pure?(node) and not formatting_call?(node)
+      Effects.pure?(node) and not formatting_call?(node) and not stateful_helper?(node)
   end
 
   defp collect_block_calls(node, acc) do
