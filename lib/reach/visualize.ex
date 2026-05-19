@@ -2,7 +2,6 @@ defmodule Reach.Visualize do
   @moduledoc "Generates interactive HTML reports from project analysis."
 
   alias Reach.Visualize.ControlFlow
-  alias Reach.Visualize.Source
 
   # ── Public API ──
 
@@ -29,14 +28,6 @@ defmodule Reach.Visualize do
       ""
     end
   end
-
-  # ── Source extraction ──
-
-  defdelegate ensure_def_cache(file), to: Source
-  defdelegate extract_func_source(node), to: Source
-  defdelegate highlight_source(source), to: Source
-  defdelegate highlight_source(source, lang), to: Source
-  defdelegate format_source(source), to: Source
 
   # ── Call Graph ──
 

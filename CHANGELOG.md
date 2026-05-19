@@ -4,6 +4,7 @@
 
 ### New
 
+- **Trivial delegate smell check** — added conservative detection for pass-through `defdelegate` calls and hand-written same-argument forwarding functions, including alias, Erlang module, and static generated delegate targets while allowing documented facades, behaviour adapters, semantic aliases, and ambiguous local calls.
 - **Conversion idiom smell checks** — added conservative checks for identity float arithmetic and one-shot `List.to_tuple/1` + `elem/2` access.
 
 ### Fixed

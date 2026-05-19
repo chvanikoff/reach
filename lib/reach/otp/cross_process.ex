@@ -188,7 +188,7 @@ defmodule Reach.OTP.CrossProcess do
           resource: {:ets, table},
           conflict: kind,
           call_site: call,
-          location: location(call)
+          location: Analysis.location(call)
         }
       end)
 
@@ -201,7 +201,7 @@ defmodule Reach.OTP.CrossProcess do
           resource: {:pdict, key},
           conflict: kind,
           call_site: call,
-          location: location(call)
+          location: Analysis.location(call)
         }
       end)
 
@@ -215,6 +215,4 @@ defmodule Reach.OTP.CrossProcess do
       {node.id, mod.meta[:name]}
     end
   end
-
-  defp location(node), do: Analysis.location(node)
 end

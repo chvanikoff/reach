@@ -2,10 +2,11 @@ defmodule Reach.CLI.BoxartGraph do
   @moduledoc false
 
   alias Reach.CLI.Format
-  alias Reach.CLI.Project
   alias Reach.IR
+  alias Reach.IR.Helpers, as: IRHelpers
+  alias Reach.Project.Query
   alias Reach.Visualize.ControlFlow
-  alias Reach.Visualize.Helpers
+  alias Reach.Visualize.Source
 
   @slice_node_render_limit 20
 
@@ -68,13 +69,13 @@ defmodule Reach.CLI.BoxartGraph do
 
   def render_call_graph(project, target, depth) do
     cg = project.call_graph
-    variants = Project.all_variants(cg, target)
+    variants = Query.all_variants(cg, target)
 
     {vertices, edges} = collect_subgraph(cg, variants, depth)
 
     graph =
       Enum.reduce(vertices, Graph.new(), fn v, g ->
-        label = Format.func_id_to_string(v)
+        label = IRHelpers.func_id_to_string(v)
         style = if v in variants, do: [label: label, shape: :stadium], else: [label: label]
         Graph.add_vertex(g, v, style)
       end)
@@ -152,17 +153,17 @@ defmodule Reach.CLI.BoxartGraph do
 
   def render_caller_graph(project, target, depth) do
     cg = project.call_graph
-    variants = Project.all_variants(cg, target)
+    variants = Query.all_variants(cg, target)
 
     # Collect callers by traversing in-neighbors (reverse direction)
     callers = collect_callers(cg, variants, depth)
-    root_label = Format.func_id_to_string(target)
+    root_label = IRHelpers.func_id_to_string(target)
 
     graph = Graph.new() |> Graph.add_vertex(:root, label: root_label, shape: :stadium)
 
     graph =
       Enum.reduce(callers, graph, fn {caller, caller_depth}, g ->
-        label = Format.func_id_to_string(caller)
+        label = IRHelpers.func_id_to_string(caller)
         g = Graph.add_vertex(g, caller, label: label)
 
         if caller_depth == 1 do
@@ -188,7 +189,7 @@ defmodule Reach.CLI.BoxartGraph do
       frontier
       |> Enum.flat_map(fn v ->
         if Graph.has_vertex?(cg, v) do
-          Graph.in_neighbors(cg, v) |> Enum.filter(&Project.mfa?/1)
+          Graph.in_neighbors(cg, v) |> Enum.filter(&Query.mfa?/1)
         else
           []
         end
@@ -382,14 +383,14 @@ defmodule Reach.CLI.BoxartGraph do
 
   defp read_lines_range(file, start_line, end_line)
        when is_binary(file) and is_integer(start_line) and is_integer(end_line) do
-    case Helpers.cached_file_lines(file) do
+    case Source.cached_file_lines(file) do
       nil ->
         nil
 
       lines ->
         lines
         |> Enum.slice((start_line - 1)..(end_line - 1)//1)
-        |> Helpers.dedent()
+        |> Source.dedent()
         |> Enum.join("\n")
         |> String.trim()
         |> case do
@@ -415,7 +416,7 @@ defmodule Reach.CLI.BoxartGraph do
 
         out =
           if Graph.has_vertex?(cg, v) do
-            Graph.out_neighbors(cg, v) |> Enum.filter(&Project.mfa?/1)
+            Graph.out_neighbors(cg, v) |> Enum.filter(&Query.mfa?/1)
           else
             []
           end

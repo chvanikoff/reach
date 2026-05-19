@@ -2,6 +2,7 @@ defmodule Reach.CLI.Render.Inspect.Impact do
   @moduledoc false
 
   alias Reach.CLI.Format
+  alias Reach.IR.Helpers, as: IRHelpers
   alias Reach.Project.Query
 
   def render(project, result, format, command) do
@@ -13,7 +14,7 @@ defmodule Reach.CLI.Render.Inspect.Impact do
   end
 
   defp render_text(project, result) do
-    target_str = Format.func_id_to_string(result.target)
+    target_str = IRHelpers.func_id_to_string(result.target)
     IO.puts("If you change #{target_str}:")
 
     render_caller_section(
@@ -51,7 +52,7 @@ defmodule Reach.CLI.Render.Inspect.Impact do
       deps ->
         Enum.each(deps, fn dep ->
           IO.puts(
-            "  #{Format.func_id_to_string(dep.in_function)} → #{Format.location_text(dep.location)}"
+            "  #{IRHelpers.func_id_to_string(dep.in_function)} → #{Format.location_text(dep.location)}"
           )
         end)
     end
@@ -72,18 +73,18 @@ defmodule Reach.CLI.Render.Inspect.Impact do
 
   defp print_func_with_location(project, func_id) do
     location = Query.func_location(project, func_id)
-    IO.puts("  #{Format.func_id_to_string(func_id)}  #{location}")
+    IO.puts("  #{IRHelpers.func_id_to_string(func_id)}  #{location}")
   end
 
   defp render_oneline(result) do
-    target_str = Format.func_id_to_string(result.target)
+    target_str = IRHelpers.func_id_to_string(result.target)
 
     Enum.each(result.direct_callers, fn %{id: id} ->
-      IO.puts("#{target_str}:direct_caller:#{Format.func_id_to_string(id)}")
+      IO.puts("#{target_str}:direct_caller:#{IRHelpers.func_id_to_string(id)}")
     end)
 
     Enum.each(result.transitive_callers, fn %{id: id} ->
-      IO.puts("#{target_str}:transitive_caller:#{Format.func_id_to_string(id)}")
+      IO.puts("#{target_str}:transitive_caller:#{IRHelpers.func_id_to_string(id)}")
     end)
   end
 end

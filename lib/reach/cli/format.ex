@@ -2,7 +2,6 @@ defmodule Reach.CLI.Format do
   @moduledoc false
 
   alias Reach.CLI.Project
-  alias Reach.IR.Helpers, as: IRHelpers
 
   # ── Color helpers ──
 
@@ -185,8 +184,6 @@ defmodule Reach.CLI.Format do
     if String.starts_with?(relative, ".."), do: path, else: relative
   end
 
-  def func_id_to_string(func_id), do: IRHelpers.func_id_to_string(func_id)
-
   def header(title) do
     width = max(String.length(title) + 4, 40)
     line = cyan(String.duplicate("─", width))
@@ -230,8 +227,6 @@ defmodule Reach.CLI.Format do
       true -> to_string(value)
     end
   end
-
-  def call_name(node), do: IRHelpers.call_name(node)
 
   defp maybe_add(map, _key, nil), do: map
   defp maybe_add(map, key, val), do: Map.put(map, key, jsonify(val))

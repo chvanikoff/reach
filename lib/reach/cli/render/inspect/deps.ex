@@ -2,6 +2,7 @@ defmodule Reach.CLI.Render.Inspect.Deps do
   @moduledoc false
 
   alias Reach.CLI.Format
+  alias Reach.IR.Helpers, as: IRHelpers
 
   def render(result, "json", command) do
     Format.render(result, command, format: "json", pretty: true)
@@ -12,7 +13,7 @@ defmodule Reach.CLI.Render.Inspect.Deps do
   def render(result, _format, _command), do: render_text(result)
 
   defp render_text(result) do
-    target_str = Format.func_id_to_string(result.target)
+    target_str = IRHelpers.func_id_to_string(result.target)
     IO.puts(Format.header(target_str))
 
     IO.puts(Format.section("Callers"))
@@ -33,21 +34,21 @@ defmodule Reach.CLI.Render.Inspect.Deps do
 
   defp render_callers(callers) do
     Enum.each(callers, fn %{id: id} ->
-      IO.puts("  #{Format.func_id_to_string(id)}")
+      IO.puts("  #{IRHelpers.func_id_to_string(id)}")
     end)
   end
 
   defp render_shared_state_writers([]), do: IO.puts("  " <> Format.empty())
 
   defp render_shared_state_writers(writers) do
-    Enum.each(writers, &IO.puts("  #{Format.func_id_to_string(&1)}  #{Format.tag(:warning)}"))
+    Enum.each(writers, &IO.puts("  #{IRHelpers.func_id_to_string(&1)}  #{Format.tag(:warning)}"))
   end
 
   defp render_callee_tree([], ""), do: IO.puts("  " <> Format.empty())
   defp render_callee_tree([], _prefix), do: nil
 
   defp render_callee_tree(items, prefix) do
-    sorted = Enum.sort_by(items, &Format.func_id_to_string(&1.id))
+    sorted = Enum.sort_by(items, &IRHelpers.func_id_to_string(&1.id))
     count = length(sorted)
 
     sorted
@@ -56,20 +57,20 @@ defmodule Reach.CLI.Render.Inspect.Deps do
       last? = idx == count - 1
       connector = if last?, do: "└── ", else: "├── "
       child_prefix = if last?, do: "    ", else: "│   "
-      IO.puts("#{prefix}#{connector}#{Format.func_id_to_string(item.id)}")
+      IO.puts("#{prefix}#{connector}#{IRHelpers.func_id_to_string(item.id)}")
       render_callee_tree(item.children, "#{prefix}#{child_prefix}")
     end)
   end
 
   defp render_oneline(result) do
-    target_str = Format.func_id_to_string(result.target)
+    target_str = IRHelpers.func_id_to_string(result.target)
 
     Enum.each(result.callers, fn %{id: id} ->
-      IO.puts("#{target_str} ← #{Format.func_id_to_string(id)}")
+      IO.puts("#{target_str} ← #{IRHelpers.func_id_to_string(id)}")
     end)
 
     Enum.each(result.shared_state_writers, fn id ->
-      IO.puts("#{target_str} shared_state #{Format.func_id_to_string(id)}")
+      IO.puts("#{target_str} shared_state #{IRHelpers.func_id_to_string(id)}")
     end)
   end
 end

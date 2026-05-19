@@ -130,18 +130,4 @@ defmodule Reach.CLI.Project do
   end
 
   def compile(false), do: Mix.Task.run("compile", ["--no-warnings-as-errors"])
-
-  defdelegate function_index(project), to: Reach.Project.Query
-  defdelegate find_function(project, target), to: Reach.Project.Query
-  defdelegate resolve_target(project, raw), to: Reach.Project.Query
-  defdelegate parse_file_line(raw), to: Reach.Project.Query
-  defdelegate parse_function_reference(name), to: Reach.Project.Query
-  defdelegate find_function_at_location(project, file, line), to: Reach.Project.Query
-  defdelegate resolve_function(project, target), to: Reach.Project.Query
-  defdelegate callers(project, target, depth \\ 4), to: Reach.Project.Query
-  defdelegate callees(project, target, depth \\ 3), to: Reach.Project.Query
-  defdelegate func_location(project, func_id), to: Reach.Project.Query
-  defdelegate mfa?(value), to: Reach.Project.Query
-  defdelegate all_variants(cg, target), to: Reach.Project.Query
-  defdelegate file_matches?(file, path), to: Reach.Project.Query
 end

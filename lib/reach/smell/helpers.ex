@@ -2,7 +2,6 @@ defmodule Reach.Smell.Helpers do
   @moduledoc "Shared helpers for smell checks including loop detection, statement pairs, and callbacks."
 
   alias Reach.IR
-  alias Reach.IR.Helpers, as: IRHelpers
 
   @loop_fns ~w(
     each map flat_map filter reject reduce reduce_while map_reduce flat_map_reduce
@@ -25,8 +24,6 @@ defmodule Reach.Smell.Helpers do
       _ -> "unknown"
     end
   end
-
-  def call_name(node), do: IRHelpers.call_name(node)
 
   @doc "Returns true if `node` is inside a loop body (reduce/map/for/recursion)."
   def inside_loop?(node, function) do

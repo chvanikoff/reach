@@ -5,6 +5,7 @@ defmodule Reach.Visualize.ControlFlow do
   alias Reach.Visualize.Source
 
   import Reach.Visualize.Helpers
+  import Reach.Visualize.Source
 
   def build(all_nodes, _graph) do
     modules =

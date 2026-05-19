@@ -65,7 +65,7 @@ defmodule Reach.CLI.Commands.Trace.Slice do
   end
 
   defp resolve_slice_target(project, raw) do
-    case Project.parse_file_line(raw) do
+    case Query.parse_file_line(raw) do
       {file, line} ->
         node = Slice.find_node_at_location(project, file, line)
         unless node, do: Mix.raise("No node found at #{file}:#{line}")

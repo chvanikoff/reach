@@ -4,6 +4,7 @@ defmodule Reach.Smell.Checks.RedundantComputation do
   use Reach.Smell.Check
 
   alias Reach.Effects
+  alias Reach.IR.Helpers, as: IRHelpers
   alias Reach.Smell.Finding
 
   @type_check_fns [
@@ -142,7 +143,7 @@ defmodule Reach.Smell.Checks.RedundantComputation do
         Finding.new(
           kind: :redundant_computation,
           message:
-            "#{Helpers.call_name(left)} called twice with same args (line #{left.source_span[:start_line]} and #{right.source_span[:start_line]})",
+            "#{IRHelpers.call_name(left)} called twice with same args (line #{left.source_span[:start_line]} and #{right.source_span[:start_line]})",
           location: Helpers.location(right)
         )
       ]

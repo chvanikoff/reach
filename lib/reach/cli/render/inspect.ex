@@ -4,6 +4,7 @@ defmodule Reach.CLI.Render.Inspect do
   alias Reach.CLI.Format
   alias Reach.CLI.Requirements
   alias Reach.Inspect.Context
+  alias Reach.IR.Helpers, as: IRHelpers
 
   def render_why(result, "json"), do: render_json(result)
   def render_why(result, _format), do: render_why_text(result)
@@ -27,7 +28,7 @@ defmodule Reach.CLI.Render.Inspect do
         _format,
         limit
       ) do
-    IO.puts(Format.header("Reach context: #{Format.func_id_to_string(mfa)}"))
+    IO.puts(Format.header("Reach context: #{IRHelpers.func_id_to_string(mfa)}"))
     IO.puts("  location: #{format_location(Context.location(func))}")
     IO.puts("  effects: #{Format.effects_join(Context.effects(func))}")
     IO.puts("  callers: #{length(direct)} direct, #{length(transitive)} transitive")
@@ -55,7 +56,7 @@ defmodule Reach.CLI.Render.Inspect do
   def render_data(summary, mfa, func, "json") do
     render_json(%{
       command: "reach.inspect",
-      target: Format.func_id_to_string(mfa),
+      target: IRHelpers.func_id_to_string(mfa),
       location: Context.location(func),
       data: summary
     })
@@ -178,7 +179,7 @@ defmodule Reach.CLI.Render.Inspect do
   end
 
   defp format_callee_line(%{id: id, depth: depth}),
-    do: String.duplicate("  ", depth - 1) <> Format.func_id_to_string(id)
+    do: String.duplicate("  ", depth - 1) <> IRHelpers.func_id_to_string(id)
 
   defp format_var_summary(item) do
     location = if item.file && item.line, do: Format.loc(item.file, item.line), else: "unknown"
@@ -192,7 +193,7 @@ defmodule Reach.CLI.Render.Inspect do
 
   defp format_context(context) do
     %{
-      target: Format.func_id_to_string(context.target),
+      target: IRHelpers.func_id_to_string(context.target),
       location: context.location,
       effects: context.effects,
       deps: %{
@@ -207,11 +208,11 @@ defmodule Reach.CLI.Render.Inspect do
     }
   end
 
-  defp format_call(%{id: id}), do: Format.func_id_to_string(id)
+  defp format_call(%{id: id}), do: IRHelpers.func_id_to_string(id)
 
   defp format_callee(%{id: id, depth: depth, children: children}) do
     %{
-      id: Format.func_id_to_string(id),
+      id: IRHelpers.func_id_to_string(id),
       depth: depth,
       children: Enum.map(children, &format_callee/1)
     }

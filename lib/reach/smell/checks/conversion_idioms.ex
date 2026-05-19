@@ -192,11 +192,9 @@ defmodule Reach.Smell.Checks.ConversionIdioms do
   defp identity_right?(:/, value), do: value == 1.0
   defp identity_right?(:+, value), do: value == 0.0
   defp identity_right?(:-, value), do: value == 0.0
-  defp identity_right?(_op, _value), do: false
 
   defp identity_left?(:*, value), do: value == 1.0
   defp identity_left?(:+, value), do: value == 0.0
-  defp identity_left?(_op, _value), do: false
 
   defp literal_value({:__block__, _meta, [value]}) when is_float(value), do: value
   defp literal_value(value) when is_float(value), do: value

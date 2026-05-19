@@ -2,6 +2,7 @@ defmodule Reach.CLI.Render.Trace.Flow do
   @moduledoc false
 
   alias Reach.CLI.Format
+  alias Reach.IR.Helpers, as: IRHelpers
 
   def render(result, format, limit, command) do
     case format do
@@ -77,7 +78,7 @@ defmodule Reach.CLI.Render.Trace.Flow do
     desc =
       case node.type do
         :var -> "var #{node.meta[:name]}"
-        :call -> Format.call_name(node)
+        :call -> IRHelpers.call_name(node)
         other -> to_string(other)
       end
 

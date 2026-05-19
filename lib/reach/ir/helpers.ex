@@ -27,9 +27,6 @@ defmodule Reach.IR.Helpers do
     Enum.any?(children, &var_used_in_subtree?(&1, target))
   end
 
-  defdelegate language_from_path(path), to: Reach.Frontend
-  defdelegate source_extensions(), to: Reach.Frontend
-
   def location(%Node{} = node) do
     case node.source_span do
       %{file: file, start_line: line} -> "#{file}:#{line}"

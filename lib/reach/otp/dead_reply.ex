@@ -22,12 +22,12 @@ defmodule Reach.OTP.DeadReply do
     all_nodes
     |> Enum.filter(fn n -> genserver_call?(n) and reply_discarded?(n, parent_map) end)
     |> Enum.map(fn call ->
-      target = call_target(call)
+      target = Analysis.call_target(call)
 
       %{
         call_site: call,
         target: target,
-        location: location(call)
+        location: Analysis.location(call)
       }
     end)
     |> Enum.uniq_by(& &1.location)
@@ -59,8 +59,6 @@ defmodule Reach.OTP.DeadReply do
     end
   end
 
-  defp call_target(node), do: Analysis.call_target(node)
-
   defp build_parent_map(all_nodes) do
     for node <- all_nodes,
         child <- node.children || [],
@@ -68,6 +66,4 @@ defmodule Reach.OTP.DeadReply do
       {child.id, node}
     end
   end
-
-  defp location(node), do: Analysis.location(node)
 end

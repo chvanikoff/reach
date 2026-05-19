@@ -1,20 +1,6 @@
 defmodule Reach.Visualize.Helpers do
   @moduledoc "Shared helpers for source extraction and line mapping."
 
-  alias Reach.Visualize.Source
-
-  defdelegate highlight_line(file, line), to: Source
-  defdelegate highlight_lines(file, from, to), to: Source
-  defdelegate dedent(lines), to: Source
-  defdelegate read_line(file, line), to: Source
-  defdelegate cached_file_lines(file), to: Source
-  defdelegate extract_clause_source(func, clause, all_clauses, file), to: Source
-  defdelegate min_line_in_subtree(node), to: Source
-  defdelegate clause_end_line(func, clause_start, all_clauses, file), to: Source
-  defdelegate func_end_line(func, file), to: Source
-  defdelegate span_field(node, field), to: Source
-  defdelegate source_file?(file), to: Source
-
   # ── IR helpers ──
 
   def clause_pattern(clause) do

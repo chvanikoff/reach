@@ -21,6 +21,7 @@ defmodule Reach.SmellTest do
       assert Reach.Smell.Checks.CloneConsistency in checks
       assert Reach.Smell.Checks.ConfigPhase in checks
       assert Reach.Smell.Checks.PipelineWaste in checks
+      assert Reach.Smell.Checks.TrivialDelegate in checks
     end
   end
 
