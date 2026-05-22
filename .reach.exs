@@ -47,24 +47,28 @@
   ],
   calls: [
     forbidden: [
-      {"Reach.Evidence.*", ["Reach.CLI.*"]},
-      {"Reach.Smell.*", ["Reach.CLI.*"]},
+      {"Reach.Evidence.*", ["Reach.CLI.*", "Mix.Task.run/1", "Mix.Task.run/2"]},
+      {"Reach.Smell.*", ["Reach.CLI.*", "Mix.Task.run/1", "Mix.Task.run/2"]},
       {"Reach.Check.*", ["Reach.CLI.Render.*", "Mix.Task.run/1", "Mix.Task.run/2"]},
-      {"Reach.Frontend.*", ["Reach.CLI.*"]},
+      {"Reach.Frontend.*", ["Reach.CLI.*", "Mix.Task.run/1", "Mix.Task.run/2"]},
       {"Reach.Project*", ["Reach.CLI.Render.*"]},
-      {"Reach.Visualize.*", ["Reach.CLI.Commands.*"]}
+      {"Reach.Visualize.*", ["Reach.CLI.Commands.*", "Mix.Task.run/1", "Mix.Task.run/2"]},
+      {"Reach.Plugin", ["Reach.CLI.*", "Mix.Task.run/1", "Mix.Task.run/2"]},
+      {"Reach.Plugins.*", ["Reach.CLI.*", "Mix.Task.run/1", "Mix.Task.run/2"]}
     ]
   ],
   source: [
     forbidden_modules: [
       "Reach.CLI.Analyses.*",
       "Reach.CLI.TaskRunner",
-      "Reach.CloneAnalysis.*"
+      "Reach.CloneAnalysis.*",
+      "Reach.Plugins.JSON"
     ],
     forbidden_files: [
       "lib/reach/cli/analyses/**",
       "lib/reach/cli/task_runner.ex",
-      "lib/reach/clone_analysis/**"
+      "lib/reach/clone_analysis/**",
+      "lib/reach/plugins/json.ex"
     ]
   ],
   checks: [

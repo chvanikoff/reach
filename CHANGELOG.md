@@ -22,6 +22,7 @@
 - **Plugin evidence refinement** — added a generic `refine_evidence/2` plugin hook so dependency plugins can annotate reusable evidence without owning smell or candidate policy; Jason now classifies maps passed to `Jason.encode/1,2` or `Jason.encode!/1,2` as external payload contracts.
 - **Corpus-tuned evidence** — tightened evidence scanning after reviewing Hex corpus hits, including safe handling for dynamic aliases and avoiding `Enum.flat_map/2` suggestions for reduce callbacks shaped like `acc ++ [expr]`.
 - **CLI JSON boundary** — moved JSON output normalization into `Reach.CLI.JSON` and removed the old `jsonify` helper from formatting code.
+- **Self architecture policy** — tightened Reach's own `.reach.exs` with layer coverage, removed-namespace guards, and extra call-boundary rules that keep CLI/Mix orchestration out of evidence, smell, frontend, plugin, and visualization modules.
 
 ### Fixed
 
