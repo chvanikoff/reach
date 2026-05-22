@@ -5,6 +5,11 @@ defmodule Reach.Plugins.GenStage do
   alias Reach.IR.Node
 
   @impl true
+  def inference_hints do
+    %{deps: [:gen_stage, :broadway], source: ["GenStage", "Broadway"]}
+  end
+
+  @impl true
   def classify_effect(%Node{type: :call, meta: %{module: GenStage, function: fun}})
       when fun in [:call, :cast],
       do: :send

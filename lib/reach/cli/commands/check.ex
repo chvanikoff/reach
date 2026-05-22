@@ -22,7 +22,7 @@ defmodule Reach.CLI.Commands.Check do
     * `--write-baseline` — write current findings to a Reach baseline file
     * `--candidates` — emit advisory refactoring candidates
     * `--top` — limit candidate output for `--candidates`
-    * `--plugin` — plugin module or short name for path scans, repeatable (for example: `--plugin Phoenix --plugin Ecto`)
+    * `--plugins` — plugin module or short name for path scans, repeatable (for example: `--plugins Phoenix --plugins Ecto`)
 
   """
 

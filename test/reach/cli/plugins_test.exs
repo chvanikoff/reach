@@ -4,7 +4,7 @@ defmodule Reach.CLI.PluginsTest do
   alias Reach.CLI.Plugins
 
   test "resolves short plugin names" do
-    assert Plugins.plugins(plugin: ["Phoenix", "Ecto"]) == [
+    assert Plugins.plugins(plugins: ["Phoenix", "Ecto"]) == [
              Reach.Plugins.Phoenix,
              Reach.Plugins.Ecto
            ]
@@ -13,7 +13,7 @@ defmodule Reach.CLI.PluginsTest do
   test "resolves fully qualified plugin modules" do
     Code.ensure_loaded!(Reach.Plugins.Phoenix)
 
-    assert Plugins.plugins(plugin: ["Reach.Plugins.Phoenix"]) == [Reach.Plugins.Phoenix]
+    assert Plugins.plugins(plugins: ["Reach.Plugins.Phoenix"]) == [Reach.Plugins.Phoenix]
   end
 
   test "preserves programmatic plugin options" do
@@ -27,7 +27,7 @@ defmodule Reach.CLI.PluginsTest do
       "Elixir.Reach.CLI.PluginsTest.UnknownPlugin#{System.unique_integer([:positive])}"
 
     assert_raise Mix.Error, fn ->
-      Plugins.plugins(plugin: [plugin_name])
+      Plugins.plugins(plugins: [plugin_name])
     end
 
     assert_raise ArgumentError, fn ->

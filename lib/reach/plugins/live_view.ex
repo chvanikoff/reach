@@ -30,6 +30,14 @@ defmodule Reach.Plugins.LiveView do
   @stream_functions [:stream, :stream_insert, :stream_delete]
 
   @impl true
+  def inference_hints do
+    %{
+      deps: [:phoenix_live_view],
+      source: ["Phoenix.LiveView", "Phoenix.LiveComponent", "~H", "sigil_H"]
+    }
+  end
+
+  @impl true
   def analyze(all_nodes, _opts) do
     function_defs = Enum.filter(all_nodes, &(&1.type == :function_def))
 

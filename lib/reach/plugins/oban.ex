@@ -6,6 +6,11 @@ defmodule Reach.Plugins.Oban do
   alias Reach.IR.Node
 
   @impl true
+  def inference_hints do
+    %{deps: [:oban], source: ["Oban", "Oban.Worker"]}
+  end
+
+  @impl true
   def smell_checks do
     [
       Reach.Plugins.Oban.Smells.AtomArgs,

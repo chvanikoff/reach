@@ -29,10 +29,9 @@ defmodule Reach.CLI.Plugins do
   end
 
   def plugins(opts) do
-    explicit = Keyword.get(opts, :plugins, [])
-    cli = Keyword.get_values(opts, :plugin)
-
-    (List.wrap(explicit) ++ Enum.flat_map(cli, &List.wrap/1))
+    opts
+    |> Keyword.get_values(:plugins)
+    |> Enum.flat_map(&List.wrap/1)
     |> Enum.map(&plugin!/1)
   end
 

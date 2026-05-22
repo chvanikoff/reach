@@ -7,6 +7,11 @@ defmodule Reach.Plugins.OpenTelemetry do
 
   import Reach.Plugins.Helpers, only: [find_vars_in: 1]
 
+  @impl true
+  def inference_hints do
+    %{deps: [:opentelemetry, :opentelemetry_api], source: ["OpenTelemetry", ":otel_"]}
+  end
+
   @tracer_modules [OpenTelemetry.Tracer, :otel_tracer]
   @ctx_modules [OpenTelemetry.Ctx, :otel_ctx]
 

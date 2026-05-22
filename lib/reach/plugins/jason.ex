@@ -6,6 +6,11 @@ defmodule Reach.Plugins.Jason do
   alias Reach.IR.Node
 
   @impl true
+  def inference_hints do
+    %{deps: [:jason], source: ["Jason."]}
+  end
+
+  @impl true
   def smell_checks do
     [Reach.Plugins.Jason.Smells.HandRolledEncoder]
   end

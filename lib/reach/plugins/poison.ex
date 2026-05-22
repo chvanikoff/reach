@@ -5,6 +5,11 @@ defmodule Reach.Plugins.Poison do
   alias Reach.IR.Node
 
   @impl true
+  def inference_hints do
+    %{deps: [:poison], source: ["Poison."]}
+  end
+
+  @impl true
   def classify_effect(%Node{type: :call, meta: %{module: Poison}}), do: :pure
 
   def classify_effect(_), do: nil

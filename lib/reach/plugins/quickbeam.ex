@@ -18,6 +18,11 @@ if Code.ensure_loaded?(QuickBEAM) do
     alias Reach.Plugins.QuickBEAM.JavaScriptFrontend
 
     @impl true
+    def inference_hints do
+      %{deps: [:quickbeam, :quick_beam], source: ["QuickBEAM", "Beam.call"]}
+    end
+
+    @impl true
     def analyze(_all_nodes, _opts), do: []
 
     @impl true

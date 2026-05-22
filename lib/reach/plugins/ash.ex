@@ -6,6 +6,11 @@ defmodule Reach.Plugins.Ash do
   alias Reach.IR.Node
   alias Reach.MacroFact
 
+  @impl true
+  def inference_hints do
+    %{deps: [:ash], source: ["Ash", "Ash.Resource", "Ash.Domain"]}
+  end
+
   # --- Ash core CRUD (write) ---
 
   @ash_write_fns [

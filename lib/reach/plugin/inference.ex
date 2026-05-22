@@ -1,40 +1,6 @@
 defmodule Reach.Plugin.Inference do
   @moduledoc false
 
-  @dependency_plugins %{
-    ash: [Reach.Plugins.Ash],
-    ecto: [Reach.Plugins.Ecto],
-    ecto_sql: [Reach.Plugins.Ecto],
-    ex_unit: [Reach.Plugins.ExUnit],
-    gen_stage: [Reach.Plugins.GenStage],
-    jason: [Reach.Plugins.Jason],
-    jido: [Reach.Plugins.Jido],
-    oban: [Reach.Plugins.Oban],
-    opentelemetry: [Reach.Plugins.OpenTelemetry],
-    opentelemetry_api: [Reach.Plugins.OpenTelemetry],
-    phoenix: [Reach.Plugins.Phoenix],
-    phoenix_html: [Reach.Plugins.Phoenix],
-    phoenix_live_view: [Reach.Plugins.Phoenix, Reach.Plugins.LiveView],
-    poison: [Reach.Plugins.Poison],
-    quickbeam: [Reach.Plugins.QuickBEAM],
-    quick_beam: [Reach.Plugins.QuickBEAM]
-  }
-
-  @source_markers [
-    {Reach.Plugins.Phoenix,
-     ["Phoenix.Router", "Phoenix.LiveView", "Phoenix.LiveComponent", "Phoenix.Component"]},
-    {Reach.Plugins.LiveView, ["Phoenix.LiveView", "Phoenix.LiveComponent", "~H", "sigil_H"]},
-    {Reach.Plugins.Ecto, ["Ecto", "Ecto.Schema", "Ecto.Query", "Ecto.Migration"]},
-    {Reach.Plugins.Oban, ["Oban", "Oban.Worker"]},
-    {Reach.Plugins.Ash, ["Ash", "Ash.Resource", "Ash.Domain"]},
-    {Reach.Plugins.Jason, ["Jason."]},
-    {Reach.Plugins.Poison, ["Poison."]},
-    {Reach.Plugins.ExUnit, ["ExUnit.Case"]},
-    {Reach.Plugins.GenStage, ["GenStage"]},
-    {Reach.Plugins.OpenTelemetry, ["OpenTelemetry"]},
-    {Reach.Plugins.QuickBEAM, ["QuickBEAM"]}
-  ]
-
   def infer(paths) do
     paths = paths |> List.wrap() |> Enum.reject(&is_nil/1)
     files = source_files(paths)
@@ -46,9 +12,10 @@ defmodule Reach.Plugin.Inference do
   def infer_from_mix_file(path) do
     with {:ok, source} <- File.read(path),
          {:ok, ast} <- Code.string_to_quoted(source, emit_warnings: false) do
-      ast
-      |> dependency_names()
-      |> Enum.flat_map(&Map.get(@dependency_plugins, &1, []))
+      deps = dependency_names(ast)
+
+      Reach.Plugin.built_in_plugins()
+      |> Enum.filter(&dependency_match?(&1, deps))
       |> Enum.uniq()
     else
       _error -> []
@@ -118,12 +85,10 @@ defmodule Reach.Plugin.Inference do
   defp dependency_names(ast) do
     {_ast, names} =
       Macro.prewalk(ast, [], fn
-        {dep, _meta, _args} = node, names
-        when is_atom(dep) and is_map_key(@dependency_plugins, dep) ->
+        {dep, _meta, _args} = node, names when is_atom(dep) ->
           {node, [dep | names]}
 
-        {:{}, _meta, [dep | _rest]} = node, names
-        when is_atom(dep) and is_map_key(@dependency_plugins, dep) ->
+        {:{}, _meta, [dep | _rest]} = node, names when is_atom(dep) ->
           {node, [dep | names]}
 
         tuple, names when is_tuple(tuple) ->
@@ -141,17 +106,36 @@ defmodule Reach.Plugin.Inference do
     |> Tuple.to_list()
     |> Enum.chunk_every(2)
     |> Enum.flat_map(fn
-      [dep, _version] when is_atom(dep) and is_map_key(@dependency_plugins, dep) -> [dep]
+      [dep, _version] when is_atom(dep) -> [dep]
       _entry -> []
     end)
+  end
+
+  defp dependency_match?(plugin, deps) do
+    hints(plugin)
+    |> Map.get(:deps, [])
+    |> Enum.any?(&(&1 in deps))
+  end
+
+  defp source_match?(plugin, source) do
+    hints(plugin)
+    |> Map.get(:source, [])
+    |> Enum.any?(&String.contains?(source, &1))
+  end
+
+  defp hints(plugin) do
+    if Code.ensure_loaded?(plugin) and function_exported?(plugin, :inference_hints, 0) do
+      plugin.inference_hints()
+    else
+      %{}
+    end
   end
 
   defp source_plugins(file) do
     case File.read(file) do
       {:ok, source} ->
-        for {plugin, markers} <- @source_markers,
-            Enum.any?(markers, &String.contains?(source, &1)),
-            do: plugin
+        Reach.Plugin.built_in_plugins()
+        |> Enum.filter(&source_match?(&1, source))
 
       {:error, _reason} ->
         []

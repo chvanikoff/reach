@@ -7,6 +7,11 @@ defmodule Reach.Plugins.Jido do
 
   import Reach.Plugins.Helpers, only: [find_vars_in: 1]
 
+  @impl true
+  def inference_hints do
+    %{deps: [:jido, :jido_action, :jido_signal], source: ["Jido."]}
+  end
+
   # jido_signal package
   @dispatch_modules [
     Jido.Signal.Dispatch,

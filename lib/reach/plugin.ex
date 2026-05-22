@@ -105,6 +105,7 @@ defmodule Reach.Plugin do
 
   @callback smell_checks() :: [module()]
   @callback evidence_providers() :: [module()]
+  @callback inference_hints() :: %{optional(:deps) => [atom()], optional(:source) => [String.t()]}
   @callback refine_evidence(evidence :: struct() | map(), context :: map()) ::
               struct() | map() | :unchanged
   @callback refine_macro_fact(fact :: Reach.MacroFact.t(), context :: map()) ::
@@ -122,6 +123,7 @@ defmodule Reach.Plugin do
                       parse_file: 2,
                       smell_checks: 0,
                       evidence_providers: 0,
+                      inference_hints: 0,
                       refine_evidence: 2,
                       refine_macro_fact: 2,
                       trace_pattern: 1,
@@ -142,6 +144,13 @@ defmodule Reach.Plugin do
     {Poison, Reach.Plugins.Poison},
     {QuickBEAM, Reach.Plugins.QuickBEAM}
   ]
+
+  @doc "Returns built-in plugin modules known to Reach."
+  def built_in_plugins do
+    @known_plugins
+    |> Enum.map(&elem(&1, 1))
+    |> Enum.uniq()
+  end
 
   @doc """
   Returns the list of auto-detected plugins based on loaded dependencies.

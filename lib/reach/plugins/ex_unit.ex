@@ -4,6 +4,11 @@ defmodule Reach.Plugins.ExUnit do
   @behaviour Reach.Plugin
 
   @impl true
+  def inference_hints do
+    %{deps: [:ex_unit], source: ["ExUnit.Case"]}
+  end
+
+  @impl true
   def analyze(_all_nodes, _opts), do: []
 
   @impl true

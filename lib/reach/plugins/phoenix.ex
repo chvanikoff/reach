@@ -9,6 +9,14 @@ defmodule Reach.Plugins.Phoenix do
   import Reach.Plugins.Helpers, only: [find_vars_in: 1]
 
   @impl true
+  def inference_hints do
+    %{
+      deps: [:phoenix, :phoenix_html, :phoenix_live_view],
+      source: ["Phoenix.Router", "Phoenix.LiveView", "Phoenix.LiveComponent", "Phoenix.Component"]
+    }
+  end
+
+  @impl true
   def smell_checks do
     [
       Reach.Plugins.Phoenix.Smells.AssignAsyncCapturesSocket,

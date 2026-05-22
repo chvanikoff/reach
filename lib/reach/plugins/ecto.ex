@@ -9,6 +9,11 @@ defmodule Reach.Plugins.Ecto do
   import Reach.Plugins.Helpers, only: [find_vars_in: 1]
 
   @impl true
+  def inference_hints do
+    %{deps: [:ecto, :ecto_sql], source: ["Ecto", "Ecto.Schema", "Ecto.Query", "Ecto.Migration"]}
+  end
+
+  @impl true
   def smell_checks do
     [
       Reach.Plugins.Ecto.Smells.FloatMoney,
