@@ -1,7 +1,7 @@
 name: New smell rule
 description: Propose a new advisory smell/check rule
 title: "Smell: "
-labels: [smell]
+labels: [enhancement]
 body:
   - type: markdown
     attributes:
