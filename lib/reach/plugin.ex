@@ -133,6 +133,7 @@ defmodule Reach.Plugin do
     {GenStage, Reach.Plugins.GenStage},
     {Jido.Action, Reach.Plugins.Jido},
     {OpenTelemetry.Tracer, Reach.Plugins.OpenTelemetry},
+    {ExUnit.Case, Reach.Plugins.ExUnit},
     {Jason, Reach.Plugins.Jason},
     {Poison, Reach.Plugins.Poison},
     {QuickBEAM, Reach.Plugins.QuickBEAM}

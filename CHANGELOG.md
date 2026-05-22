@@ -8,6 +8,9 @@
 - **LiveView mount Repo smell** — added a Phoenix plugin smell for direct Repo work in `mount/3` without a `connected?/1` guard or async LiveView loading.
 - **Internal rescue handling** — replaced avoidable exception-driven control flow in Reach's own analyzers with explicit checks and narrower error paths.
 - **Corpus-tuned smell signal** — reduced noisy `Enum.count/1`, direct `Enum.map_join/3`, public `defdelegate`, public forwarder, and one-off dual-key findings after reviewing Hex corpus output.
+- **False-success error handling smell** — added a generic check for `check`/`lint`/`validate`-style functions that convert `{:error, _}` into success-like values such as `[]` or `:ok`.
+- **ExUnit plugin** — added an ExUnit plugin smell for `async: true` test modules that mutate global application, system, or persistent-term state.
+- **ETS partial-key match smell** — added a check for wildcard ETS matches over tuple keys that can return arbitrary stale/versioned rows.
 
 ## 2.6.1
 

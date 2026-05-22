@@ -4,27 +4,15 @@ defmodule Reach.Smell.Checks.MissingExternalResource do
   use Reach.Smell.Check.AST
 
   alias Reach.Smell.Finding
+  alias Reach.Smell.Helpers
 
   @impl true
   def kinds, do: [:missing_external_resource]
 
   defp scan_ast(ast, file) do
     ast
-    |> modules_in_file()
+    |> Helpers.ast_modules_in_file()
     |> Enum.flat_map(&find_missing_external_resources(&1, file))
-  end
-
-  defp modules_in_file(ast) do
-    {_ast, modules} =
-      Macro.prewalk(ast, [], fn
-        {:defmodule, _meta, [_name, body]} = module, modules when is_list(body) ->
-          {module, [module | modules]}
-
-        node, modules ->
-          {node, modules}
-      end)
-
-    Enum.reverse(modules)
   end
 
   defp find_missing_external_resources(module_ast, file) do
