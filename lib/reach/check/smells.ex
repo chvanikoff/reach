@@ -4,7 +4,7 @@ defmodule Reach.Check.Smells do
   """
 
   alias Reach.Config
-  alias Reach.Smell.SourceRunner
+  alias Reach.Smell.{SourceRunner, Suppressions}
 
   def run(project, config \\ []) do
     config = Config.normalize(config)
@@ -12,8 +12,11 @@ defmodule Reach.Check.Smells do
     {pattern_checks, checks} =
       Enum.split_with(Reach.Smell.Registry.checks(project, config), &pattern_check?/1)
 
-    SourceRunner.run(project, pattern_checks) ++
-      Enum.flat_map(checks, &run_check(&1, project, config))
+    findings =
+      SourceRunner.run(project, pattern_checks) ++
+        Enum.flat_map(checks, &run_check(&1, project, config))
+
+    Suppressions.filter(findings, project, config)
   end
 
   def analyze(project), do: run(project)

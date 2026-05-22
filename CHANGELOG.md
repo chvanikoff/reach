@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **Smell suppressions** — `mix reach.check --smells` now supports config-level path/module ignores plus Credo-style `# reach:disable-next-line` and `# reach:disable-for-this-file` comments for local suppressions.
+
 ## 2.7.0 - 2026-05-23
 
 ### Changed

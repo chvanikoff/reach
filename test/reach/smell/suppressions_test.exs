@@ -1,0 +1,117 @@
+defmodule Reach.Smell.SuppressionsTest do
+  use ExUnit.Case, async: true
+
+  alias Reach.Check.Smells
+  alias Reach.Project
+
+  test "global path ignore suppresses all smell kinds in matching files" do
+    path =
+      fixture("global_path", """
+      defmodule Generated.GlobalPath do
+        def run(items), do: items |> Enum.reverse() |> Enum.reverse()
+      end
+      """)
+
+    project = Project.from_sources([path])
+
+    assert Smells.run(project, []) != []
+
+    assert Smells.run(project,
+             smells: [ignore: [paths: [Path.join(Path.dirname(path), "**")]]]
+           ) == []
+  end
+
+  test "per-check path ignore suppresses only that smell kind" do
+    path =
+      fixture("per_check_path", """
+      defmodule Generated.PerCheckPath do
+        def first(items), do: items |> Enum.reverse() |> Enum.reverse()
+        def a, do: %{id: 1, name: "a", role: :user}
+        def b, do: %{id: 2, name: "b", role: :user}
+        def c, do: %{id: 3, name: "c", role: :user}
+      end
+      """)
+
+    project = Project.from_sources([path])
+    initial_findings = Smells.run(project, [])
+
+    assert Enum.any?(initial_findings, &(&1.kind == :fixed_shape_map))
+    assert Enum.any?(initial_findings, &(&1.kind == :redundant_traversal))
+
+    findings =
+      Smells.run(project,
+        smells: [fixed_shape_map: [ignore: [paths: [Path.join(Path.dirname(path), "**")]]]]
+      )
+
+    refute Enum.any?(findings, &(&1.kind == :fixed_shape_map))
+    assert Enum.any?(findings, &(&1.kind == :redundant_traversal))
+  end
+
+  test "module ignore suppresses matching module findings" do
+    path =
+      fixture("module_ignore", """
+      defmodule Generated.ModuleIgnore do
+        def run(items), do: items |> Enum.reverse() |> Enum.reverse()
+      end
+      """)
+
+    project = Project.from_sources([path])
+
+    assert Smells.run(project, smells: [ignore: [modules: ["Generated.ModuleIgnore"]]]) == []
+  end
+
+  test "disable-next-line source comment suppresses one finding" do
+    path =
+      fixture("next_line", """
+      defmodule Generated.NextLine do
+        # reach:disable-next-line redundant_traversal
+        def run(items), do: items |> Enum.reverse() |> Enum.reverse()
+      end
+      """)
+
+    project = Project.from_sources([path])
+
+    refute Enum.any?(Smells.run(project, []), &(&1.kind == :redundant_traversal))
+  end
+
+  test "disable-for-this-file suppresses all findings in the file" do
+    path =
+      fixture("this_file", """
+      # reach:disable-for-this-file smells
+      defmodule Generated.ThisFile do
+        def run(items), do: items |> Enum.reverse() |> Enum.reverse()
+      end
+      """)
+
+    project = Project.from_sources([path])
+
+    assert Smells.run(project, []) == []
+  end
+
+  test "unknown source suppression tokens do not create atoms or crash" do
+    token = "synthetic_unknown_#{System.unique_integer([:positive])}"
+    assert_raise ArgumentError, fn -> :erlang.binary_to_existing_atom(token, :utf8) end
+
+    path =
+      fixture("unknown_token", """
+      defmodule Generated.UnknownToken do
+        # reach:disable-next-line #{token}
+        def run(items), do: items |> Enum.reverse() |> Enum.reverse()
+      end
+      """)
+
+    project = Project.from_sources([path])
+
+    assert Enum.any?(Smells.run(project, []), &(&1.kind == :redundant_traversal))
+    assert_raise ArgumentError, fn -> :erlang.binary_to_existing_atom(token, :utf8) end
+  end
+
+  defp fixture(name, source) do
+    dir = Path.join(System.tmp_dir!(), "reach-suppressions-#{name}-#{System.unique_integer()}")
+    File.mkdir_p!(dir)
+    path = Path.join(dir, "sample.ex")
+    File.write!(path, source)
+    on_exit(fn -> File.rm_rf(dir) end)
+    path
+  end
+end

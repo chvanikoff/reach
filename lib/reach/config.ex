@@ -89,6 +89,7 @@ defmodule Reach.Config do
     @moduledoc false
     defstruct strict: false,
               custom_checks: [],
+              ignore: [],
               fixed_shape_map: nil,
               behaviour_candidate: nil
   end
@@ -97,7 +98,8 @@ defmodule Reach.Config do
     @moduledoc false
     defstruct min_keys: 3,
               min_occurrences: 3,
-              evidence_limit: 10
+              evidence_limit: 10,
+              ignore: []
   end
 
   defmodule Smells.BehaviourCandidate do
@@ -105,7 +107,8 @@ defmodule Reach.Config do
     defstruct min_modules: 3,
               min_callbacks: 3,
               module_display_limit: 8,
-              callback_display_limit: 8
+              callback_display_limit: 8,
+              ignore: []
   end
 
   defmodule Error do
@@ -277,10 +280,12 @@ defmodule Reach.Config do
       smells: %Smells{
         strict: nested(config, [:smells, :strict], nil, false),
         custom_checks: nested(config, [:smells, :custom_checks], nil, []),
+        ignore: nested(config, [:smells, :ignore], nil, []),
         fixed_shape_map: %Smells.FixedShapeMap{
           min_keys: nested(config, [:smells, :fixed_shape_map, :min_keys], nil, 3),
           min_occurrences: nested(config, [:smells, :fixed_shape_map, :min_occurrences], nil, 3),
-          evidence_limit: nested(config, [:smells, :fixed_shape_map, :evidence_limit], nil, 10)
+          evidence_limit: nested(config, [:smells, :fixed_shape_map, :evidence_limit], nil, 10),
+          ignore: nested(config, [:smells, :fixed_shape_map, :ignore], nil, [])
         },
         behaviour_candidate: %Smells.BehaviourCandidate{
           min_modules: nested(config, [:smells, :behaviour_candidate, :min_modules], nil, 3),
@@ -288,7 +293,8 @@ defmodule Reach.Config do
           module_display_limit:
             nested(config, [:smells, :behaviour_candidate, :module_display_limit], nil, 8),
           callback_display_limit:
-            nested(config, [:smells, :behaviour_candidate, :callback_display_limit], nil, 8)
+            nested(config, [:smells, :behaviour_candidate, :callback_display_limit], nil, 8),
+          ignore: nested(config, [:smells, :behaviour_candidate, :ignore], nil, [])
         }
       }
     }
@@ -491,6 +497,12 @@ defmodule Reach.Config do
     |> check(config, [:smells], &valid_group?/1, "expected keyword list")
     |> check(config, [:smells, :strict], &valid_boolean?/1, "expected boolean")
     |> check(config, [:smells, :custom_checks], &valid_module_list?/1, "expected list of modules")
+    |> check(
+      config,
+      [:smells, :ignore],
+      &valid_ignore?/1,
+      "expected keyword list with paths and modules"
+    )
     |> check(config, [:smells, :fixed_shape_map], &valid_group?/1, "expected keyword list")
     |> check(config, [:smells, :behaviour_candidate], &valid_group?/1, "expected keyword list")
     |> check(
@@ -510,6 +522,12 @@ defmodule Reach.Config do
       [:smells, :fixed_shape_map, :evidence_limit],
       &valid_positive_integer?/1,
       "expected positive integer"
+    )
+    |> check(
+      config,
+      [:smells, :fixed_shape_map, :ignore],
+      &valid_ignore?/1,
+      "expected keyword list with paths and modules"
     )
     |> check(
       config,
@@ -534,6 +552,12 @@ defmodule Reach.Config do
       [:smells, :behaviour_candidate, :callback_display_limit],
       &valid_positive_integer?/1,
       "expected positive integer"
+    )
+    |> check(
+      config,
+      [:smells, :behaviour_candidate, :ignore],
+      &valid_ignore?/1,
+      "expected keyword list with paths and modules"
     )
     |> check(config, [:candidates, :thresholds], &valid_group?/1, "expected keyword list")
     |> check(
@@ -681,19 +705,28 @@ defmodule Reach.Config do
     |> unknown_nested_key_errors(config, [:smells], [
       :strict,
       :custom_checks,
+      :ignore,
       :fixed_shape_map,
       :behaviour_candidate
     ])
+    |> unknown_nested_key_errors(config, [:smells, :ignore], [:paths, :modules])
     |> unknown_nested_key_errors(config, [:smells, :fixed_shape_map], [
       :min_keys,
       :min_occurrences,
-      :evidence_limit
+      :evidence_limit,
+      :ignore
     ])
+    |> unknown_nested_key_errors(config, [:smells, :fixed_shape_map, :ignore], [:paths, :modules])
     |> unknown_nested_key_errors(config, [:smells, :behaviour_candidate], [
       :min_modules,
       :min_callbacks,
       :module_display_limit,
-      :callback_display_limit
+      :callback_display_limit,
+      :ignore
+    ])
+    |> unknown_nested_key_errors(config, [:smells, :behaviour_candidate, :ignore], [
+      :paths,
+      :modules
     ])
   end
 
@@ -802,6 +835,14 @@ defmodule Reach.Config do
   end
 
   defp valid_layer_coverage?(_value), do: false
+
+  defp valid_ignore?(value) when is_list(value) do
+    Keyword.keyword?(value) and
+      valid_pattern_list?(Keyword.get(value, :paths, [])) and
+      valid_pattern_list?(Keyword.get(value, :modules, []))
+  end
+
+  defp valid_ignore?(_value), do: false
 
   defp valid_except_edges?(value) when is_list(value) do
     Enum.all?(value, fn

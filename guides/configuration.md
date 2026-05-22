@@ -418,16 +418,22 @@ clone_analysis: [
 smells: [
   strict: true,
   custom_checks: [MyApp.ReachSmells.NoFoo],
+  ignore: [
+    paths: ["vendor/**", "lib/my_app/generated/**"],
+    modules: ["MyApp.Generated.*"]
+  ],
   fixed_shape_map: [
     min_keys: 3,
     min_occurrences: 3,
-    evidence_limit: 10
+    evidence_limit: 10,
+    ignore: [paths: ["lib/my_app/openapi/**"]]
   ],
   behaviour_candidate: [
     min_modules: 3,
     min_callbacks: 3,
     module_display_limit: 8,
-    callback_display_limit: 8
+    callback_display_limit: 8,
+    ignore: [modules: ["MyApp.Legacy.*"]]
   ]
 ]
 ```
@@ -448,6 +454,30 @@ When a baseline is configured, known findings are suppressed before gate failure
 ### `smells[:strict]`
 
 `mix reach.check --smells` is advisory by default. Set `strict: true` or pass `--strict` to fail on non-baseline smell findings.
+
+### `smells[:ignore]`
+
+Use config-level ignores for generated, vendored, or intentionally noisy code. Global ignores apply to all smell checks; per-check ignores apply only to that smell kind.
+
+```elixir
+smells: [
+  ignore: [paths: ["vendor/**"], modules: ["MyApp.Generated.*"]],
+  fixed_shape_map: [ignore: [paths: ["lib/my_app/openapi/**"]]],
+  behaviour_candidate: [ignore: [modules: ["MyApp.Legacy.*"]]]
+]
+```
+
+Paths use glob patterns. Modules use glob patterns matched against the inspected module name. Suppressions are applied before baseline filtering and strict failure checks.
+
+For local, source-level exceptions, use Credo-style comments:
+
+```elixir
+# reach:disable-for-this-file fixed_shape_map
+# reach:disable-next-line bare_rescue
+def run, do: rescue_fallback()
+```
+
+Use `smells` or `all` instead of a specific kind to suppress every smell finding at that scope. Unknown comment tokens are ignored without creating atoms.
 
 ### `smells[:custom_checks]`
 

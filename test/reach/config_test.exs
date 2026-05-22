@@ -59,16 +59,19 @@ defmodule Reach.ConfigTest do
                smells: [
                  strict: true,
                  custom_checks: [MyApp.ReachSmells.NoFoo],
+                 ignore: [paths: ["vendor/**"], modules: ["Generated.*"]],
                  fixed_shape_map: [
                    min_keys: 4,
                    min_occurrences: 5,
-                   evidence_limit: 6
+                   evidence_limit: 6,
+                   ignore: [paths: ["lib/generated/**"]]
                  ],
                  behaviour_candidate: [
                    min_modules: 2,
                    min_callbacks: 2,
                    module_display_limit: 4,
-                   callback_display_limit: 5
+                   callback_display_limit: 5,
+                   ignore: [modules: ["MyAppWeb.*Live"]]
                  ]
                ],
                clone_analysis: [
@@ -112,13 +115,16 @@ defmodule Reach.ConfigTest do
     assert config.candidates.limits.representative_calls_per_edge == 2
     assert config.smells.strict == true
     assert config.smells.custom_checks == [MyApp.ReachSmells.NoFoo]
+    assert config.smells.ignore == [paths: ["vendor/**"], modules: ["Generated.*"]]
     assert config.smells.fixed_shape_map.min_keys == 4
     assert config.smells.fixed_shape_map.min_occurrences == 5
     assert config.smells.fixed_shape_map.evidence_limit == 6
+    assert config.smells.fixed_shape_map.ignore == [paths: ["lib/generated/**"]]
     assert config.smells.behaviour_candidate.min_modules == 2
     assert config.smells.behaviour_candidate.min_callbacks == 2
     assert config.smells.behaviour_candidate.module_display_limit == 4
     assert config.smells.behaviour_candidate.callback_display_limit == 5
+    assert config.smells.behaviour_candidate.ignore == [modules: ["MyAppWeb.*Live"]]
     assert config.clone_analysis.provider == :ex_dna
     assert config.clone_analysis.min_mass == 12
     assert config.clone_analysis.min_similarity == 0.9
