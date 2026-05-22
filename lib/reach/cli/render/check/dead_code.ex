@@ -29,7 +29,7 @@ defmodule Reach.CLI.Render.Check.DeadCode do
     |> Enum.group_by(& &1.file)
     |> Enum.sort_by(fn {file, _} -> file end)
     |> Enum.flat_map(fn {file, file_findings} ->
-      [Format.section(Format.faint(file))] ++
+      [Text.subsection(Format.faint(file))] ++
         Enum.map(file_findings, fn finding ->
           Text.line("line #{Format.yellow(to_string(finding.line))}: #{finding.description}")
         end)

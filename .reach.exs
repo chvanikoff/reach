@@ -77,7 +77,8 @@ removed_files = [
         [
           {"Reach.Check.*", cli_render_calls},
           {"Reach.Project*", ["Reach.CLI.Render.*"]},
-          {"Reach.Visualize.*", ["Reach.CLI.Commands.*" | mix_task_run]}
+          {"Reach.Visualize.*", ["Reach.CLI.Commands.*" | mix_task_run]},
+          {"Reach.CLI.Render.Check*", ["Reach.CLI.Format.header", "Reach.CLI.Format.section"]}
         ]
   ],
   source: [

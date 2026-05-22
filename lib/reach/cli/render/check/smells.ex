@@ -79,7 +79,7 @@ defmodule Reach.CLI.Render.Check.Smells do
   defp render_group([], _title), do: nil
 
   defp render_group(findings, title) do
-    IO.puts(Format.section(title))
+    IO.puts(Text.subsection(title))
     Enum.each(findings, &render_finding/1)
   end
 

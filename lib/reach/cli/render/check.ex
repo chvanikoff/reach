@@ -20,13 +20,11 @@ defmodule Reach.CLI.Render.Check do
   def render_result(result, _format, text_fun), do: text_fun.(result)
 
   def render_candidates_text(%{candidates: []}) do
-    IO.puts(Format.header("Refactoring Candidates"))
-    IO.puts("  " <> Format.empty("no refactoring candidates"))
+    Text.section("Refactoring Candidates", [Text.empty("no refactoring candidates")])
   end
 
   def render_candidates_text(%{candidates: candidates, note: note}) do
-    IO.puts(Format.header("Refactoring Candidates (#{length(candidates)})"))
-    IO.puts(Format.faint(note))
+    Text.section("Refactoring Candidates (#{length(candidates)})", [Format.faint(note)])
     IO.puts("")
 
     Enum.each(candidates, fn candidate ->
@@ -117,8 +115,9 @@ defmodule Reach.CLI.Render.Check do
   end
 
   def render_changed_text(result) do
-    IO.puts(Format.header("Changed Code"))
-    IO.puts("  base=#{result.base} risk=#{risk_label(result.risk)}")
+    Text.section("Changed Code", [
+      Text.line("base=#{result.base} risk=#{risk_label(result.risk)}")
+    ])
 
     if result.risk_reasons != [] do
       IO.puts("  reasons=#{Enum.join(result.risk_reasons, ", ")}")
@@ -197,7 +196,7 @@ defmodule Reach.CLI.Render.Check do
 
   defp render_limited_section(title, items, render_fun) do
     item_count = length(items)
-    IO.puts("\n#{Format.section("#{title} (#{item_count})")}")
+    IO.puts("\n#{Text.subsection("#{title} (#{item_count})")}")
 
     items
     |> Enum.take(@text_limit)

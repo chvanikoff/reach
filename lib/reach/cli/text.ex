@@ -8,6 +8,8 @@ defmodule Reach.CLI.Text do
     Enum.each(lines, &IO.puts/1)
   end
 
+  def subsection(title), do: Format.section(title)
+
   def line(text), do: ["  ", text]
   def empty(text \\ "none"), do: line(Format.empty(text))
   def summary(text), do: line(text)
