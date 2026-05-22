@@ -2,7 +2,12 @@ defmodule Reach.Scripts.SmellCorpusScan do
   @moduledoc false
 
   @default_globs ["lib/**/*.ex", "apps/*/lib/**/*.ex"]
-  @default_plugins [Reach.Plugins.Ecto, Reach.Plugins.Phoenix, Reach.Plugins.Oban]
+  @default_plugins [
+    Reach.Plugins.Ecto,
+    Reach.Plugins.Phoenix,
+    Reach.Plugins.Oban,
+    Reach.Plugins.ExUnit
+  ]
 
   def main(argv) do
     {opts, positional, invalid} =
@@ -252,8 +257,8 @@ defmodule Reach.Scripts.SmellCorpusScan do
       --limit, -l N          Maximum source files per repository.
       --glob, -g GLOB        Source glob relative to each repo. May be repeated.
       --include-tests        Include test/**/*.exs and apps/*/test/**/*.exs.
-      --plugin, -p MODULE    Plugin module. May be repeated. Defaults to Ecto, Phoenix, Oban.
-      --kinds a,b,c          Only include selected smell kinds in the output.
+      --plugin, -p MODULE    Plugin module. May be repeated. Defaults to Ecto, Phoenix, Oban, ExUnit.
+      --kinds a,b,c          Only run checks that emit selected smell kinds, and only include those findings.
       --help, -h             Show this help.
     """)
   end

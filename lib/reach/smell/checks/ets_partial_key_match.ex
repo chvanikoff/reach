@@ -11,7 +11,7 @@ defmodule Reach.Smell.Checks.ETSPartialKeyMatch do
   defp scan_ast(ast, file) do
     {_ast, findings} =
       Macro.prewalk(ast, [], fn node, findings ->
-        case partial_key_match(node) do
+        case arbitrary_partial_key_match(node) do
           nil -> {node, findings}
           meta -> {node, [finding(file, meta) | findings]}
         end
@@ -20,12 +20,65 @@ defmodule Reach.Smell.Checks.ETSPartialKeyMatch do
     Enum.reverse(findings)
   end
 
-  defp partial_key_match({{:., meta, [module, function]}, _call_meta, [_table, pattern | _args]})
-       when function in [:match_object, :match, :select, :match_delete] do
+  defp arbitrary_partial_key_match({:case, _meta, [subject, clauses]}) do
+    with meta when is_list(meta) <- partial_key_match_call(subject),
+         true <- takes_first_match?(clauses) do
+      meta
+    else
+      _other -> nil
+    end
+  end
+
+  defp arbitrary_partial_key_match(_node), do: nil
+
+  defp partial_key_match_call(
+         {{:., meta, [module, function]}, _call_meta, [_table, pattern | _args]}
+       )
+       when function in [:match_object, :match] do
     if literal_atom(module) == :ets and versioned_tuple_key_wildcard?(pattern), do: meta
   end
 
-  defp partial_key_match(_node), do: nil
+  defp partial_key_match_call(_node), do: nil
+
+  defp takes_first_match?(clauses) do
+    clauses
+    |> arrow_clauses()
+    |> Enum.any?(fn
+      {:->, _meta, [[pattern], _body]} -> non_empty_list_pattern?(pattern)
+      _clause -> false
+    end)
+  end
+
+  defp arrow_clauses({:__block__, _meta, clauses}) when is_list(clauses), do: clauses
+
+  defp arrow_clauses({{:__block__, _meta, [:do]}, clauses}) when is_list(clauses),
+    do: arrow_clauses(clauses)
+
+  defp arrow_clauses(block) when is_list(block) do
+    if Enum.all?(block, &arrow_clause?/1) do
+      block
+    else
+      block
+      |> Enum.filter(fn
+        {key, _value} -> literal_atom(key) == :do
+        _entry -> false
+      end)
+      |> Enum.flat_map(fn {_key, value} -> arrow_clauses(value) end)
+    end
+  end
+
+  defp arrow_clauses(_block), do: []
+
+  defp arrow_clause?({:->, _meta, _args}), do: true
+  defp arrow_clause?(_node), do: false
+
+  defp non_empty_list_pattern?([{:|, _meta, [_head, _tail]}]), do: true
+  defp non_empty_list_pattern?([_head | _tail]), do: true
+
+  defp non_empty_list_pattern?({:__block__, _meta, [pattern]}),
+    do: non_empty_list_pattern?(pattern)
+
+  defp non_empty_list_pattern?(_pattern), do: false
 
   defp versioned_tuple_key_wildcard?(pattern) do
     case tuple_items(pattern) do

@@ -20,6 +20,33 @@ defmodule Reach.Smell.Checks.ETSPartialKeyMatchTest do
     assert [%Finding{kind: :ets_partial_key_match}] = Smells.run(project)
   end
 
+  test "allows prefix deletion" do
+    project =
+      project_from_string(~S'''
+      defmodule Cache do
+        def evict(path) do
+          :ets.match_delete(:cache, {{path, :_}, :_})
+        end
+      end
+      ''')
+
+    refute Enum.any?(Smells.run(project), &(&1.kind == :ets_partial_key_match))
+  end
+
+  test "allows collecting all prefix matches" do
+    project =
+      project_from_string(~S'''
+      defmodule Cache do
+        def load_all(workflow_id) do
+          :ets.match_object(:cache, {{workflow_id, :_}, :_})
+          |> Enum.map(fn {_key, value} -> value end)
+        end
+      end
+      ''')
+
+    refute Enum.any?(Smells.run(project), &(&1.kind == :ets_partial_key_match))
+  end
+
   test "allows exact lookup" do
     project =
       project_from_string(~S'''
