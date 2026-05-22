@@ -288,6 +288,43 @@ defmodule Reach.Check.ArchitecturePolicyTest do
     end
   end
 
+  test "source-only projects preserve architecture policy signals" do
+    project = architecture_project(source_only: true)
+
+    config = [
+      layers: [cli: "Fixture.CLI.*", core: "Fixture.Core.*", config: "Fixture.Config"],
+      deps: [mode: :allowlist, allowed: [cli: [:core], core: [], config: []]],
+      calls: [forbidden: [{"Fixture.CLI.Command", ["Fixture.Config.read"]}]],
+      boundaries: [
+        public: ["Fixture"],
+        internal: ["Fixture.Internal.*"],
+        internal_callers: [{"Fixture.Internal.*", ["Fixture.Core.Allowed"]}]
+      ],
+      source: [
+        forbidden_modules: ["Fixture.CLI.Command"],
+        forbidden_files: ["**/command.ex"]
+      ]
+    ]
+
+    violation_types =
+      project
+      |> Architecture.violations(config)
+      |> Enum.map(& &1.type)
+      |> MapSet.new()
+
+    assert MapSet.subset?(
+             MapSet.new([
+               :forbidden_module,
+               :forbidden_file,
+               :forbidden_call,
+               :forbidden_dependency,
+               :public_api_boundary,
+               :internal_boundary
+             ]),
+             violation_types
+           )
+  end
+
   test "evidence providers stay reusable and do not emit smell findings" do
     evidence_sources = Path.wildcard("lib/reach/evidence/**/*.ex")
 
@@ -313,7 +350,7 @@ defmodule Reach.Check.ArchitecturePolicyTest do
     assert Reach.Plugin.classify_effect([Reach.Plugins.Poison], poison_call_node()) == :pure
   end
 
-  defp architecture_project do
+  defp architecture_project(opts \\ []) do
     dir = Path.join(System.tmp_dir!(), "reach-arch-fixture-#{System.unique_integer()}")
     File.mkdir_p!(dir)
 
@@ -335,6 +372,12 @@ defmodule Reach.Check.ArchitecturePolicyTest do
     end
     ''')
 
+    write_fixture(dir, "external.ex", ~S'''
+    defmodule External.Caller do
+      def run, do: Fixture.Config.read()
+    end
+    ''')
+
     command_path =
       write_fixture(dir, "command.ex", ~S'''
       defmodule Fixture.CLI.Command do
@@ -348,14 +391,16 @@ defmodule Reach.Check.ArchitecturePolicyTest do
 
     on_exit(fn -> File.rm_rf(dir) end)
 
-    dir
-    |> Path.join("*.ex")
-    |> Path.wildcard()
-    |> case do
-      [] -> [command_path]
-      paths -> paths
-    end
-    |> Reach.Project.from_sources()
+    paths =
+      dir
+      |> Path.join("*.ex")
+      |> Path.wildcard()
+      |> case do
+        [] -> [command_path]
+        paths -> paths
+      end
+
+    Reach.Project.from_sources(paths, opts)
   end
 
   defp write_fixture(dir, name, source) do
