@@ -119,7 +119,7 @@ defmodule Reach.MixProject do
 
   defp groups_for_modules do
     [
-      "Public API": [Reach, Reach.Project],
+      "Public API": [Reach, Reach.Project, Reach.MacroFact],
       "CLI Commands": [~r/Reach\.CLI\.Commands/],
       "CLI Rendering": [~r/Reach\.CLI\.Render/],
       "Project Queries": [Reach.Project.Query],

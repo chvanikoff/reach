@@ -11,6 +11,7 @@
 - **False-success error handling smell** — added a generic check for `check`/`lint`/`validate`-style functions that convert `{:error, _}` into success-like values such as `[]` or `:ok`.
 - **ExUnit plugin** — added an ExUnit plugin smell for `async: true` test modules that mutate global application, system, or persistent-term state.
 - **ETS partial-key match smell** — added a check for wildcard ETS matches over tuple keys that can return arbitrary stale/versioned rows.
+- **Macro fact foundation** — added `Reach.MacroFact` as the source-first representation for macro/DSL declarations that future plugin semantics can consume without generic framework allowlists.
 
 ## 2.6.1
 

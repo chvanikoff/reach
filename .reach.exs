@@ -20,6 +20,7 @@ layers = [
   core: [
     "Reach",
     "Reach.Analysis",
+    "Reach.AST",
     "Reach.CallGraph",
     "Reach.Concurrency",
     "Reach.ControlDependence",
@@ -34,6 +35,7 @@ layers = [
     "Reach.HigherOrder",
     "Reach.IR",
     "Reach.IR.*",
+    "Reach.MacroFact",
     "Reach.Map.*",
     "Reach.OTP",
     "Reach.OTP.*",
