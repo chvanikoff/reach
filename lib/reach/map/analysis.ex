@@ -33,7 +33,7 @@ defmodule Reach.Map.Analysis do
   def summary(project, path) do
     funcs = function_defs(project, path)
     modules = module_defs(project, path)
-    effects = effect_counts(funcs)
+    effects = effect_counts(funcs, project.plugins)
 
     Summary.new(
       modules: length(modules),
@@ -79,7 +79,7 @@ defmodule Reach.Map.Analysis do
   def section_data(project, :effects, opts, path) do
     project
     |> call_nodes(path, opts[:module])
-    |> effect_summary(opts[:top] || 20)
+    |> effect_summary(opts[:top] || 20, project.plugins)
   end
 
   def section_data(project, :boundaries, opts, path) do
@@ -87,7 +87,7 @@ defmodule Reach.Map.Analysis do
 
     project
     |> function_defs(path)
-    |> Enum.flat_map(&boundary_candidate(&1, min))
+    |> Enum.flat_map(&boundary_candidate(&1, min, project.plugins))
     |> Enum.sort_by(fn {func, effects} -> {-length(effects), location_sort(func)} end)
     |> Enum.take(opts[:top] || 20)
     |> Enum.map(fn {func, effects} ->
@@ -102,7 +102,7 @@ defmodule Reach.Map.Analysis do
         file: func.source_span && func.source_span.file,
         line: func.source_span && func.source_span.start_line,
         effects: Enum.map(effects, &to_string/1),
-        calls: effect_calls(func)
+        calls: effect_calls(func, project.plugins)
       )
     end)
   end
@@ -336,17 +336,17 @@ defmodule Reach.Map.Analysis do
     |> Enum.sort()
   end
 
-  defp effect_counts(functions) do
+  defp effect_counts(functions, plugins) do
     functions
-    |> Enum.flat_map(&function_effects/1)
+    |> Enum.flat_map(&function_effects(&1, plugins))
     |> Enum.frequencies()
     |> Enum.sort_by(fn {effect, _count} -> to_string(effect) end)
   end
 
-  defp effect_summary(call_nodes, top) do
+  defp effect_summary(call_nodes, top, plugins) do
     distribution =
       call_nodes
-      |> Enum.map(&Effects.classify/1)
+      |> Enum.map(&Effects.classify(&1, plugins))
       |> Enum.frequencies()
       |> Enum.sort_by(&elem(&1, 1), :desc)
 
@@ -354,7 +354,7 @@ defmodule Reach.Map.Analysis do
 
     unknown_calls =
       call_nodes
-      |> Enum.filter(&(Effects.classify(&1) == :unknown))
+      |> Enum.filter(&(Effects.classify(&1, plugins) == :unknown))
       |> Enum.reject(fn n ->
         is_nil(n.meta[:function]) or n.meta[:function] in [:__aliases__, :{}]
       end)
@@ -384,10 +384,10 @@ defmodule Reach.Map.Analysis do
     )
   end
 
-  defp function_effects(func) do
+  defp function_effects(func, plugins) do
     func
     |> IR.all_nodes()
-    |> Enum.map(&Effects.classify/1)
+    |> Enum.map(&Effects.classify(&1, plugins))
     |> Enum.uniq()
     |> Enum.sort()
   end
@@ -553,8 +553,8 @@ defmodule Reach.Map.Analysis do
     end
   end
 
-  defp boundary_candidate(func, min) do
-    effects = function_effects(func) -- [:pure, :unknown]
+  defp boundary_candidate(func, min, plugins) do
+    effects = function_effects(func, plugins) -- [:pure, :unknown]
 
     if length(effects) >= min, do: [{func, effects}], else: []
   end
@@ -581,13 +581,13 @@ defmodule Reach.Map.Analysis do
 
   defp function_vertex(func), do: {func.meta[:module], func.meta[:name], func.meta[:arity]}
 
-  defp effect_calls(func) do
+  defp effect_calls(func, plugins) do
     func
     |> IR.all_nodes()
     |> Enum.filter(&(&1.type == :call))
-    |> Enum.reject(&(Effects.classify(&1) in [:pure, :unknown]))
+    |> Enum.reject(&(Effects.classify(&1, plugins) in [:pure, :unknown]))
     |> Enum.map(fn call ->
-      EffectCall.new(effect: Effects.classify(call), call: IRHelpers.call_name(call))
+      EffectCall.new(effect: Effects.classify(call, plugins), call: IRHelpers.call_name(call))
     end)
     |> Enum.uniq_by(& &1.call)
     |> Enum.sort_by(& &1.effect)

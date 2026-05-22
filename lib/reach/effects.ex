@@ -118,37 +118,41 @@ defmodule Reach.Effects do
     :comprehension
   ]
 
-  @spec classify(Node.t()) :: effect()
-  def classify(%Node{type: type}) when type in @pure_node_types, do: :pure
+  @spec classify(Node.t(), [module()] | nil) :: effect()
+  def classify(node, plugins \\ nil)
 
-  def classify(%Node{type: :receive}), do: :receive
+  def classify(%Node{type: type}, _plugins) when type in @pure_node_types, do: :pure
 
-  def classify(%Node{type: :call, meta: %{kind: :field_access}}), do: :pure
+  def classify(%Node{type: :receive}, _plugins), do: :receive
 
-  def classify(%Node{type: :call, meta: %{kind: :local, function: fun}})
+  def classify(%Node{type: :call, meta: %{kind: :field_access}}, _plugins), do: :pure
+
+  def classify(%Node{type: :call, meta: %{kind: :local, function: fun}}, _plugins)
       when fun in @compile_time_ops,
       do: :pure
 
-  def classify(%Node{type: :call} = node) do
-    case classify_call(node.meta[:module], node.meta[:function], node.meta[:arity]) do
-      :unknown -> Reach.Plugin.classify_effect(cached_plugins(), node) || :unknown
+  def classify(%Node{type: :call} = node, plugins) do
+    plugins = resolve_plugins(plugins)
+
+    case classify_call(node.meta[:module], node.meta[:function], node.meta[:arity], plugins) do
+      :unknown -> Reach.Plugin.classify_effect(plugins, node) || :unknown
       effect -> effect
     end
   end
 
-  def classify(_node), do: :unknown
+  def classify(_node, _plugins), do: :unknown
 
   @doc """
   Returns true if the node is pure (no side effects).
   """
-  @spec pure?(Node.t()) :: boolean()
-  def pure?(node), do: classify(node) == :pure
+  @spec pure?(Node.t(), [module()] | nil) :: boolean()
+  def pure?(node, plugins \\ nil), do: classify(node, plugins) == :pure
 
   @doc """
   Returns true if the node has the given effect.
   """
-  @spec effectful?(Node.t(), effect()) :: boolean()
-  def effectful?(node, effect), do: classify(node) == effect
+  @spec effectful?(Node.t(), effect(), [module()] | nil) :: boolean()
+  def effectful?(node, effect, plugins \\ nil), do: classify(node, plugins) == effect
 
   @doc """
   Returns true if two effects conflict (reordering may change behavior).
@@ -175,8 +179,9 @@ defmodule Reach.Effects do
   of its callees. Iterates until no new classifications are found (fixed-point).
   Results are cached in the ETS classify cache.
   """
-  @spec infer_local_effects(%{Reach.IR.Node.id() => Reach.IR.Node.t()}) :: :ok
-  def infer_local_effects(node_map) do
+  @spec infer_local_effects(%{Reach.IR.Node.id() => Reach.IR.Node.t()}, [module()] | nil) :: :ok
+  def infer_local_effects(node_map, plugins \\ nil) do
+    plugins = resolve_plugins(plugins)
     ensure_cache()
 
     all_nodes = Map.values(node_map)
@@ -197,7 +202,7 @@ defmodule Reach.Effects do
         {{f.meta[:module], f.meta[:name], f.meta[:arity]}, calls}
       end)
 
-    do_infer(func_calls, module_map, 0)
+    do_infer(func_calls, module_map, plugins, 0)
   end
 
   defp build_module_func_map(all_nodes) do
@@ -240,56 +245,59 @@ defmodule Reach.Effects do
 
   defp collect_calls(_), do: []
 
-  defp do_infer(func_calls, module_map, prev_classified) do
+  defp do_infer(func_calls, module_map, plugins, prev_classified) do
     newly_classified =
-      Enum.count(func_calls, &try_infer_function(&1, module_map))
+      Enum.count(func_calls, &try_infer_function(&1, module_map, plugins))
 
     if newly_classified > 0 and newly_classified != prev_classified do
-      do_infer(func_calls, module_map, newly_classified)
+      do_infer(func_calls, module_map, plugins, newly_classified)
     else
       :ok
     end
   end
 
-  defp try_infer_function({key, calls}, module_map) do
-    if lookup_cache(key) != :miss do
+  defp try_infer_function({key, calls}, module_map, plugins) do
+    if lookup_local_cache(key, plugins) != :miss do
       false
     else
       effects =
         calls
-        |> Enum.map(&classify/1)
+        |> Enum.map(&classify(&1, plugins))
         |> Enum.uniq()
         |> Enum.reject(&(&1 == :pure))
 
-      infer_from_effects(key, effects, module_map)
+      infer_from_effects(key, effects, module_map, plugins)
     end
   end
 
-  defp infer_from_effects(key, [], module_map) do
-    cache_with_modules(key, :pure, module_map)
+  defp infer_from_effects(key, [], module_map, plugins) do
+    cache_with_modules(key, :pure, module_map, plugins)
     true
   end
 
-  defp infer_from_effects(key, effects, module_map) do
+  defp infer_from_effects(key, effects, module_map, plugins) do
     if :unknown in effects do
       false
     else
-      cache_with_modules(key, merge_effects(effects), module_map)
+      cache_with_modules(key, merge_effects(effects), module_map, plugins)
       true
     end
   end
 
-  defp cache_with_modules({nil, name, arity} = key, effect, module_map) do
-    put_cache(key, effect)
+  defp cache_with_modules({nil, name, arity} = key, effect, module_map, plugins) do
+    put_local_cache(key, effect, plugins)
 
     case Map.get(module_map, key) do
-      nil -> :ok
-      modules -> Enum.each(modules, fn mod -> put_cache({mod, name, arity}, effect) end)
+      nil ->
+        :ok
+
+      modules ->
+        Enum.each(modules, fn mod -> put_local_cache({mod, name, arity}, effect, plugins) end)
     end
   end
 
-  defp cache_with_modules(key, effect, _module_map) do
-    put_cache(key, effect)
+  defp cache_with_modules(key, effect, _module_map, plugins) do
+    put_local_cache(key, effect, plugins)
   end
 
   defp merge_effects(effects) do
@@ -468,38 +476,38 @@ defmodule Reach.Effects do
     ArgumentError -> :ok
   end
 
-  defp classify_call(nil, function, arity) do
-    cond do
-      function in @pure_kernel_functions ->
-        :pure
+  defp classify_call(nil, function, _arity, _plugins) when function in @pure_kernel_functions,
+    do: :pure
 
-      function in [:raise, :throw, :exit] ->
-        :exception
+  defp classify_call(nil, function, _arity, _plugins) when function in [:raise, :throw, :exit],
+    do: :exception
 
-      function in [:send] ->
-        :send
+  defp classify_call(nil, :send, _arity, _plugins), do: :send
 
-      true ->
-        case lookup_cache({nil, function, arity}) do
-          {:ok, result} -> result
-          :miss -> :unknown
-        end
-    end
-  end
+  defp classify_call(Kernel, function, _arity, _plugins) when function in @pure_kernel_functions,
+    do: :pure
 
-  defp classify_call(Kernel, function, _arity) do
-    cond do
-      function in @pure_kernel_functions -> :pure
-      function in [:raise, :throw, :exit] -> :exception
-      function in [:send] -> :send
-      true -> :unknown
-    end
-  end
+  defp classify_call(Kernel, function, _arity, _plugins) when function in [:raise, :throw, :exit],
+    do: :exception
+
+  defp classify_call(Kernel, :send, _arity, _plugins), do: :send
 
   # Shared ETS cache — survives across Task.async_stream workers.
   # Assumes no hot code reloads (CLI tool, not a server).
-  defp classify_call(module, function, arity) do
+  defp classify_call(module, function, arity, plugins) do
     key = {module, function, arity}
+
+    case lookup_local_cache(key, plugins) do
+      {:ok, result} ->
+        result
+
+      :miss ->
+        classify_builtin_call(module, function, arity)
+    end
+  end
+
+  defp classify_builtin_call(module, function, arity) do
+    key = {:builtin, module, function, arity}
 
     case lookup_cache(key) do
       {:ok, result} ->
@@ -513,16 +521,32 @@ defmodule Reach.Effects do
     end
   end
 
-  defp cached_plugins do
+  defp resolve_plugins(nil) do
     case :persistent_term.get(:reach_effect_plugins, nil) do
-      nil ->
-        plugins = Reach.Plugin.detect()
-        :persistent_term.put(:reach_effect_plugins, plugins)
-        plugins
-
-      plugins ->
-        plugins
+      nil -> Reach.Plugin.detect()
+      plugins -> plugins
     end
+  end
+
+  defp resolve_plugins(plugins) when is_list(plugins), do: plugins
+
+  defp lookup_local_cache(key, plugins) do
+    lookup_cache(local_cache_key(key, plugins))
+  end
+
+  defp put_local_cache(key, result, plugins) do
+    put_cache(local_cache_key(key, plugins), result)
+  end
+
+  defp local_cache_key({module, function, arity}, plugins) do
+    {:local, plugin_fingerprint(plugins), module, function, arity}
+  end
+
+  defp plugin_fingerprint(plugins) do
+    plugins
+    |> Enum.map(&inspect/1)
+    |> Enum.sort()
+    |> List.to_tuple()
   end
 
   defp lookup_cache(key) do

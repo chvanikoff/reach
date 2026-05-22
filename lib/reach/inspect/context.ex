@@ -16,7 +16,7 @@ defmodule Reach.Inspect.Context do
     %{
       target: mfa,
       location: location(func),
-      effects: effects(func),
+      effects: effects(func, project.plugins),
       deps: %{
         callers: direct_callers,
         callees: Query.callees(project, mfa, depth)
@@ -34,10 +34,10 @@ defmodule Reach.Inspect.Context do
     %{file: span[:file], line: span[:start_line]}
   end
 
-  def effects(func) do
+  def effects(func, plugins \\ nil) do
     func
     |> IR.all_nodes()
-    |> Enum.map(&Effects.classify/1)
+    |> Enum.map(&Effects.classify(&1, plugins))
     |> Enum.uniq()
     |> Enum.sort()
     |> Enum.map(&to_string/1)

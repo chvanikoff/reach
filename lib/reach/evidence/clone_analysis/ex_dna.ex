@@ -77,8 +77,8 @@ defmodule Reach.Evidence.CloneAnalysis.ExDNA do
       module: module,
       function: function && function.meta[:name],
       arity: function && function.meta[:arity],
-      effects: function_effects(function),
-      effect_sequence: effect_sequence(function),
+      effects: function_effects(function, project.plugins),
+      effect_sequence: effect_sequence(function, project.plugins),
       calls: calls(function),
       return_shapes: return_shapes(function),
       map_accesses: map_accesses(function),
@@ -107,23 +107,23 @@ defmodule Reach.Evidence.CloneAnalysis.ExDNA do
   defp file_matches?(left, right),
     do: left == right or Path.expand(left || "") == Path.expand(right || "")
 
-  defp function_effects(nil), do: []
+  defp function_effects(nil, _plugins), do: []
 
-  defp function_effects(function) do
+  defp function_effects(function, plugins) do
     function
     |> IR.all_nodes()
-    |> Enum.map(&node_effect/1)
+    |> Enum.map(&node_effect(&1, plugins))
     |> Enum.uniq()
     |> Enum.sort()
   end
 
-  defp effect_sequence(nil), do: []
+  defp effect_sequence(nil, _plugins), do: []
 
-  defp effect_sequence(function) do
+  defp effect_sequence(function, plugins) do
     function
     |> IR.all_nodes()
     |> Enum.filter(&(&1.type == :call))
-    |> Enum.map(fn node -> {node_effect(node), call_signature(node)} end)
+    |> Enum.map(fn node -> {node_effect(node, plugins), call_signature(node)} end)
     |> Enum.reject(fn {effect, _call} -> effect in [:pure, :unknown] end)
   end
 
@@ -165,7 +165,7 @@ defmodule Reach.Evidence.CloneAnalysis.ExDNA do
     |> Enum.filter(&validation_call?/1)
   end
 
-  defp node_effect(node), do: Effects.classify(node)
+  defp node_effect(node, plugins), do: Effects.classify(node, plugins)
 
   defp call_signature(%{meta: meta}) do
     {Map.get(meta, :module), Map.get(meta, :function), Map.get(meta, :arity)}

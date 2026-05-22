@@ -103,15 +103,16 @@ defmodule Reach.Check.Architecture do
     Regex.match?(~r/^#{pattern_regex}$/, value)
   end
 
-  def function_effects(func) do
+  def function_effects(func, plugins \\ nil) do
     func
     |> IR.all_nodes()
-    |> Enum.map(&Effects.classify/1)
+    |> Enum.map(&Effects.classify(&1, plugins))
     |> Enum.uniq()
     |> Enum.sort()
   end
 
-  def concrete_effects(func), do: function_effects(func) -- [:pure, :unknown, :exception]
+  def concrete_effects(func, plugins \\ nil),
+    do: function_effects(func, plugins) -- [:pure, :unknown, :exception]
 
   defp source_policy_violations(project, config) do
     config = Config.normalize(config)
@@ -357,16 +358,16 @@ defmodule Reach.Check.Architecture do
     module_by_file = module_by_file(project)
 
     for({_id, node} <- project.nodes, node.type == :function_def, do: node)
-    |> Enum.flat_map(&effect_policy_violation(&1, config, module_by_file))
+    |> Enum.flat_map(&effect_policy_violation(&1, config, module_by_file, project.plugins))
   end
 
-  defp effect_policy_violation(func, config, module_by_file) do
+  defp effect_policy_violation(func, config, module_by_file, plugins) do
     module =
       func.meta[:module] || (func.source_span && Map.get(module_by_file, func.source_span.file))
 
     with allowed when not is_nil(allowed) <- allowed_effects_for(module, config),
          false <- allowed == :any,
-         effects <- function_effects(func),
+         effects <- function_effects(func, plugins),
          disallowed when disallowed != [] <- effects -- allowed do
       [
         Violation.new(

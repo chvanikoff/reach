@@ -15,6 +15,7 @@
 - **Macro-aware dead-code filtering** — dead-code checks now use high-confidence macro facts to avoid reporting framework DSL declarations such as Phoenix `attr`, `slot`, router scopes, and routes as unused results.
 - **Macro-aware behaviour candidates** — behaviour-candidate checks now use macro facts that explain framework callback surfaces, including local `use MyAppWeb, :live_view` and `:live_component` macro aliases, suppressing LiveView-style callback groups without hardcoded framework allowlists in the generic smell.
 - **Explicit CLI plugins for path scans** — `mix reach.check` now accepts repeatable `--plugin` values such as `--plugin Phoenix --plugin Ecto`, improving macro facts and plugin smells when analyzing source paths outside the target Mix project.
+- **Project-scoped effect classification** — effect inference and effect-based summaries now use the project/plugin configuration instead of reusing unscoped local-function cache entries across plugin sets.
 - **Macro fact scanner project scope** — `scripts/macro_fact_scan.exs` now scans explicit files and `lib`/`test` directories at project scope so local macro aliases are resolved during real-project scans.
 
 ## 2.6.1

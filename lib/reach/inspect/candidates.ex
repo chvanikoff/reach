@@ -12,7 +12,10 @@ defmodule Reach.Inspect.Candidates do
 
   def find(project, mfa, func, candidate_config \\ %Config.Candidates{}) do
     candidate_config = Config.normalize(%Config{candidates: candidate_config}).candidates
-    non_pure_effects = function_effect_atoms(func) -- [:pure, :unknown, :exception]
+
+    non_pure_effects =
+      function_effect_atoms(func, project.plugins) -- [:pure, :unknown, :exception]
+
     callers = Query.callers(project, mfa, 1)
     branch_count = branch_count(func)
 
@@ -99,10 +102,10 @@ defmodule Reach.Inspect.Candidates do
     )
   end
 
-  defp function_effect_atoms(func) do
+  defp function_effect_atoms(func, plugins) do
     func
     |> IR.all_nodes()
-    |> Enum.map(&Effects.classify/1)
+    |> Enum.map(&Effects.classify(&1, plugins))
     |> Enum.uniq()
     |> Enum.sort()
   end

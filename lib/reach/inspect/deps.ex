@@ -16,6 +16,7 @@ defmodule Reach.Inspect.Deps do
 
   defp find_shared_state(project, target) do
     nodes = project.nodes
+    plugins = project.plugins
     {_mod, fun, arity} = target
 
     all_func_defs = Map.values(nodes)
@@ -27,7 +28,9 @@ defmodule Reach.Inspect.Deps do
           n.meta[:name] == fun and n.meta[:arity] == arity
       end)
       |> Enum.flat_map(&Reach.IR.all_nodes/1)
-      |> Enum.filter(fn n -> n.type == :call and Reach.Effects.classify(n) in [:write, :read] end)
+      |> Enum.filter(fn n ->
+        n.type == :call and Reach.Effects.classify(n, plugins) in [:write, :read]
+      end)
       |> Enum.map(& &1.meta[:function])
 
     all_func_defs
@@ -36,7 +39,7 @@ defmodule Reach.Inspect.Deps do
         n
         |> Reach.IR.all_nodes()
         |> Enum.any?(fn c ->
-          c.type == :call and Reach.Effects.classify(c) == :write and
+          c.type == :call and Reach.Effects.classify(c, plugins) == :write and
             c.meta[:function] in target_calls
         end)
     end)
