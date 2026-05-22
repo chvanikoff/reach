@@ -42,14 +42,20 @@ defmodule Reach.Project do
   """
   @spec from_sources([Path.t()], keyword()) :: t()
   def from_sources(paths, opts \\ []) do
-    opts = Keyword.put_new(opts, :paths, paths)
+    opts =
+      opts
+      |> Keyword.put_new(:paths, paths)
+      |> resolve_plugins_once()
 
-    module_sdgs =
-      paths
-      |> parse_files(opts)
+    parsed_modules = parse_files(paths, opts)
+
+    if Keyword.get(opts, :source_only, false) do
+      source_project(parsed_modules, opts)
+    else
+      parsed_modules
       |> build_module_sdgs(opts)
-
-    merge_project(module_sdgs, opts)
+      |> merge_project(opts)
+    end
   end
 
   @doc """
@@ -73,11 +79,17 @@ defmodule Reach.Project do
   def from_mix_project(opts \\ []) do
     plugins = Reach.Plugin.resolve(opts)
 
+    opts = Keyword.put(opts, :plugins, plugins)
+
     source_roots()
     |> Enum.flat_map(&source_files(&1, plugins))
     |> Enum.uniq()
     |> Enum.sort()
     |> from_sources(opts)
+  end
+
+  defp resolve_plugins_once(opts) do
+    Keyword.put(opts, :plugins, Reach.Plugin.resolve(opts))
   end
 
   defp source_roots do
@@ -279,6 +291,35 @@ defmodule Reach.Project do
     else
       Frontend.parse_file(path, opts)
     end
+  end
+
+  defp source_project(parsed_modules, opts) do
+    plugins = Reach.Plugin.resolve(opts)
+
+    modules =
+      Map.new(parsed_modules, fn {module_name, _path, ir_nodes} ->
+        nodes = node_map(ir_nodes)
+        {module_name, %{nodes: nodes}}
+      end)
+
+    nodes =
+      parsed_modules
+      |> Enum.flat_map(fn {_module_name, _path, ir_nodes} -> IR.all_nodes(ir_nodes) end)
+      |> Map.new(&{&1.id, &1})
+
+    %__MODULE__{
+      modules: modules,
+      graph: Graph.new(type: :directed),
+      nodes: nodes,
+      call_graph: Graph.new(type: :directed),
+      plugins: plugins
+    }
+  end
+
+  defp node_map(ir_nodes) do
+    ir_nodes
+    |> IR.all_nodes()
+    |> Map.new(&{&1.id, &1})
   end
 
   defp build_module_sdgs(parsed_modules, opts) do

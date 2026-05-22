@@ -100,7 +100,9 @@ defmodule Reach.CLI.Commands.Check do
     result =
       case Architecture.config_violations(config) do
         [] ->
-          project = opts[:project] || Project.load(quiet: opts[:format] == "json")
+          project =
+            opts[:project] || Project.load(quiet: opts[:format] == "json", source_only: true)
+
           Architecture.run(project, config)
 
         violations ->

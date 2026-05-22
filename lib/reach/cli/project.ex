@@ -16,13 +16,13 @@ defmodule Reach.CLI.Project do
         nil ->
           set_display_root(File.cwd!())
           unless quiet?, do: Mix.shell().info("Analyzing project...")
-          Reach.Project.from_mix_project(plugin_opts(opts))
+          Reach.Project.from_mix_project(project_opts(opts))
 
         paths ->
           set_display_root(display_root_for_paths(paths))
           paths = expand_paths(paths)
           unless quiet?, do: Mix.shell().info("Analyzing #{length(paths)} file(s)...")
-          Reach.Project.from_sources(paths, plugin_opts(opts))
+          Reach.Project.from_sources(paths, project_opts(opts))
       end
 
     Query.reset_cache()
@@ -116,7 +116,7 @@ defmodule Reach.CLI.Project do
         do: file
   end
 
-  defp plugin_opts(opts), do: Keyword.take(opts, [:plugins])
+  defp project_opts(opts), do: Keyword.take(opts, [:plugins, :source_only])
 
   def compile(quiet? \\ false)
 
