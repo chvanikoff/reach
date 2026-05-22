@@ -72,6 +72,20 @@ A good smell starts conservative. Prefer a small high-confidence rule over a bro
 
 Use `scripts/smell_corpus_scan.exs` for real-world signal checks. The script supports individual smell runs via `--kinds`.
 
+For broad validation we use a local **Hex playground**: a directory of unpacked Hex packages, usually checked out next to Reach as `../hex-playground`. Reach expects package sources under `../hex-playground/sources/<package-version>/`.
+
+Create it with the companion corpus repository:
+
+```bash
+cd ..
+git clone https://github.com/elixir-vibe/hex-playground.git
+cd hex-playground
+mix deps.get
+mix run scripts/fetch.exs
+```
+
+If the fetch script name changes, check the playground README and use whichever command populates `sources/` with unpacked Hex packages. You can also point scans at any directory with the same shape by writing its package directories to a repos file.
+
 Create a repo list from a local Hex playground checkout:
 
 ```bash
