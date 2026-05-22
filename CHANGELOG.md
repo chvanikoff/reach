@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.6.1
+
 ### Changed
 
 - **Check text rendering** — normalized `mix reach.check` text section spacing through shared check rendering helpers and architecture policy guards.
