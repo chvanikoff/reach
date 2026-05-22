@@ -106,6 +106,8 @@ defmodule Reach.Plugin do
   @callback evidence_providers() :: [module()]
   @callback refine_evidence(evidence :: struct() | map(), context :: map()) ::
               struct() | map() | :unchanged
+  @callback refine_macro_fact(fact :: Reach.MacroFact.t(), context :: map()) ::
+              Reach.MacroFact.t() | map() | :unchanged
   @callback trace_pattern(pattern :: String.t()) :: (Node.t() -> boolean()) | nil
   @callback behaviour_label(callbacks :: [atom()]) :: String.t() | nil
   @callback ignore_call_edge?(Graph.Edge.t()) :: boolean()
@@ -120,6 +122,7 @@ defmodule Reach.Plugin do
                       smell_checks: 0,
                       evidence_providers: 0,
                       refine_evidence: 2,
+                      refine_macro_fact: 2,
                       trace_pattern: 1,
                       behaviour_label: 1,
                       ignore_call_edge?: 1
@@ -282,6 +285,17 @@ defmodule Reach.Plugin do
 
   defp same_struct?(%module{}, %module{}), do: true
   defp same_struct?(_evidence, _updates), do: false
+
+  @doc "Lets plugins annotate source-first macro/DSL facts without owning generic policy."
+  def refine_macro_fact(plugins, fact, context \\ %{}) do
+    Enum.reduce(plugins, fact, fn plugin, fact ->
+      if exports?(plugin, :refine_macro_fact, 2) do
+        apply_evidence_refinement(fact, plugin.refine_macro_fact(fact, context))
+      else
+        fact
+      end
+    end)
+  end
 
   @doc "Compiles a framework-specific trace pattern, if a plugin recognizes it."
   def trace_pattern(plugins, pattern) do

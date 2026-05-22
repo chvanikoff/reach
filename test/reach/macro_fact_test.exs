@@ -37,6 +37,25 @@ defmodule Reach.MacroFactTest do
              Enum.at(facts, 5)
   end
 
+  test "lets plugins refine Phoenix declaration facts" do
+    source = ~S'''
+    defmodule MyAppWeb.PageComponent do
+      use Phoenix.Component
+
+      attr :title, :string
+      slot :inner_block
+    end
+    '''
+
+    assert {:ok, facts} = MacroFact.collect_source(source, plugins: [Reach.Plugins.Phoenix])
+
+    assert [
+             %MacroFact{kind: :phoenix_component_use, framework: :phoenix, confidence: :high},
+             %MacroFact{kind: :phoenix_component_attr, framework: :phoenix, confidence: :high},
+             %MacroFact{kind: :phoenix_component_slot, framework: :phoenix, confidence: :high}
+           ] = facts
+  end
+
   test "collects Ash-style declarations without descending into function bodies" do
     source = ~S'''
     defmodule MyApp.Blog.Post do
@@ -78,6 +97,57 @@ defmodule Reach.MacroFactTest do
 
     refute :ordinary_call in names
     assert %MacroFact{name: :accept, nesting: [:actions, :create]} = List.last(facts)
+  end
+
+  test "lets plugins refine Ash declaration facts" do
+    source = ~S'''
+    defmodule MyApp.Blog.Post do
+      use Ash.Resource
+
+      attributes do
+        uuid_primary_key :id
+        attribute :title, :string
+      end
+
+      actions do
+        create :publish do
+          accept [:title]
+        end
+      end
+    end
+    '''
+
+    assert {:ok, facts} = MacroFact.collect_source(source, plugins: [Reach.Plugins.Ash])
+
+    assert Enum.map(facts, & &1.kind) == [
+             :ash_resource_use,
+             :macro_dsl_declaration,
+             :ash_attribute,
+             :ash_attribute,
+             :ash_actions,
+             :ash_action,
+             :ash_resource_dsl
+           ]
+  end
+
+  test "lets plugins refine Ecto declaration facts" do
+    source = ~S'''
+    defmodule MyApp.User do
+      use Ecto.Schema
+
+      schema "users" do
+        field :email, :string
+      end
+    end
+    '''
+
+    assert {:ok, facts} = MacroFact.collect_source(source, plugins: [Reach.Plugins.Ecto])
+
+    assert [
+             %MacroFact{kind: :ecto_schema_use, framework: :ecto},
+             %MacroFact{kind: :ecto_schema, framework: :ecto},
+             %MacroFact{kind: :ecto_schema_field, framework: :ecto}
+           ] = facts
   end
 
   test "keeps dynamic module names as nil instead of crashing" do

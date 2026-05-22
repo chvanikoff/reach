@@ -4,6 +4,7 @@ defmodule Reach.Plugins.Ash do
 
   alias Reach.IR
   alias Reach.IR.Node
+  alias Reach.MacroFact
 
   # --- Ash core CRUD (write) ---
 
@@ -211,6 +212,8 @@ defmodule Reach.Plugins.Ash do
 
   @ash_phoenix_form_write [:submit, :submit!]
 
+  @ash_action_dsl [:actions, :read, :create, :update, :destroy, :action]
+
   # --- AshStateMachine DSL (compile-time) ---
 
   @state_machine_dsl [
@@ -225,6 +228,45 @@ defmodule Reach.Plugins.Ash do
   # --- Ash.Notifier ---
 
   @notifier_fns [:notify]
+
+  # ============================================================
+  # refine_macro_fact
+  # ============================================================
+
+  @impl true
+  def refine_macro_fact(%MacroFact{name: :use, target: module} = fact, _context)
+      when module in [Ash.Resource, Ash.Domain, Ash.Policy.Authorizer] do
+    %{fact | framework: :ash, kind: ash_use_kind(module), confidence: :high}
+  end
+
+  def refine_macro_fact(%MacroFact{name: name} = fact, _context)
+      when name in @resource_dsl or name in @ash_action_dsl do
+    %{fact | framework: :ash, kind: ash_resource_kind(name), confidence: :high}
+  end
+
+  def refine_macro_fact(%MacroFact{name: name} = fact, _context)
+      when name in @state_machine_dsl do
+    %{fact | framework: :ash, kind: :ash_state_machine_dsl, confidence: :high}
+  end
+
+  def refine_macro_fact(_fact, _context), do: :unchanged
+
+  defp ash_use_kind(Ash.Resource), do: :ash_resource_use
+  defp ash_use_kind(Ash.Domain), do: :ash_domain_use
+  defp ash_use_kind(Ash.Policy.Authorizer), do: :ash_policy_authorizer_use
+
+  defp ash_resource_kind(name) when name in [:code_interface, :define, :define_calculation],
+    do: :ash_code_interface
+
+  defp ash_resource_kind(:actions), do: :ash_actions
+
+  defp ash_resource_kind(name) when name in [:create, :read, :update, :destroy, :action],
+    do: :ash_action
+
+  defp ash_resource_kind(name) when name in [:attribute, :uuid_primary_key, :integer_primary_key],
+    do: :ash_attribute
+
+  defp ash_resource_kind(_name), do: :ash_resource_dsl
 
   # ============================================================
   # classify_effect

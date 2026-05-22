@@ -4,6 +4,7 @@ defmodule Reach.Plugins.Phoenix do
 
   alias Reach.IR
   alias Reach.IR.Node
+  alias Reach.MacroFact
 
   import Reach.Plugins.Helpers, only: [find_vars_in: 1]
 
@@ -65,7 +66,55 @@ defmodule Reach.Plugins.Phoenix do
     :forward
   ]
 
+  @route_dsl [
+    :get,
+    :post,
+    :put,
+    :delete,
+    :patch,
+    :options,
+    :connect,
+    :trace,
+    :resources,
+    :forward,
+    :live
+  ]
+  @router_scope_dsl [:scope, :pipeline, :pipe_through, :plug]
+  @component_dsl [:attr, :slot, :embed_templates]
+  @use_modules [Phoenix.Router, Phoenix.Component, Phoenix.LiveView]
+
   @pure_remote_modules [Phoenix.Component, Phoenix.LiveView, Phoenix.Controller, Plug.Conn]
+
+  @impl true
+  def refine_macro_fact(%MacroFact{name: :use, target: module} = fact, _context)
+      when module in @use_modules do
+    %{fact | framework: :phoenix, kind: phoenix_use_kind(module), confidence: :high}
+  end
+
+  def refine_macro_fact(%MacroFact{name: name, call_module: nil} = fact, _context)
+      when name in @component_dsl do
+    %{fact | framework: :phoenix, kind: phoenix_component_kind(name), confidence: :high}
+  end
+
+  def refine_macro_fact(%MacroFact{name: name, call_module: nil} = fact, _context)
+      when name in @route_dsl do
+    %{fact | framework: :phoenix, kind: :phoenix_route, confidence: :high}
+  end
+
+  def refine_macro_fact(%MacroFact{name: name, call_module: nil} = fact, _context)
+      when name in @router_scope_dsl do
+    %{fact | framework: :phoenix, kind: :phoenix_router_dsl, confidence: :high}
+  end
+
+  def refine_macro_fact(_fact, _context), do: :unchanged
+
+  defp phoenix_use_kind(Phoenix.Router), do: :phoenix_router_use
+  defp phoenix_use_kind(Phoenix.Component), do: :phoenix_component_use
+  defp phoenix_use_kind(Phoenix.LiveView), do: :phoenix_live_view_use
+
+  defp phoenix_component_kind(:attr), do: :phoenix_component_attr
+  defp phoenix_component_kind(:slot), do: :phoenix_component_slot
+  defp phoenix_component_kind(:embed_templates), do: :phoenix_embed_templates
 
   @impl true
   def classify_effect(%Node{type: :call, meta: %{kind: :local, function: fun}})

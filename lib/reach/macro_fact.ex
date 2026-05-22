@@ -45,10 +45,13 @@ defmodule Reach.MacroFact do
   @spec collect_ast(Macro.t(), keyword()) :: [t()]
   def collect_ast(ast, opts \\ []) do
     file = Keyword.get(opts, :file)
+    plugins = Keyword.get(opts, :plugins, [])
+    context = Keyword.get(opts, :context, %{})
 
     ast
     |> Reach.AST.modules_in_file()
     |> Enum.flat_map(&collect_module(&1, file))
+    |> refine_facts(plugins, Map.put_new(context, :file, file))
   end
 
   @doc "Parses and collects macro/DSL facts from an Elixir source string."
@@ -73,6 +76,12 @@ defmodule Reach.MacroFact do
     with {:ok, source} <- File.read(path) do
       collect_source(source, file: path)
     end
+  end
+
+  defp refine_facts(facts, [], _context), do: facts
+
+  defp refine_facts(facts, plugins, context) do
+    Enum.map(facts, &Reach.Plugin.refine_macro_fact(plugins, &1, context))
   end
 
   defp collect_module({:defmodule, _meta, [module_ast, body]}, file) do

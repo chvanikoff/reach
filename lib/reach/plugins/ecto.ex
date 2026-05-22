@@ -4,6 +4,7 @@ defmodule Reach.Plugins.Ecto do
 
   alias Reach.IR
   alias Reach.IR.Node
+  alias Reach.MacroFact
 
   import Reach.Plugins.Helpers, only: [find_vars_in: 1]
 
@@ -169,6 +170,30 @@ defmodule Reach.Plugins.Ecto do
     :constraint,
     :execute
   ]
+
+  @impl true
+  def refine_macro_fact(%MacroFact{name: :use, target: module} = fact, _context)
+      when module in [Ecto.Schema, Ecto.Migration] do
+    %{fact | framework: :ecto, kind: ecto_use_kind(module), confidence: :high}
+  end
+
+  def refine_macro_fact(%MacroFact{name: name, call_module: nil} = fact, _context)
+      when name in @schema_fns do
+    %{fact | framework: :ecto, kind: ecto_schema_kind(name), confidence: :high}
+  end
+
+  def refine_macro_fact(%MacroFact{name: name, call_module: nil} = fact, _context)
+      when name in @migration_dsl do
+    %{fact | framework: :ecto, kind: :ecto_migration_dsl, confidence: :high}
+  end
+
+  def refine_macro_fact(_fact, _context), do: :unchanged
+
+  defp ecto_use_kind(Ecto.Schema), do: :ecto_schema_use
+  defp ecto_use_kind(Ecto.Migration), do: :ecto_migration_use
+
+  defp ecto_schema_kind(name) when name in [:schema, :embedded_schema], do: :ecto_schema
+  defp ecto_schema_kind(_name), do: :ecto_schema_field
 
   @impl true
   def trace_pattern(pattern) when pattern in ["Repo", "Repo.query"] do
