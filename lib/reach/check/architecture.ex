@@ -1,6 +1,15 @@
 defmodule Reach.Check.Architecture do
   @moduledoc "Validates `.reach.exs` architecture policies against project structure."
 
+  defmodule Result do
+    @moduledoc false
+    defstruct config: ".reach.exs",
+              status: "ok",
+              violations: [],
+              finding_count: 0,
+              baseline_count: 0
+  end
+
   alias Reach.Check.Violation
   alias Reach.Config
   alias Reach.Effects
@@ -13,11 +22,7 @@ defmodule Reach.Check.Architecture do
         {:error, errors} -> Enum.map(errors, &Config.Error.to_violation/1)
       end
 
-    %{
-      config: ".reach.exs",
-      status: if(violations == [], do: "ok", else: "failed"),
-      violations: violations
-    }
+    %Result{status: if(violations == [], do: "ok", else: "failed"), violations: violations}
   end
 
   def violations(project, config) do

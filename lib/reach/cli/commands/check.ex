@@ -26,6 +26,7 @@ defmodule Reach.CLI.Commands.Check do
   """
 
   alias Reach.Check.Architecture
+  alias Reach.Check.Architecture.Result, as: ArchitectureResult
   alias Reach.Check.Baseline
   alias Reach.Check.Candidates
   alias Reach.Check.Changed
@@ -97,7 +98,7 @@ defmodule Reach.CLI.Commands.Check do
           Architecture.run(project, config)
 
         violations ->
-          %{config: ".reach.exs", status: "failed", violations: violations}
+          %ArchitectureResult{status: "failed", violations: violations}
       end
 
     config = Config.normalize(config)
@@ -109,10 +110,15 @@ defmodule Reach.CLI.Commands.Check do
     end
 
     {new_findings, baseline_findings} = Baseline.filter(findings, Baseline.path(opts, config))
-    result = %{result | violations: filter_violations(result.violations, new_findings)}
+    violations = filter_violations(result.violations, new_findings)
 
-    result =
-      Map.merge(result, %{finding_count: finding_count, baseline_count: length(baseline_findings)})
+    result = %{
+      result
+      | violations: violations,
+        status: if(violations == [], do: "ok", else: "failed"),
+        finding_count: finding_count,
+        baseline_count: length(baseline_findings)
+    }
 
     CheckRender.render_result(result, opts[:format], &CheckRender.render_arch_text/1)
 

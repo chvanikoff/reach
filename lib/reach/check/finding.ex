@@ -49,11 +49,38 @@ defmodule Reach.Check.Finding do
 
   defp location_parts(_location), do: {nil, nil}
 
-  defp arch_message(data) do
-    data
-    |> Map.drop([:__struct__])
-    |> Jason.encode!()
+  defp arch_message(%{type: :layer_cycle, layers: layers}) when is_list(layers) do
+    "layer cycle: #{Enum.join(closed_cycle(layers), " -> ")}"
   end
+
+  defp arch_message(%{type: :config_error, key: key, message: message}) do
+    "config #{key}: #{message}"
+  end
+
+  defp arch_message(%{type: :forbidden_dependency} = data) do
+    "#{data.caller_layer} -> #{data.callee_layer}: #{data.call}"
+  end
+
+  defp arch_message(%{type: :forbidden_call} = data) do
+    "#{data.caller_module} calls #{data.call}"
+  end
+
+  defp arch_message(%{type: :missing_layer, module: module}) do
+    "missing layer: #{module}"
+  end
+
+  defp arch_message(%{type: :multiple_layers, module: module, matched_layers: layers}) do
+    "matched multiple layers: #{module} (#{Enum.join(List.wrap(layers), ", ")})"
+  end
+
+  defp arch_message(%{type: type, module: module}) when not is_nil(module) do
+    "#{type}: #{module}"
+  end
+
+  defp arch_message(%{type: type}), do: to_string(type)
+
+  defp closed_cycle([]), do: []
+  defp closed_cycle([first | _] = layers), do: layers ++ [first]
 
   defp fingerprint(source, kind, file, line, message) do
     input = [to_string(source), to_string(kind), to_string(file), to_string(line), message]
