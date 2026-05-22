@@ -70,25 +70,3 @@ mix reach.otp MyApp.Worker
 mix reach.otp --concurrency
 mix reach.otp --format json
 ```
-
-## Removed commands
-
-Use the canonical replacements:
-
-| Removed | Use instead |
-|---|---|
-| `mix reach.modules` | `mix reach.map --modules` |
-| `mix reach.coupling` | `mix reach.map --coupling` |
-| `mix reach.hotspots` | `mix reach.map --hotspots` |
-| `mix reach.depth` | `mix reach.map --depth` |
-| `mix reach.effects` | `mix reach.map --effects` |
-| `mix reach.boundaries` | `mix reach.map --boundaries` |
-| `mix reach.xref` | `mix reach.map --data` |
-| `mix reach.deps TARGET` | `mix reach.inspect TARGET --deps` |
-| `mix reach.impact TARGET` | `mix reach.inspect TARGET --impact` |
-| `mix reach.slice TARGET` | `mix reach.trace TARGET` |
-| `mix reach.flow ...` | `mix reach.trace ...` |
-| `mix reach.dead_code` | `mix reach.check --dead-code` |
-| `mix reach.smell` | `mix reach.check --smells` |
-| `mix reach.graph TARGET` | `mix reach.inspect TARGET --graph` |
-| `mix reach.concurrency` | `mix reach.otp --concurrency` |

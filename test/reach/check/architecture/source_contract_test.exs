@@ -3,23 +3,23 @@ defmodule Reach.Check.Architecture.SourceContractTest do
 
   @lib_files Path.wildcard("lib/**/*.ex")
   @domain_files Enum.reject(@lib_files, &String.starts_with?(&1, "lib/reach/cli/"))
-  @removed_tasks %{
-    "lib/mix/tasks/reach.modules.ex" => "reach.map --modules",
-    "lib/mix/tasks/reach.coupling.ex" => "reach.map --coupling",
-    "lib/mix/tasks/reach.hotspots.ex" => "reach.map --hotspots",
-    "lib/mix/tasks/reach.depth.ex" => "reach.map --depth",
-    "lib/mix/tasks/reach.effects.ex" => "reach.map --effects",
-    "lib/mix/tasks/reach.boundaries.ex" => "reach.map --boundaries",
-    "lib/mix/tasks/reach.xref.ex" => "reach.map --data",
-    "lib/mix/tasks/reach.deps.ex" => "reach.inspect TARGET --deps",
-    "lib/mix/tasks/reach.impact.ex" => "reach.inspect TARGET --impact",
-    "lib/mix/tasks/reach.slice.ex" => "reach.trace TARGET",
-    "lib/mix/tasks/reach.flow.ex" => "reach.trace",
-    "lib/mix/tasks/reach.dead_code.ex" => "reach.check --dead-code",
-    "lib/mix/tasks/reach.smell.ex" => "reach.check --smells",
-    "lib/mix/tasks/reach.graph.ex" => "reach.inspect TARGET --graph",
-    "lib/mix/tasks/reach.concurrency.ex" => "reach.otp --concurrency"
-  }
+  @removed_task_files ~w(
+    lib/mix/tasks/reach.modules.ex
+    lib/mix/tasks/reach.coupling.ex
+    lib/mix/tasks/reach.hotspots.ex
+    lib/mix/tasks/reach.depth.ex
+    lib/mix/tasks/reach.effects.ex
+    lib/mix/tasks/reach.boundaries.ex
+    lib/mix/tasks/reach.xref.ex
+    lib/mix/tasks/reach.deps.ex
+    lib/mix/tasks/reach.impact.ex
+    lib/mix/tasks/reach.slice.ex
+    lib/mix/tasks/reach.flow.ex
+    lib/mix/tasks/reach.dead_code.ex
+    lib/mix/tasks/reach.smell.ex
+    lib/mix/tasks/reach.graph.ex
+    lib/mix/tasks/reach.concurrency.ex
+  )
 
   test "forbidden CLI analysis and task runner modules are not reintroduced" do
     refute Enum.any?(@lib_files, &String.starts_with?(&1, "lib/reach/cli/analyses/"))
@@ -50,16 +50,11 @@ defmodule Reach.Check.Architecture.SourceContractTest do
     assert offenders == []
   end
 
-  test "removed Mix tasks stay hard-deprecated and do not delegate" do
-    for {file, guidance} <- @removed_tasks do
-      source = File.read!(file)
+  test "removed Mix tasks are not shipped" do
+    refute File.exists?("lib/reach/cli/deprecation.ex")
 
-      assert source =~ guidance
-      assert source =~ "Mix.raise" or source =~ "Deprecation.warn"
-      refute source =~ "Deprecation.delegated"
-      refute source =~ "Mix.Task.run"
-      refute source =~ ".run(args)"
-      refute source =~ ".run(argv)"
+    for file <- @removed_task_files do
+      refute File.exists?(file)
     end
   end
 
