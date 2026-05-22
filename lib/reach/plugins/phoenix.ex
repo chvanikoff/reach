@@ -159,7 +159,7 @@ defmodule Reach.Plugins.Phoenix do
   defp phoenix_component_kind(:embed_templates), do: :phoenix_embed_templates
 
   defp phoenix_route_target(%MacroFact{name: :live, data: %{args: [_path, live_view | _]}} = fact) do
-    %{live_view: expand_web_module(fact.owner_module, live_view)}
+    %{live_view: expand_web_module_name(fact.owner_module, live_view)}
   end
 
   defp phoenix_route_target(
@@ -168,7 +168,11 @@ defmodule Reach.Plugins.Phoenix do
        when name in [:get, :post, :put, :delete, :patch, :options, :connect, :trace] do
     %{
       route: phoenix_route_method(name),
-      action: {expand_web_module(fact.owner_module, controller), trim_atom(action), 2}
+      action: %{
+        module: expand_web_module_name(fact.owner_module, controller),
+        function: trim_atom(action),
+        arity: 2
+      }
     }
   end
 
@@ -189,7 +193,7 @@ defmodule Reach.Plugins.Phoenix do
 
   defp phoenix_route_method(name), do: name
 
-  defp expand_web_module(owner_module, module_string) do
+  defp expand_web_module_name(owner_module, module_string) do
     module_string = trim_alias(module_string)
 
     cond do
@@ -197,20 +201,20 @@ defmodule Reach.Plugins.Phoenix do
         nil
 
       String.starts_with?(module_string, "Elixir.") ->
-        Module.concat([module_string])
+        String.trim_leading(module_string, "Elixir.")
 
       owner_module_base(owner_module) ->
-        Module.concat([owner_module_base(owner_module), module_string])
+        Enum.join([owner_module_base(owner_module), module_string], ".")
 
       true ->
-        Module.concat([module_string])
+        module_string
     end
   end
 
   defp owner_module_base(module) when is_atom(module) do
     case module |> Module.split() |> Enum.drop(-1) do
       [] -> nil
-      parts -> Module.concat(parts)
+      parts -> Enum.join(parts, ".")
     end
   end
 

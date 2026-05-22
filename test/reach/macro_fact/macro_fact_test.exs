@@ -75,15 +75,40 @@ defmodule Reach.MacroFactTest do
 
     assert %MacroFact{
              kind: :phoenix_route,
-             target: %{route: :get, action: {MyAppWeb.HealthController, "show", 2}},
+             target: %{
+               route: :get,
+               action: %{module: "MyAppWeb.HealthController", function: "show", arity: 2}
+             },
              data: %{method: :get, args: ["\"/health\"", "HealthController", ":show"]}
            } = Enum.at(facts, 1)
 
     assert %MacroFact{
              kind: :phoenix_route,
-             target: %{live_view: MyAppWeb.DashboardLive},
+             target: %{live_view: "MyAppWeb.DashboardLive"},
              data: %{method: :live}
            } = Enum.at(facts, 2)
+  end
+
+  test "Phoenix route target enrichment does not create module atoms" do
+    source = ~S'''
+    defmodule AtomSafeWeb.Router do
+      use Phoenix.Router
+
+      get "/health", DefinitelyNotCreatedController, :show
+    end
+    '''
+
+    module_name = "Elixir.AtomSafeWeb.DefinitelyNotCreatedController"
+
+    assert_raise ArgumentError, fn -> String.to_existing_atom(module_name) end
+    assert {:ok, facts} = MacroFact.collect_source(source, plugins: [Reach.Plugins.Phoenix])
+
+    assert %MacroFact{
+             kind: :phoenix_route,
+             target: %{action: %{module: "AtomSafeWeb.DefinitelyNotCreatedController"}}
+           } = Enum.at(facts, 1)
+
+    assert_raise ArgumentError, fn -> String.to_existing_atom(module_name) end
   end
 
   test "collects Ash-style declarations without descending into function bodies" do
