@@ -20,6 +20,9 @@
 - **Atom-safe Phoenix route facts** — Phoenix route macro facts now keep controller/live-view targets as source-level strings instead of creating module atoms from source aliases.
 - **Strict CLI option parsing** — canonical command option parsing now raises on unknown switches instead of silently ignoring typos.
 - **Removed legacy Mix task shims** — removed the old pre-2.x task modules entirely; use the five canonical commands (`reach.map`, `reach.inspect`, `reach.trace`, `reach.check`, `reach.otp`).
+- **Architecture check performance** — `mix reach.check --arch` now uses source-only project loading and avoids full system-dependence graph construction for architecture policy checks.
+- **Changed-code check performance** — `mix reach.check --changed` now returns immediately for empty diffs instead of loading and analyzing the whole project first.
+- **Plugin-owned framework policy** — framework callback/effect-boundary semantics now live behind plugin callbacks instead of generic analysis modules.
 - **Target-project plugin inference** — path scans now infer built-in plugins from nearby `mix.exs` dependencies and source markers without executing the target project, with each plugin owning its own inference hints.
 - **Plugin-aware AST entrypoint** — `Reach.ast_to_graph/2` now applies configured plugin AST lowering, matching source parsing behavior.
 - **Macro fact scanner project scope** — `scripts/macro_fact_scan.exs` now scans explicit files and `lib`/`test` directories at project scope so local macro aliases are resolved during real-project scans.
