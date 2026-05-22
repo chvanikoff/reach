@@ -50,7 +50,7 @@ defmodule Reach.CLI.Render.Check.Smells do
         render_group(findings, Format.humanize(kind))
       end)
 
-      IO.puts("  #{length(findings)} finding(s)\n")
+      IO.puts("\n  #{length(findings)} finding(s)\n")
     end
   end
 
