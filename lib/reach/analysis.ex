@@ -12,19 +12,18 @@ defmodule Reach.Analysis do
     {:handle_continue, 2},
     {:terminate, 2},
     {:code_change, 3},
-    {:mount, 3},
-    {:handle_event, 3},
-    {:handle_params, 3},
     {:start_link, 1},
-    {:child_spec, 1},
-    {:perform, 1},
-    {:handle_batch, 1},
-    {:handle_batch, 2}
+    {:child_spec, 1}
   ]
 
-  def expected_effect_boundary?(func) do
-    {func.meta[:name], func.meta[:arity]} in @effect_boundary_callbacks or
-      mix_task_module?(func.meta[:module]) or
+  def expected_effect_boundary?(func, plugins \\ []) do
+    module = func.meta[:module]
+    function = func.meta[:name]
+    arity = func.meta[:arity]
+
+    {function, arity} in @effect_boundary_callbacks or
+      Reach.Plugin.expected_effect_boundary?(plugins, module, function, arity) or
+      mix_task_module?(module) or
       mix_task_file?(func.source_span)
   end
 

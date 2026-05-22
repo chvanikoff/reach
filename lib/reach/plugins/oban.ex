@@ -19,6 +19,10 @@ defmodule Reach.Plugins.Oban do
   end
 
   @impl true
+  def expected_effect_boundary?(_module, :perform, 1), do: true
+  def expected_effect_boundary?(_module, _function, _arity), do: false
+
+  @impl true
   def behaviour_label(callbacks) do
     if :perform in callbacks, do: "Oban.Worker"
   end

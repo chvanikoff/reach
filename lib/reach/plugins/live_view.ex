@@ -77,6 +77,19 @@ defmodule Reach.Plugins.LiveView do
   def classify_effect(_), do: nil
 
   @impl true
+  def expected_effect_boundary?(_module, function, arity) do
+    {function, arity} in [
+      {:mount, 1},
+      {:mount, 3},
+      {:handle_event, 3},
+      {:handle_params, 3},
+      {:handle_info, 2},
+      {:handle_async, 3},
+      {:render, 1}
+    ]
+  end
+
+  @impl true
   def behaviour_label(callbacks) do
     if :mount in callbacks and :render in callbacks, do: "LiveView"
   end

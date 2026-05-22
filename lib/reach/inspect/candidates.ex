@@ -20,16 +20,18 @@ defmodule Reach.Inspect.Candidates do
     branch_count = branch_count(func)
 
     []
-    |> maybe_candidate(isolate_effects_candidate(func, non_pure_effects, candidate_config))
+    |> maybe_candidate(
+      isolate_effects_candidate(func, non_pure_effects, candidate_config, project.plugins)
+    )
     |> maybe_candidate(extract_region_candidate(func, branch_count, callers, candidate_config))
   end
 
-  defp isolate_effects_candidate(func, effects, candidate_config) do
+  defp isolate_effects_candidate(func, effects, candidate_config, plugins) do
     cond do
       length(effects) < candidate_config.thresholds.mixed_effect_count ->
         nil
 
-      Analysis.expected_effect_boundary?(func) ->
+      Analysis.expected_effect_boundary?(func, plugins) ->
         nil
 
       true ->

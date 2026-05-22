@@ -518,7 +518,7 @@ defmodule Reach.Map.Analysis do
   defp detect_callbacks(nodes, plugins) do
     callbacks =
       nodes
-      |> Enum.filter(&callback_function?/1)
+      |> Enum.filter(&callback_function?(&1, plugins))
       |> Enum.map(& &1.meta[:name])
       |> Enum.uniq()
 
@@ -528,28 +528,22 @@ defmodule Reach.Map.Analysis do
     end
   end
 
-  defp callback_function?(node) do
+  defp callback_function?(node, plugins) do
     node.type == :function_def and
-      node.meta[:name] in [
-        :init,
-        :handle_call,
-        :handle_cast,
-        :handle_info,
-        :handle_continue,
-        :handle_event,
-        :handle_batch,
-        :perform,
-        :mount,
-        :render,
-        :handle_params
-      ]
+      (node.meta[:name] in [:init, :handle_call, :handle_cast, :handle_info, :handle_continue] or
+         Reach.Plugin.expected_effect_boundary?(
+           plugins,
+           node.meta[:module],
+           node.meta[:name],
+           node.meta[:arity]
+         ))
   end
 
   defp infer_behaviour(callbacks, plugins) do
-    cond do
-      :handle_call in callbacks or :handle_cast in callbacks -> "GenServer"
-      :handle_event in callbacks -> "GenStage"
-      true -> Reach.Plugin.behaviour_label(plugins, callbacks)
+    if :handle_call in callbacks or :handle_cast in callbacks do
+      "GenServer"
+    else
+      Reach.Plugin.behaviour_label(plugins, callbacks)
     end
   end
 

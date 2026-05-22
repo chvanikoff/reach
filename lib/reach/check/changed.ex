@@ -12,8 +12,8 @@ defmodule Reach.Check.Changed do
 
   def run(project, config, opts \\ []) do
     base = Keyword.get(opts, :base) || default_base_ref()
-    files = changed_files(base)
-    changed_ranges = changed_ranges(base)
+    files = Keyword.get_lazy(opts, :files, fn -> changed_files(base) end)
+    changed_ranges = Keyword.get_lazy(opts, :changed_ranges, fn -> changed_ranges(base) end)
     normalized_config = Config.normalize(config)
 
     functions =
@@ -21,7 +21,15 @@ defmodule Reach.Check.Changed do
       |> changed_functions(changed_ranges, normalized_config)
       |> add_clone_siblings(project, normalized_config)
 
-    tests = suggested_tests(files, functions, normalized_config.tests.hints)
+    result(base, files, functions, normalized_config)
+  end
+
+  def empty_result(base, config) do
+    result(base, [], [], Config.normalize(config))
+  end
+
+  defp result(base, files, functions, config) do
+    tests = suggested_tests(files, functions, config.tests.hints)
     {risk, risk_reasons} = aggregate_change_risk(functions)
 
     Result.new(

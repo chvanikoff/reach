@@ -145,10 +145,17 @@ defmodule Reach.CLI.Commands.Check do
 
   defp run_changed(opts) do
     config = Config.read()
+    base = opts[:base] || Changed.default_base_ref()
+    files = Changed.changed_files(base)
+    ranges = Changed.changed_ranges(base)
 
-    project = Project.load([quiet: opts[:format] == "json"] ++ plugin_opts(opts))
-
-    result = Changed.run(project, config, base: opts[:base])
+    result =
+      if map_size(ranges) == 0 do
+        Changed.empty_result(base, config)
+      else
+        project = Project.load([quiet: opts[:format] == "json"] ++ plugin_opts(opts))
+        Changed.run(project, config, base: base, files: files, changed_ranges: ranges)
+      end
 
     CheckRender.render_result(result, opts[:format], &CheckRender.render_changed_text/1)
   end

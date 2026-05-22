@@ -11,7 +11,9 @@ defmodule Reach.OTP.Analysis do
     nodes = Map.values(project.nodes)
     all_ir = Enum.flat_map(nodes, &IR.all_nodes/1)
 
-    behaviours = find_gen_servers(nodes, scope)
+    plugins = Map.get(project, :plugins, [])
+
+    behaviours = find_gen_servers(nodes, scope, plugins)
     state_machines = find_gen_statems(all_ir, scope)
     hidden_coupling = find_hidden_coupling(nodes)
     missing_handlers = find_missing_handlers(nodes)
@@ -30,7 +32,7 @@ defmodule Reach.OTP.Analysis do
     )
   end
 
-  defp find_gen_servers(nodes, scope) do
+  defp find_gen_servers(nodes, scope, plugins) do
     nodes
     |> Enum.filter(&(&1.type == :function_def))
     |> Enum.group_by(&module_key(&1, scope))
@@ -43,7 +45,7 @@ defmodule Reach.OTP.Analysis do
 
         Behaviour.new(
           module: mod,
-          behaviour: detect_behaviour(callbacks),
+          behaviour: detect_behaviour(callbacks, plugins),
           callbacks: callbacks,
           state_transforms: state_transforms
         )
@@ -103,13 +105,13 @@ defmodule Reach.OTP.Analysis do
     end)
   end
 
-  defp detect_behaviour(callbacks) do
+  defp detect_behaviour(callbacks, plugins) do
+    names = callbacks |> Enum.map(fn {{name, _arity}, _node} -> name end) |> Enum.uniq()
+
     cond do
       Map.has_key?(callbacks, {:handle_call, 3}) -> "GenServer"
-      Map.has_key?(callbacks, {:handle_event, 3}) -> "GenStage"
-      Map.has_key?(callbacks, {:handle_demand, 2}) -> "GenStage"
       Map.has_key?(callbacks, {:init, 1}) -> "GenServer"
-      true -> "unknown"
+      true -> Reach.Plugin.behaviour_label(plugins, names) || "unknown"
     end
   end
 

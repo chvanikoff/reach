@@ -278,6 +278,19 @@ defmodule Reach.Plugins.Phoenix do
   def trace_pattern(_pattern), do: nil
 
   @impl true
+  def expected_effect_boundary?(_module, function, arity) do
+    {function, arity} in [
+      {:mount, 3},
+      {:handle_event, 3},
+      {:handle_params, 3},
+      {:handle_info, 2},
+      {:handle_async, 3},
+      {:update, 2},
+      {:render, 1}
+    ]
+  end
+
+  @impl true
   def behaviour_label(callbacks) do
     if :mount in callbacks and :render in callbacks, do: "LiveView"
   end

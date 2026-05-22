@@ -112,6 +112,7 @@ defmodule Reach.Plugin do
               Reach.MacroFact.t() | map() | :unchanged
   @callback trace_pattern(pattern :: String.t()) :: (Node.t() -> boolean()) | nil
   @callback behaviour_label(callbacks :: [atom()]) :: String.t() | nil
+  @callback expected_effect_boundary?(module(), atom(), non_neg_integer()) :: boolean() | nil
   @callback ignore_call_edge?(Graph.Edge.t()) :: boolean()
 
   @optional_callbacks analyze_project: 3,
@@ -128,6 +129,7 @@ defmodule Reach.Plugin do
                       refine_macro_fact: 2,
                       trace_pattern: 1,
                       behaviour_label: 1,
+                      expected_effect_boundary?: 3,
                       ignore_call_edge?: 1
 
   @known_plugins [
@@ -317,6 +319,14 @@ defmodule Reach.Plugin do
   def trace_pattern(plugins, pattern) do
     Enum.find_value(plugins, fn plugin ->
       if exports?(plugin, :trace_pattern, 1), do: plugin.trace_pattern(pattern)
+    end)
+  end
+
+  @doc "Returns true when plugins recognize an expected effect boundary callback."
+  def expected_effect_boundary?(plugins, module, function, arity) do
+    Enum.any?(plugins, fn plugin ->
+      exports?(plugin, :expected_effect_boundary?, 3) and
+        plugin.expected_effect_boundary?(module, function, arity) == true
     end)
   end
 

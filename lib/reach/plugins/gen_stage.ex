@@ -52,6 +52,24 @@ defmodule Reach.Plugins.GenStage do
   def classify_effect(_), do: nil
 
   @impl true
+  def expected_effect_boundary?(_module, function, arity) do
+    {function, arity} in [
+      {:handle_demand, 2},
+      {:handle_events, 3},
+      {:handle_batch, 4}
+    ]
+  end
+
+  @impl true
+  def behaviour_label(callbacks) do
+    cond do
+      :handle_events in callbacks or :handle_demand in callbacks -> "GenStage"
+      :handle_batch in callbacks -> "Broadway"
+      true -> nil
+    end
+  end
+
+  @impl true
   def analyze(all_nodes, _opts) do
     demand_to_events_edges(all_nodes) ++
       broadway_message_edges(all_nodes)

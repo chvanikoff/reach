@@ -169,8 +169,8 @@ defmodule Reach.Check.Candidates do
 
   defp mixed_effect_candidates(project, candidate_config) do
     for({_, node} <- project.nodes, node.type == :function_def and node.source_span, do: node)
-    |> Enum.reject(&Analysis.expected_effect_boundary?/1)
-    |> Enum.map(fn func -> {func, Architecture.concrete_effects(func)} end)
+    |> Enum.reject(&Analysis.expected_effect_boundary?(&1, project.plugins))
+    |> Enum.map(fn func -> {func, Architecture.concrete_effects(func, project.plugins)} end)
     |> Enum.filter(fn {_func, effects} ->
       length(effects) >= candidate_config.thresholds.mixed_effect_count
     end)
@@ -214,7 +214,7 @@ defmodule Reach.Check.Candidates do
       branches >= candidate_config.thresholds.branchy_function_branches and callers != []
     end)
     |> Enum.reject(fn {func, _branches, _callers} ->
-      Analysis.expected_effect_boundary?(func) and
+      Analysis.expected_effect_boundary?(func, project.plugins) and
         Changed.branch_count(func) < candidate_config.thresholds.branchy_function_branches * 2
     end)
     |> Enum.sort_by(fn {func, branches, callers} ->
