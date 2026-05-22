@@ -88,7 +88,13 @@ defmodule Reach.Plugins.Phoenix do
   @impl true
   def refine_macro_fact(%MacroFact{name: :use, target: module} = fact, _context)
       when module in @use_modules do
-    %{fact | framework: :phoenix, kind: phoenix_use_kind(module), confidence: :high}
+    %{
+      fact
+      | framework: :phoenix,
+        kind: phoenix_use_kind(module),
+        data: phoenix_use_data(module, fact.data),
+        confidence: :high
+    }
   end
 
   def refine_macro_fact(%MacroFact{name: name, call_module: nil} = fact, _context)
@@ -118,6 +124,21 @@ defmodule Reach.Plugins.Phoenix do
   defp phoenix_use_kind(Phoenix.Router), do: :phoenix_router_use
   defp phoenix_use_kind(Phoenix.Component), do: :phoenix_component_use
   defp phoenix_use_kind(Phoenix.LiveView), do: :phoenix_live_view_use
+
+  defp phoenix_use_data(Phoenix.LiveView, data) do
+    Map.put(data, :explained_callbacks, [
+      {:mount, 3},
+      {:handle_event, 3},
+      {:handle_info, 2},
+      {:render, 1}
+    ])
+  end
+
+  defp phoenix_use_data(Phoenix.Component, data) do
+    Map.put(data, :explained_callbacks, [{:update, 2}, {:render, 1}])
+  end
+
+  defp phoenix_use_data(_module, data), do: data
 
   defp phoenix_component_kind(:attr), do: :phoenix_component_attr
   defp phoenix_component_kind(:slot), do: :phoenix_component_slot

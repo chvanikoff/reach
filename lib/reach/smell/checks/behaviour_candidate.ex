@@ -15,12 +15,13 @@ defmodule Reach.Smell.Checks.BehaviourCandidate do
   def run(project, config) do
     config = Config.normalize(config)
     clone_evidence = CloneAnalysis.analyze(project, config)
+    macro_facts = Reach.MacroFact.collect_project(project)
     config = config.smells.behaviour_candidate
 
     project
     |> module_public_apis(config)
     |> Enum.group_by(& &1.signature)
-    |> Enum.flat_map(&behaviour_candidate(&1, config, clone_evidence))
+    |> Enum.flat_map(&behaviour_candidate(&1, config, clone_evidence, macro_facts))
   end
 
   defp module_public_apis(project, config) do
@@ -29,6 +30,8 @@ defmodule Reach.Smell.Checks.BehaviourCandidate do
   end
 
   defp module_public_api(module, config) do
+    module_name = module.meta[:name]
+
     callbacks =
       module
       |> IR.all_nodes()
@@ -41,7 +44,8 @@ defmodule Reach.Smell.Checks.BehaviourCandidate do
     if length(callbacks) >= config.min_callbacks do
       [
         %{
-          module: inspect(module.meta[:name]),
+          module: inspect(module_name),
+          module_name: module_name,
           location: Helpers.location(module),
           signature: callbacks
         }
@@ -63,10 +67,11 @@ defmodule Reach.Smell.Checks.BehaviourCandidate do
     name in [:__struct__, :child_spec, :module_info]
   end
 
-  defp behaviour_candidate({callbacks, modules}, config, clone_evidence) do
+  defp behaviour_candidate({callbacks, modules}, config, clone_evidence, macro_facts) do
     distinct_modules = Enum.uniq_by(modules, & &1.module)
 
-    if length(distinct_modules) >= config.min_modules do
+    if length(distinct_modules) >= config.min_modules and
+         not explained_by_macro_facts?(distinct_modules, callbacks, macro_facts) do
       sorted_modules = Enum.sort_by(distinct_modules, & &1.module)
       callback_names = Enum.map(callbacks, &format_callback/1)
       module_names = Enum.map(sorted_modules, & &1.module)
@@ -88,6 +93,15 @@ defmodule Reach.Smell.Checks.BehaviourCandidate do
     else
       []
     end
+  end
+
+  defp explained_by_macro_facts?(modules, callbacks, macro_facts) do
+    callback_set = MapSet.new(callbacks)
+
+    Enum.all?(modules, fn %{module_name: module_name} ->
+      explained = Reach.MacroFact.explained_callbacks(macro_facts, module_name)
+      MapSet.subset?(callback_set, explained)
+    end)
   end
 
   defp matching_clone_evidence(clones, module_names, callbacks) do

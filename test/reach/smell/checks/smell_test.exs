@@ -3,10 +3,10 @@ defmodule Reach.SmellTest do
 
   alias Reach.Check.Smells
 
-  defp run_smell_task(code, config \\ []) do
+  defp run_smell_task(code, config \\ [], project_opts \\ []) do
     path = Path.join(System.tmp_dir!(), "smell_test_#{:erlang.unique_integer([:positive])}.ex")
     File.write!(path, code)
-    project = Reach.Project.from_sources([path])
+    project = Reach.Project.from_sources([path], project_opts)
     Smells.run(project, config)
   end
 
@@ -559,6 +559,38 @@ defmodule Reach.SmellTest do
 
       assert [%{kind: :behaviour_candidate}] =
                Enum.filter(findings, &(&1.kind == :behaviour_candidate))
+    end
+
+    test "does not flag callback sets explained by macro facts" do
+      findings =
+        run_smell_task(
+          """
+          defmodule MyAppWeb.ALive do
+            use Phoenix.LiveView
+            def mount(_params, _session, socket), do: {:ok, socket}
+            def handle_event(_event, _params, socket), do: {:noreply, socket}
+            def render(assigns), do: assigns
+          end
+
+          defmodule MyAppWeb.BLive do
+            use Phoenix.LiveView
+            def mount(_params, _session, socket), do: {:ok, socket}
+            def handle_event(_event, _params, socket), do: {:noreply, socket}
+            def render(assigns), do: assigns
+          end
+
+          defmodule MyAppWeb.CLive do
+            use Phoenix.LiveView
+            def mount(_params, _session, socket), do: {:ok, socket}
+            def handle_event(_event, _params, socket), do: {:noreply, socket}
+            def render(assigns), do: assigns
+          end
+          """,
+          [],
+          plugins: [Reach.Plugins.Phoenix]
+        )
+
+      assert Enum.filter(findings, &(&1.kind == :behaviour_candidate)) == []
     end
 
     test "does not flag pairs of similar modules by default" do

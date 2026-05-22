@@ -174,7 +174,13 @@ defmodule Reach.Plugins.Ecto do
   @impl true
   def refine_macro_fact(%MacroFact{name: :use, target: module} = fact, _context)
       when module in [Ecto.Schema, Ecto.Migration] do
-    %{fact | framework: :ecto, kind: ecto_use_kind(module), confidence: :high}
+    %{
+      fact
+      | framework: :ecto,
+        kind: ecto_use_kind(module),
+        data: ecto_use_data(module, fact.data),
+        confidence: :high
+    }
   end
 
   def refine_macro_fact(%MacroFact{name: name, call_module: nil} = fact, _context)
@@ -191,6 +197,12 @@ defmodule Reach.Plugins.Ecto do
 
   defp ecto_use_kind(Ecto.Schema), do: :ecto_schema_use
   defp ecto_use_kind(Ecto.Migration), do: :ecto_migration_use
+
+  defp ecto_use_data(Ecto.Migration, data) do
+    Map.put(data, :explained_callbacks, [{:change, 0}, {:up, 0}, {:down, 0}])
+  end
+
+  defp ecto_use_data(_module, data), do: data
 
   defp ecto_schema_kind(name) when name in [:schema, :embedded_schema], do: :ecto_schema
   defp ecto_schema_kind(_name), do: :ecto_schema_field

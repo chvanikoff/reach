@@ -132,6 +132,13 @@ defmodule Reach.MacroFact do
 
   def by_owner(facts, owner_module), do: Enum.filter(facts, &(&1.owner_module == owner_module))
 
+  def explained_callbacks(facts, owner_module) do
+    facts
+    |> by_owner(owner_module)
+    |> Enum.flat_map(fn fact -> Map.get(fact.data || %{}, :explained_callbacks, []) end)
+    |> MapSet.new()
+  end
+
   def at_source(facts, %{file: file, line: line}) do
     Enum.filter(facts, fn fact ->
       fact.source[:file] == file and fact.source[:line] == line

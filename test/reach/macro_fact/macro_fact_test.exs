@@ -50,7 +50,12 @@ defmodule Reach.MacroFactTest do
     assert {:ok, facts} = MacroFact.collect_source(source, plugins: [Reach.Plugins.Phoenix])
 
     assert [
-             %MacroFact{kind: :phoenix_component_use, framework: :phoenix, confidence: :high},
+             %MacroFact{
+               kind: :phoenix_component_use,
+               framework: :phoenix,
+               data: %{explained_callbacks: [{:update, 2}, {:render, 1}]},
+               confidence: :high
+             },
              %MacroFact{kind: :phoenix_component_attr, framework: :phoenix, confidence: :high},
              %MacroFact{kind: :phoenix_component_slot, framework: :phoenix, confidence: :high}
            ] = facts
