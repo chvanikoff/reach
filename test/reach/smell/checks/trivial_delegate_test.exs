@@ -5,7 +5,7 @@ defmodule Reach.Smell.Checks.TrivialDelegateTest do
   alias Reach.Project
   alias Reach.Smell.Finding
 
-  test "flags defdelegate pass-throughs" do
+  test "allows defdelegate pass-throughs because they are often public facades" do
     project =
       project_from_file(~S'''
       defmodule MyApp.Users do
@@ -13,22 +13,14 @@ defmodule Reach.Smell.Checks.TrivialDelegateTest do
       end
       ''')
 
-    assert [
-             %Finding{
-               kind: :trivial_delegate,
-               message: message,
-               evidence: %{target: "MyApp.Users.Query", function: :get_user}
-             }
-           ] = findings_of_kind(project, :trivial_delegate)
-
-    assert message =~ "pass-through API layer"
+    refute Enum.any?(Smells.run(project), &(&1.kind == :trivial_delegate))
   end
 
-  test "flags hand-written forwarders with the same name and arguments" do
+  test "flags private hand-written forwarders with the same name and arguments" do
     project =
       project_from_file(~S'''
       defmodule MyApp.Users do
-        def get_user(id), do: MyApp.Users.Query.get_user(id)
+        defp get_user(id), do: MyApp.Users.Query.get_user(id)
       end
       ''')
 
@@ -43,11 +35,11 @@ defmodule Reach.Smell.Checks.TrivialDelegateTest do
     assert message =~ "only forwards"
   end
 
-  test "flags block-body forwarders" do
+  test "flags block-body private forwarders" do
     project =
       project_from_file(~S'''
       defmodule MyApp.Users do
-        def get_user(id) do
+        defp get_user(id) do
           MyApp.Users.Query.get_user(id)
         end
       end
@@ -56,11 +48,11 @@ defmodule Reach.Smell.Checks.TrivialDelegateTest do
     assert [%Finding{kind: :trivial_forwarder}] = findings_of_kind(project, :trivial_forwarder)
   end
 
-  test "flags hand-written forwarders with default arguments" do
+  test "flags private hand-written forwarders with default arguments" do
     project =
       project_from_file(~S'''
       defmodule MyApp.Users do
-        def get_user(id \\ "me"), do: MyApp.Users.Query.get_user(id)
+        defp get_user(id \\ "me"), do: MyApp.Users.Query.get_user(id)
       end
       ''')
 
@@ -105,11 +97,11 @@ defmodule Reach.Smell.Checks.TrivialDelegateTest do
     refute Enum.any?(Smells.run(project), &(&1.kind == :trivial_delegate))
   end
 
-  test "flags wrappers around Erlang module calls" do
+  test "flags private wrappers around Erlang module calls" do
     project =
       project_from_file(~S'''
       defmodule MyApp.HPack do
-        def encode(headers, context), do: :hpack.encode(headers, context)
+        defp encode(headers, context), do: :hpack.encode(headers, context)
       end
       ''')
 
@@ -134,25 +126,24 @@ defmodule Reach.Smell.Checks.TrivialDelegateTest do
     refute Enum.any?(Smells.run(project), &(&1.kind == :trivial_forwarder))
   end
 
-  test "resolves aliases in remote calls and delegates" do
+  test "resolves aliases in private remote calls and allows delegates" do
     project =
       project_from_file(~S'''
       defmodule MyApp.Users do
         alias MyApp.Users.Query
 
         defdelegate list_users(), to: Query
-        def get_user(id), do: Query.get_user(id)
+        defp get_user(id), do: Query.get_user(id)
       end
       ''')
 
-    assert [%Finding{evidence: %{target: "MyApp.Users.Query"}}] =
-             findings_of_kind(project, :trivial_delegate)
+    refute Enum.any?(Smells.run(project), &(&1.kind == :trivial_delegate))
 
     assert [%Finding{evidence: %{target: "MyApp.Users.Query.get_user"}}] =
              findings_of_kind(project, :trivial_forwarder)
   end
 
-  test "resolves dynamic defdelegate targets from for generators" do
+  test "allows dynamic defdelegate targets from for generators" do
     project =
       project_from_file(~S'''
       defmodule MyApp.Dynamic do
@@ -162,15 +153,7 @@ defmodule Reach.Smell.Checks.TrivialDelegateTest do
       end
       ''')
 
-    findings =
-      project
-      |> findings_of_kind(:trivial_delegate)
-      |> Enum.sort_by(& &1.evidence.target)
-
-    assert [
-             %Finding{evidence: %{target: "MyApp.A"}},
-             %Finding{evidence: %{target: "MyApp.B"}}
-           ] = findings
+    refute Enum.any?(Smells.run(project), &(&1.kind == :trivial_delegate))
   end
 
   test "ignores defdelegate with unknown dynamic target modules" do
@@ -220,6 +203,18 @@ defmodule Reach.Smell.Checks.TrivialDelegateTest do
       ''')
 
     refute Enum.any?(Smells.run(project), &(&1.kind == :trivial_forwarder))
+  end
+
+  test "handles dynamic alias forms without crashing" do
+    project =
+      project_from_file(~S'''
+      defmodule MyApp.Users do
+        alias __MODULE__.Query
+        defdelegate get_user(id), to: Query
+      end
+      ''')
+
+    assert Smells.run(project)
   end
 
   defp findings_of_kind(project, kind) do

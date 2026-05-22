@@ -17,8 +17,11 @@ defmodule Reach.Smell.Checks.MissingExternalResource do
   defp modules_in_file(ast) do
     {_ast, modules} =
       Macro.prewalk(ast, [], fn
-        {:defmodule, _meta, _args} = module, modules -> {module, [module | modules]}
-        node, modules -> {node, modules}
+        {:defmodule, _meta, [_name, body]} = module, modules when is_list(body) ->
+          {module, [module | modules]}
+
+        node, modules ->
+          {node, modules}
       end)
 
     Enum.reverse(modules)
@@ -38,21 +41,27 @@ defmodule Reach.Smell.Checks.MissingExternalResource do
     |> Enum.map(fn %{path: path, meta: meta} -> finding(file, meta, path) end)
   end
 
-  defp module_body_statements({:defmodule, _meta, [_name, body]}) do
+  defp module_body_statements({:defmodule, _meta, [_name, body]}) when is_list(body) do
     body
     |> module_body()
     |> case do
-      {:__block__, _meta, statements} -> statements
+      {:__block__, _meta, statements} when is_list(statements) -> statements
+      nil -> []
       statement -> [statement]
     end
   end
 
-  defp module_body(body) do
-    case Keyword.fetch(body, :do) do
-      {:ok, value} -> value
-      :error -> body |> List.first() |> elem(1)
-    end
+  defp module_body_statements(_module_ast), do: []
+
+  defp module_body(body) when is_list(body) do
+    Keyword.get(body, :do) ||
+      Enum.find_value(body, fn
+        {{:__block__, _meta, [:do]}, value} -> value
+        _entry -> nil
+      end)
   end
+
+  defp module_body(_body), do: nil
 
   defp external_resource_path({:@, _meta, [{:external_resource, _attr_meta, [path_ast]}]}) do
     case literal_string(path_ast) do

@@ -241,11 +241,13 @@ defmodule Reach.Project do
 
   defp parse_files(paths, opts) do
     counter = Keyword.get_lazy(opts, :counter, &Counter.new/0)
+    timeout = Keyword.get(opts, :parse_timeout, :infinity)
 
     paths
     |> Task.async_stream(&parse_path(&1, counter, opts),
       max_concurrency: System.schedulers_online(),
-      ordered: false
+      ordered: false,
+      timeout: timeout
     )
     |> Enum.flat_map(fn
       {:ok, nil} -> []
@@ -280,6 +282,7 @@ defmodule Reach.Project do
   defp build_module_sdgs(parsed_modules, opts) do
     Reach.Effects.ensure_cache()
     summaries = Keyword.get(opts, :summaries, %{})
+    timeout = Keyword.get(opts, :build_timeout, :infinity)
 
     parsed_modules
     |> Task.async_stream(
@@ -293,7 +296,8 @@ defmodule Reach.Project do
         {module_name, sdg}
       end,
       max_concurrency: System.schedulers_online(),
-      ordered: false
+      ordered: false,
+      timeout: timeout
     )
     |> Map.new(fn {:ok, result} -> result end)
   end

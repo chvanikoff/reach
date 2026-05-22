@@ -6,7 +6,7 @@ defmodule Reach.Smell.Checks.TrivialDelegate do
   alias Reach.Smell.Finding
 
   @impl true
-  def kinds, do: [:trivial_delegate, :trivial_forwarder]
+  def kinds, do: [:trivial_forwarder]
 
   defp scan_ast(ast, file) do
     aliases = aliases(ast)
@@ -17,42 +17,16 @@ defmodule Reach.Smell.Checks.TrivialDelegate do
       local_functions: function_clause_counts(ast)
     }
 
-    {_ast, {findings, _target_stack}} =
-      Macro.traverse(
-        ast,
-        {[], []},
-        fn node, {findings, target_stack} ->
-          findings =
-            prepend_findings(finding_for_node(node, file, context, target_stack), findings)
-
-          target_stack = enter_dynamic_targets(node, context.aliases, target_stack)
-          {node, {findings, target_stack}}
-        end,
-        fn node, {findings, target_stack} ->
-          target_stack = exit_dynamic_targets(node, target_stack)
-          {node, {findings, target_stack}}
-        end
-      )
+    {_ast, findings} =
+      Macro.prewalk(ast, [], fn node, findings ->
+        findings = prepend_findings(finding_for_node(node, file, context), findings)
+        {node, findings}
+      end)
 
     Enum.reverse(findings)
   end
 
-  defp finding_for_node({:defdelegate, meta, [head, opts]}, file, context, target_stack) do
-    delegated_name = delegated_name(head)
-    target_name = opts |> option_value(:as) |> literal_atom()
-
-    if target_name in [nil, delegated_name] and not documented_before?(file, meta[:line]) do
-      target_name = target_name || delegated_name
-
-      opts
-      |> option_value(:to)
-      |> module_names(context.aliases, dynamic_targets(target_stack))
-      |> Enum.map(&delegate_finding(file, meta, &1, delegated_name, target_name))
-    end
-  end
-
-  defp finding_for_node({def_kind, meta, [head, body]}, file, context, _target_stack)
-       when def_kind in [:def, :defp] do
+  defp finding_for_node({:defp, meta, [head, body]}, file, context) do
     with false <- impl_before?(file, meta[:line]),
          {:ok, name, params} <- function_head(head),
          false <- multi_clause?(context.local_functions, name, params),
@@ -61,7 +35,7 @@ defmodule Reach.Smell.Checks.TrivialDelegate do
       Finding.new(
         kind: :trivial_forwarder,
         message:
-          "#{def_kind} #{name}/#{length(params)} only forwards to #{call_label(call)} with the same arguments; call the target directly unless this module is an intentional boundary",
+          "defp #{name}/#{length(params)} only forwards to #{call_label(call)} with the same arguments; call the target directly unless this helper is an intentional boundary",
         location: location(file, meta),
         evidence: %{target: call_label(call), function: name, arity: length(params)}
       )
@@ -70,24 +44,11 @@ defmodule Reach.Smell.Checks.TrivialDelegate do
     end
   end
 
-  defp finding_for_node(_node, _file, _context, _target_stack), do: nil
+  defp finding_for_node(_node, _file, _context), do: nil
 
   defp prepend_findings(nil, findings), do: findings
 
-  defp prepend_findings(findings_to_add, findings) when is_list(findings_to_add),
-    do: findings_to_add ++ findings
-
   defp prepend_findings(finding, findings), do: [finding | findings]
-
-  defp delegate_finding(file, meta, target, delegated_name, target_name) do
-    Finding.new(
-      kind: :trivial_delegate,
-      message:
-        "defdelegate creates a pass-through API layer; call #{target}.#{target_name || "function"} directly unless this module is an intentional boundary",
-      location: location(file, meta),
-      evidence: %{target: target, function: delegated_name, target_function: target_name}
-    )
-  end
 
   defp function_clause_counts(ast) do
     {_ast, counts} =
@@ -184,10 +145,6 @@ defmodule Reach.Smell.Checks.TrivialDelegate do
   defp variable_name({name, _meta, context}) when is_atom(name) and is_atom(context), do: name
   defp variable_name(_node), do: nil
 
-  defp delegated_name({:when, _meta, [head | _guards]}), do: delegated_name(head)
-  defp delegated_name({name, _meta, _args}) when is_atom(name), do: name
-  defp delegated_name(_head), do: nil
-
   defp option_value(opts, key) when is_list(opts) do
     Enum.find_value(opts, fn
       {{:__block__, _meta, [^key]}, value} -> value
@@ -281,38 +238,7 @@ defmodule Reach.Smell.Checks.TrivialDelegate do
 
   defp import_option_allows?(_entries, _name, _arity, default), do: default
 
-  defp enter_dynamic_targets({:for, _meta, args}, aliases, stack) do
-    bindings = dynamic_for_bindings(args, aliases)
-    if map_size(bindings) == 0, do: stack, else: [bindings | stack]
-  end
-
-  defp enter_dynamic_targets(_node, _aliases, stack), do: stack
-
-  defp exit_dynamic_targets({:for, _meta, _args}, [_bindings | stack]), do: stack
-  defp exit_dynamic_targets(_node, stack), do: stack
-
-  defp dynamic_for_bindings(args, aliases) do
-    args
-    |> Enum.flat_map(&generator_bindings(&1, aliases))
-    |> Map.new()
-  end
-
-  defp generator_bindings({:<-, _meta, [{var, _var_meta, context}, values]}, aliases)
-       when is_atom(var) and is_atom(context) do
-    modules = values |> list_items() |> Enum.flat_map(&module_names(&1, aliases, %{}))
-    if modules == [], do: [], else: [{var, Enum.uniq(modules)}]
-  end
-
-  defp generator_bindings(_node, _aliases), do: []
-
-  defp list_items({:__block__, _meta, [items]}) when is_list(items), do: items
-  defp list_items(items) when is_list(items), do: items
-  defp list_items(_node), do: []
-
-  defp dynamic_targets(stack), do: Enum.reduce(Enum.reverse(stack), %{}, &Map.merge/2)
-
   defp impl_before?(file, line), do: previous_attribute?(file, line, "@impl")
-  defp documented_before?(file, line), do: previous_attribute?(file, line, "@doc")
 
   defp previous_attribute?(file, line, attribute) when is_binary(file) and is_integer(line) do
     if line > 1 and File.regular?(file) do
@@ -341,8 +267,9 @@ defmodule Reach.Smell.Checks.TrivialDelegate do
     [Map.get(aliases, alias_key, alias_key)]
   end
 
-  defp module_names({:__aliases__, _meta, parts}, _aliases, _dynamic_targets),
-    do: [Enum.join(parts, ".")]
+  defp module_names({:__aliases__, _meta, parts}, _aliases, _dynamic_targets) do
+    if Enum.all?(parts, &is_atom/1), do: [Enum.join(parts, ".")], else: []
+  end
 
   defp module_names({:__block__, _meta, [atom]}, aliases, dynamic_targets) when is_atom(atom),
     do: module_names(atom, aliases, dynamic_targets)

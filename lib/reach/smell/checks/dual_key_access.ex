@@ -11,7 +11,7 @@ defmodule Reach.Smell.Checks.DualKeyAccess do
     |> Enum.flat_map(fn {{variable, key}, accesses} ->
       key_types = accesses |> Enum.map(& &1.key_type) |> MapSet.new()
 
-      if MapSet.subset?(MapSet.new([:atom, :string]), key_types) do
+      if length(accesses) >= 3 and MapSet.subset?(MapSet.new([:atom, :string]), key_types) do
         [dual_key_finding(variable, key, accesses)]
       else
         []

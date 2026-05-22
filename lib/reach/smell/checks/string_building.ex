@@ -8,7 +8,6 @@ defmodule Reach.Smell.Checks.StringBuilding do
     calls = Enum.filter(all_nodes, &(&1.type == :call and &1.source_span != nil))
 
     detect_map_join_interpolation(calls) ++
-      detect_map_join_concat(calls) ++
       detect_concat_around_join(all_nodes) ++
       detect_reduce_string_concat(calls)
   end
@@ -30,18 +29,6 @@ defmodule Reach.Smell.Checks.StringBuilding do
         _ -> []
       end
     end)
-  end
-
-  defp detect_map_join_concat(calls) do
-    calls
-    |> Enum.filter(&(enum_call?(&1, :map_join) and callback_builds_strings?(&1)))
-    |> Enum.map(
-      &finding(
-        :string_building,
-        "Enum.map_join with string interpolation: use Enum.map/2 returning iolists",
-        &1
-      )
-    )
   end
 
   defp detect_concat_around_join(all_nodes) do

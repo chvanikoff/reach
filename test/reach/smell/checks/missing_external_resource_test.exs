@@ -52,6 +52,17 @@ defmodule Reach.Smell.Checks.MissingExternalResourceTest do
     assert [] = Smells.run(project)
   end
 
+  test "ignores macro calls named defmodule" do
+    project =
+      project_from_file(~S'''
+      defmodule MyApp.Schema do
+        Atadura.defmodule(name, bindings \\ [], do_block)
+      end
+      ''')
+
+    assert [] = Smells.run(project)
+  end
+
   defp project_from_file(source) do
     dir = Path.join(System.tmp_dir!(), "reach-external-resource-smell-#{System.unique_integer()}")
     File.mkdir_p!(dir)

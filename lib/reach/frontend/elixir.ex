@@ -1099,8 +1099,8 @@ defmodule Reach.Frontend.Elixir do
       absolute_module_alias?(parts) ->
         module_name(alias_ast)
 
-      parent = Process.get(:reach_current_module) ->
-        Module.concat(parent, Module.concat(parts))
+      is_atom(Process.get(:reach_current_module)) ->
+        Module.concat(Process.get(:reach_current_module), Module.concat(parts))
 
       true ->
         module_name(alias_ast)

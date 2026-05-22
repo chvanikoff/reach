@@ -7,6 +7,7 @@
 - **Bare rescue smell** — added a generic smell check for `rescue _ ->` and `rescue error ->` clauses that should narrow the rescued exception set.
 - **LiveView mount Repo smell** — added a Phoenix plugin smell for direct Repo work in `mount/3` without a `connected?/1` guard or async LiveView loading.
 - **Internal rescue handling** — replaced avoidable exception-driven control flow in Reach's own analyzers with explicit checks and narrower error paths.
+- **Corpus-tuned smell signal** — reduced noisy `Enum.count/1`, direct `Enum.map_join/3`, public `defdelegate`, public forwarder, and one-off dual-key findings after reviewing Hex corpus output.
 
 ## 2.6.1
 

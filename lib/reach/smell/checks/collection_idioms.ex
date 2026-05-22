@@ -202,13 +202,6 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
   )
 
   smell(
-    from(~p[Enum.count(arg)])
-    |> where(not match?({:&, _, _}, ^arg) and not match?({:fn, _, _}, ^arg)),
-    :suboptimal,
-    "Enum.count/1 without predicate has protocol dispatch overhead; use length/1 for lists"
-  )
-
-  smell(
     from(~p[Map.put(_, key, value)])
     |> where(not is_atom(^key) and not is_binary(^key) and ^value in [true, false]),
     :suboptimal,

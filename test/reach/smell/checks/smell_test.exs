@@ -332,7 +332,7 @@ defmodule Reach.SmellTest do
         run_smell_task("""
         defmodule LooseContract do
           def failure_manifest(metadata) do
-            metadata["analyzer"] || metadata[:analyzer]
+            metadata["analyzer"] || metadata[:analyzer] || Map.get(metadata, :analyzer)
           end
         end
         """)
@@ -350,7 +350,7 @@ defmodule Reach.SmellTest do
         run_smell_task("""
         defmodule LooseContract do
           def fetch(metadata) do
-            Map.get(metadata, "command") || Map.get(metadata, :command)
+            Map.get(metadata, "command") || Map.get(metadata, :command) || Map.get(metadata, :command)
           end
         end
         """)
@@ -767,7 +767,7 @@ defmodule Reach.SmellTest do
       assert hd(string).message =~ "Enum.join"
     end
 
-    test "Enum.map_join with string interpolation" do
+    test "does not flag direct Enum.map_join interpolation" do
       findings =
         run_smell_task("""
         defmodule MapJoinDirect do
@@ -777,9 +777,7 @@ defmodule Reach.SmellTest do
         end
         """)
 
-      string = Enum.filter(findings, &(&1.kind == :string_building))
-      assert length(string) == 1
-      assert hd(string).message =~ "map_join"
+      refute Enum.any?(findings, &(&1.kind == :string_building))
     end
 
     test "string concat around Enum.join" do
@@ -900,7 +898,7 @@ defmodule Reach.SmellTest do
       assert Enum.any?(findings, &(&1.message =~ "Enum.reduce"))
     end
 
-    test "flags Enum.count without predicate" do
+    test "does not flag generic Enum.count without list proof" do
       findings =
         run_smell_task("""
         defmodule A do
@@ -908,7 +906,7 @@ defmodule Reach.SmellTest do
         end
         """)
 
-      assert Enum.any?(findings, &(&1.message =~ "length"))
+      refute Enum.any?(findings, &(&1.message =~ "protocol dispatch"))
     end
 
     test "does not flag Enum.count with predicate" do
