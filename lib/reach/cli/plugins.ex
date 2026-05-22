@@ -39,15 +39,48 @@ defmodule Reach.CLI.Plugins do
   defp plugin!(plugin) when is_atom(plugin), do: plugin
 
   defp plugin!(name) when is_binary(name) do
-    normalized = name |> String.trim() |> String.trim_leading("Reach.Plugins.")
-    alias_key = normalized |> Macro.underscore()
+    trimmed = String.trim(name)
+    alias_key = trimmed |> String.trim_leading("Reach.Plugins.") |> Macro.underscore()
 
-    module = Map.get(@aliases, alias_key) || Module.concat(["Reach", "Plugins", normalized])
+    module = Map.get(@aliases, alias_key) || existing_module(trimmed)
 
-    if Code.ensure_loaded?(module) do
-      module
-    else
-      Mix.raise("Could not load plugin #{inspect(name)}")
+    cond do
+      is_nil(module) ->
+        raise Mix.Error, message: "Could not load plugin #{inspect(name)}"
+
+      Map.has_key?(@aliases, alias_key) ->
+        module
+
+      loaded?(module) ->
+        module
+
+      true ->
+        raise Mix.Error, message: "Could not load plugin #{inspect(name)}"
     end
   end
+
+  defp existing_module(name) do
+    name
+    |> module_segments()
+    |> existing_module_from_segments()
+  end
+
+  defp module_segments("Elixir." <> name), do: String.split(name, ".", trim: true)
+
+  defp module_segments("Reach.Plugins." <> name),
+    do: ["Reach", "Plugins" | String.split(name, ".", trim: true)]
+
+  defp module_segments(name), do: String.split(name, ".", trim: true)
+
+  defp existing_module_from_segments([]), do: nil
+
+  defp existing_module_from_segments(segments) do
+    segments
+    |> Enum.map(&String.to_existing_atom/1)
+    |> Module.safe_concat()
+  rescue
+    ArgumentError -> nil
+  end
+
+  defp loaded?(module), do: :code.is_loaded(module) != false
 end

@@ -18,6 +18,7 @@
 - **Project-scoped effect classification** — effect inference and effect-based summaries now use the project/plugin configuration instead of reusing unscoped local-function cache entries across plugin sets.
 - **Project query isolation** — target/function query indexes no longer reuse process-local state across projects analyzed in the same VM.
 - **Plugin-aware dead-code graphing** — dead-code checks now pass configured plugins into graph construction, not only macro fact collection.
+- **Safer CLI plugin resolution** — `--plugin` resolves known aliases and already-loaded modules without creating atoms from unknown plugin names.
 - **Macro fact scanner project scope** — `scripts/macro_fact_scan.exs` now scans explicit files and `lib`/`test` directories at project scope so local macro aliases are resolved during real-project scans.
 
 ## 2.6.1
