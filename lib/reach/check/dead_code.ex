@@ -21,16 +21,42 @@ defmodule Reach.Check.DeadCode do
     Enum.flat_map(paths, &Path.wildcard(Path.join(&1, "**/*#{ext}")))
   end
 
-  def run(files) do
+  def run(files, opts \\ []) do
+    plugins = Keyword.get(opts, :plugins, Reach.Plugin.detect())
+    declaration_lines = value_discard_safe_lines(files, plugins)
+
     files
     |> Task.async_stream(&find_in_file/1,
       max_concurrency: System.schedulers_online(),
       ordered: false
     )
     |> Enum.flat_map(fn {:ok, results} -> results end)
+    |> Enum.reject(&value_discard_safe?(&1, declaration_lines))
     |> Enum.sort_by(&{&1.file, &1.line})
     |> Enum.uniq_by(&{&1.file, &1.line})
   end
+
+  defp value_discard_safe_lines(files, plugins) do
+    files
+    |> Enum.flat_map(fn file ->
+      case Reach.MacroFact.collect_file(file, plugins: plugins) do
+        {:ok, facts} -> facts
+        {:error, _reason} -> []
+      end
+    end)
+    |> Enum.filter(&value_discard_safe_fact?/1)
+    |> MapSet.new(fn fact -> {fact.source[:file], fact.source[:line]} end)
+  end
+
+  defp value_discard_safe?(finding, declaration_lines) do
+    MapSet.member?(declaration_lines, {finding.file, finding.line})
+  end
+
+  defp value_discard_safe_fact?(%Reach.MacroFact{framework: framework, confidence: :high})
+       when not is_nil(framework),
+       do: true
+
+  defp value_discard_safe_fact?(_fact), do: false
 
   defp find_in_file(file) do
     case Reach.file_to_graph(file) do

@@ -12,6 +12,7 @@
 - **ExUnit plugin** — added an ExUnit plugin smell for `async: true` test modules that mutate global application, system, or persistent-term state.
 - **ETS partial-key match smell** — added a check for wildcard ETS matches over tuple keys that can return arbitrary stale/versioned rows.
 - **Macro fact foundation** — added `Reach.MacroFact` as the source-first representation for macro/DSL declarations, with plugin refinement for Phoenix, Ecto, and Ash declarations without generic framework allowlists.
+- **Macro-aware dead-code filtering** — dead-code checks now use high-confidence macro facts to avoid reporting framework DSL declarations such as Phoenix `attr`, `slot`, router scopes, and routes as unused results.
 
 ## 2.6.1
 
