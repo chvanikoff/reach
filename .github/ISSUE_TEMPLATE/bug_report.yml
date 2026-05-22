@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a crash, incorrect result, or confusing output
+title: "Bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please include enough detail for us to reproduce it locally.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the crash, incorrect result, or confusing behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Minimal commands, source snippet, or repository/branch that reproduces the issue.
+      placeholder: |
+        mix reach.check --smells --strict
+        # or
+        mix reach.inspect MyApp.Module.function/1 --context
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should Reach have done instead?
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output or stacktrace
+      description: Paste the relevant terminal output, JSON, or stacktrace.
+      render: text
+  - type: input
+    id: reach-version
+    attributes:
+      label: Reach version
+      placeholder: "2.6.1"
+  - type: input
+    id: elixir-version
+    attributes:
+      label: Elixir / OTP versions
+      placeholder: "Elixir 1.19.5 / OTP 27"
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that may help, such as `.reach.exs`, operating system, or whether this happens only in CI.

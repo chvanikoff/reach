@@ -1,0 +1,65 @@
+name: New smell rule
+description: Propose a new advisory smell/check rule
+title: "Smell: "
+labels: [smell]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Reach smell rules must stay high-signal. New or broader rules need false-positive review against real code before merge. If you are not ready to run a corpus scan, this issue is the right place to propose the idea.
+  - type: textarea
+    id: pattern
+    attributes:
+      label: Pattern to detect
+      description: What source pattern should Reach flag?
+      render: elixir
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it matters
+      description: Explain the bug risk, maintainability issue, performance issue, or release-safety problem.
+    validations:
+      required: true
+  - type: textarea
+    id: bad-examples
+    attributes:
+      label: Examples that should be flagged
+      description: Include real examples if possible.
+      render: elixir
+    validations:
+      required: true
+  - type: textarea
+    id: allowed-examples
+    attributes:
+      label: Nearby patterns that should NOT be flagged
+      description: Add legitimate cases so the rule can be tuned conservatively.
+      render: elixir
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Generic Elixir/Erlang smell
+        - Plugin-specific smell
+        - Architecture/release check
+        - Not sure
+  - type: input
+    id: plugin
+    attributes:
+      label: Plugin or framework, if any
+      placeholder: "Phoenix, Ecto, Oban, ExUnit, Jason, ..."
+  - type: checkboxes
+    id: corpus
+    attributes:
+      label: False-positive scan
+      options:
+        - label: I ran a corpus scan and reviewed the findings.
+        - label: I am not ready to run a scan; I am opening this as a rule proposal.
+  - type: textarea
+    id: scan-results
+    attributes:
+      label: Corpus scan results, if available
+      description: Paste command, count by kind, positive examples, and false positives found/tuned.
+      render: text

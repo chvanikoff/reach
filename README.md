@@ -167,6 +167,18 @@ HexDocs guides are organized by workflow:
 - Validation and ProgramFacts oracle checks
 - Recipes and contributing notes
 
+## Contributing
+
+Reach welcomes bug reports, feature ideas, and new smell-rule proposals. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the local workflow, architecture expectations, and corpus-validation process.
+
+When proposing a new smell rule, please include examples of code that should be flagged and nearby code that should not be flagged. New or broadened smell rules need a false-positive scan against real code before they can be merged; if you are not ready to run that scan, open a “New smell rule” issue and maintainers can evaluate it.
+
+Useful issue templates are available for:
+
+- bug reports
+- feature requests
+- new smell rules
+
 ## Validation
 
 Reach itself is validated with:

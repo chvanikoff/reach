@@ -1,0 +1,49 @@
+name: Feature request
+description: Suggest a new Reach capability or workflow improvement
+title: "Feature: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Please describe the user problem first; implementation ideas are welcome but optional.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or workflow
+      description: What are you trying to understand, automate, or prevent with Reach?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like Reach to do?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - CLI / JSON output
+        - Architecture checks
+        - Smells
+        - Evidence providers
+        - Plugins / framework semantics
+        - Data flow / trace
+        - OTP / process analysis
+        - Visualization / HTML report
+        - Documentation
+        - Other
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples
+      description: Source snippets, commands, JSON shape, or links to projects where this would help.
+      render: elixir
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workaround or alternative design you considered.
