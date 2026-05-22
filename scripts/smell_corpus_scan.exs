@@ -21,6 +21,9 @@ defmodule Reach.Scripts.SmellCorpusScan do
           plugin: :keep,
           include_tests: :boolean,
           kinds: :string,
+          quiet_zero: :boolean,
+          progress_every: :integer,
+          fail_fast: :boolean,
           help: :boolean
         ],
         aliases: [r: :repo, o: :output, l: :limit, g: :glob, p: :plugin, h: :help]
@@ -36,13 +39,27 @@ defmodule Reach.Scripts.SmellCorpusScan do
     globs = globs(opts)
     plugins = plugins(opts)
     kinds = kinds(opts)
+    quiet_zero = Keyword.get(opts, :quiet_zero, false)
+    progress_every = Keyword.get(opts, :progress_every, 50)
+    fail_fast = Keyword.get(opts, :fail_fast, false)
 
-    rows = Enum.map(repos, &scan_repo(&1, globs, plugins, opts[:limit], kinds))
+    {rows, stopped?} =
+      scan_repos(
+        repos,
+        globs,
+        plugins,
+        opts[:limit],
+        kinds,
+        quiet_zero,
+        progress_every,
+        fail_fast
+      )
 
     File.mkdir_p!(Path.dirname(Path.expand(output)))
     File.write!(output, Jason.encode!(rows, pretty: true))
 
     print_summary(rows, output)
+    if stopped?, do: System.halt(2)
   end
 
   defp repos(opts, positional) do
@@ -98,9 +115,30 @@ defmodule Reach.Scripts.SmellCorpusScan do
     end
   end
 
+  defp scan_repos(repos, globs, plugins, limit, kinds, quiet_zero, progress_every, fail_fast) do
+    started_at = System.monotonic_time(:second)
+    total = length(repos)
+
+    repos
+    |> Enum.with_index(1)
+    |> Enum.reduce_while({[], false}, fn {repo, index}, {rows, _stopped?} ->
+      row = scan_repo(repo, globs, plugins, limit, kinds)
+      print_progress(row, index, total, started_at, progress_every)
+      print_repo(row, quiet_zero)
+
+      rows = [row | rows]
+
+      if fail_fast and row[:error] do
+        {:halt, {Enum.reverse(rows), true}}
+      else
+        {:cont, {rows, false}}
+      end
+    end)
+    |> then(fn {rows, stopped?} -> {Enum.reverse(rows), stopped?} end)
+  end
+
   defp scan_repo(repo, globs, plugins, limit, kinds) do
     paths = source_paths(repo, globs, limit)
-    IO.puts("Scanning #{repo} (#{length(paths)} files)")
 
     try do
       {load_us, project} =
@@ -226,8 +264,8 @@ defmodule Reach.Scripts.SmellCorpusScan do
     end
   end
 
-  defp print_summary(rows, output) do
-    Enum.each(rows, fn row ->
+  defp print_repo(row, quiet_zero) do
+    if not quiet_zero or row.count > 0 or row[:error] do
       timings =
         if row[:error] do
           "error"
@@ -237,9 +275,47 @@ defmodule Reach.Scripts.SmellCorpusScan do
 
       IO.puts("#{row.repo}: files=#{row.files} findings=#{row.count} #{timings}")
       if row[:kinds], do: IO.puts("  #{inspect(row.kinds)}")
-    end)
+    end
+  end
+
+  defp print_progress(_row, _index, _total, _started_at, progress_every)
+       when not is_integer(progress_every) or progress_every <= 0,
+       do: :ok
+
+  defp print_progress(row, index, total, started_at, progress_every) do
+    if index == 1 or rem(index, progress_every) == 0 or row[:error] do
+      elapsed = System.monotonic_time(:second) - started_at
+
+      IO.puts(
+        "progress=#{index}/#{total} elapsed_s=#{elapsed} findings=#{row.count} current=#{row.repo}"
+      )
+    end
+  end
+
+  defp print_summary(rows, output) do
+    counts = kind_counts(rows)
+    errors = Enum.count(rows, & &1[:error])
+    findings = Enum.reduce(rows, 0, &(&1.count + &2))
+    files = Enum.reduce(rows, 0, &(&1.files + &2))
+
+    IO.puts("\nSummary")
+    IO.puts("repos=#{length(rows)} files=#{files} findings=#{findings} errors=#{errors}")
+
+    if counts != %{} do
+      counts
+      |> Enum.sort_by(fn {_kind, count} -> -count end)
+      |> Enum.each(fn {kind, count} -> IO.puts("  #{kind}: #{count}") end)
+    end
 
     IO.puts("Wrote #{Path.expand(output)}")
+  end
+
+  defp kind_counts(rows) do
+    Enum.reduce(rows, %{}, fn row, counts ->
+      Enum.reduce(row[:kinds] || %{}, counts, fn {kind, count}, counts ->
+        Map.update(counts, kind, count, &(&1 + count))
+      end)
+    end)
   end
 
   defp print_usage(invalid) do
@@ -259,6 +335,9 @@ defmodule Reach.Scripts.SmellCorpusScan do
       --include-tests        Include test/**/*.exs and apps/*/test/**/*.exs.
       --plugin, -p MODULE    Plugin module. May be repeated. Defaults to Ecto, Phoenix, Oban, ExUnit.
       --kinds a,b,c          Only run checks that emit selected smell kinds, and only include those findings.
+      --quiet-zero           Do not print per-repo lines for repositories with zero findings.
+      --progress-every N     Print progress every N repositories. Defaults to 50. Use 0 to disable.
+      --fail-fast            Stop at the first repository error and exit non-zero after writing partial output.
       --help, -h             Show this help.
     """)
   end
