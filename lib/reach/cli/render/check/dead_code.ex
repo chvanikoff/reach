@@ -2,6 +2,7 @@ defmodule Reach.CLI.Render.Check.DeadCode do
   @moduledoc false
 
   alias Reach.CLI.Format
+  alias Reach.CLI.Text
 
   def render(findings, "json", command) do
     Format.render(%{findings: findings}, command, format: "json", pretty: true)
@@ -16,24 +17,23 @@ defmodule Reach.CLI.Render.Check.DeadCode do
   end
 
   def render([], _format, _command) do
-    IO.puts(Format.header("Dead Code"))
-    IO.puts("  " <> Format.empty())
+    Text.section("Dead Code", [Text.empty()])
   end
 
   def render(findings, _format, _command) do
-    IO.puts(Format.header("Dead Code"))
+    Text.section("Dead Code", dead_code_lines(findings))
+  end
 
+  defp dead_code_lines(findings) do
     findings
     |> Enum.group_by(& &1.file)
     |> Enum.sort_by(fn {file, _} -> file end)
-    |> Enum.each(fn {file, file_findings} ->
-      IO.puts(Format.section(Format.faint(file)))
-
-      Enum.each(file_findings, fn finding ->
-        IO.puts("  line #{Format.yellow(to_string(finding.line))}: #{finding.description}")
-      end)
+    |> Enum.flat_map(fn {file, file_findings} ->
+      [Format.section(Format.faint(file))] ++
+        Enum.map(file_findings, fn finding ->
+          Text.line("line #{Format.yellow(to_string(finding.line))}: #{finding.description}")
+        end)
     end)
-
-    IO.puts("\n#{Format.count(length(findings))} finding(s)\n")
+    |> Kernel.++([Text.blank(), Text.summary("#{Format.count(length(findings))} finding(s)")])
   end
 end

@@ -49,6 +49,27 @@ defmodule Reach.Check.ArchitecturePolicyTest do
     assert output =~ "Dead Code"
   end
 
+  test "reach.check multi-mode text output uses uniform section spacing" do
+    path = smell_fixture("def run(items), do: items")
+    project = Reach.Project.from_sources([path])
+    with_reach_config(~S([layers: [fixture: "ReachSmellFixture"]]))
+
+    output =
+      capture_io(fn ->
+        Check.run([arch: true, dead_code: true, smells: true, strict: true, project: project], [
+          path
+        ])
+      end)
+
+    assert output =~ "  Architecture Policy\n"
+    assert output =~ "  Dead Code\n"
+    assert output =~ "  Cross-Function Smell Detection\n"
+    assert output =~ "  OK\n\n"
+    assert output =~ "  (none)\n\n"
+    assert output =~ "  (no issues)\n"
+    refute output =~ "\n\n\n"
+  end
+
   test "reach.check rejects multiple modes for json output" do
     with_reach_config(~S([layers: [cli: "Mix.Tasks.*", core: "Reach.*"]]))
 

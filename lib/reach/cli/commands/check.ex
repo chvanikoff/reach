@@ -56,8 +56,14 @@ defmodule Reach.CLI.Commands.Check do
       Mix.raise("JSON output supports one reach.check mode at a time")
     end
 
-    opts = maybe_put_shared_project(opts, modes, positional)
+    opts = maybe_put_check_context(opts, modes, positional)
     Enum.each(modes, &run_mode(&1, opts, positional))
+  end
+
+  defp maybe_put_check_context(opts, modes, positional) do
+    opts
+    |> Keyword.put(:multi_check?, length(modes) > 1)
+    |> maybe_put_shared_project(modes, positional)
   end
 
   defp maybe_put_shared_project(opts, modes, []) do
@@ -71,7 +77,7 @@ defmodule Reach.CLI.Commands.Check do
   defp maybe_put_shared_project(opts, _modes, _positional), do: opts
 
   defp share_project?(opts, modes) do
-    is_nil(opts[:path]) and :arch in modes and :smells in modes
+    is_nil(opts[:path]) and Enum.any?(modes, &(&1 in [:arch, :smells]))
   end
 
   defp run_mode(:arch, opts, _positional), do: run_arch(opts)

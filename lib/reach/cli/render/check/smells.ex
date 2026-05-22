@@ -2,6 +2,7 @@ defmodule Reach.CLI.Render.Check.Smells do
   @moduledoc false
 
   alias Reach.CLI.Format
+  alias Reach.CLI.Text
   alias Reach.Smell.Finding
 
   @evidence_display_limit 4
@@ -22,12 +23,10 @@ defmodule Reach.CLI.Render.Check.Smells do
   end
 
   def render(findings, _format, _command) do
-    IO.puts(Format.header("Cross-Function Smell Detection"))
-
     if findings == [] do
-      IO.puts("  " <> Format.empty("no issues"))
-      IO.puts("")
+      Text.section("Cross-Function Smell Detection", [Text.empty("no issues")])
     else
+      Text.section("Cross-Function Smell Detection", [])
       grouped = Enum.group_by(findings, & &1.kind)
 
       render_group(Map.get(grouped, :redundant_traversal, []), "Redundant traversals")
@@ -50,7 +49,7 @@ defmodule Reach.CLI.Render.Check.Smells do
         render_group(findings, Format.humanize(kind))
       end)
 
-      IO.puts("\n  #{length(findings)} finding(s)\n")
+      IO.puts("\n  #{length(findings)} finding(s)")
     end
   end
 

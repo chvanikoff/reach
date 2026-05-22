@@ -3,6 +3,7 @@ defmodule Reach.CLI.Render.Check do
 
   alias Reach.CLI.Format
   alias Reach.CLI.Requirements
+  alias Reach.CLI.Text
 
   @text_limit 30
 
@@ -51,13 +52,13 @@ defmodule Reach.CLI.Render.Check do
   end
 
   def render_arch_text(%{violations: []}) do
-    IO.puts(Format.header("Architecture Policy"))
-    IO.puts("  #{Format.green("OK")}")
+    Text.section("Architecture Policy", [Text.line(Format.green("OK"))])
   end
 
   def render_arch_text(%{violations: violations}) do
-    IO.puts(Format.header("Architecture Policy"))
-    IO.puts("  #{Format.red("#{length(violations)} violation(s)")}")
+    Text.section("Architecture Policy", [
+      Text.line(Format.red("#{length(violations)} violation(s)"))
+    ])
 
     Enum.each(violations, fn
       %{type: type} = violation when type in [:config_error, "config_error"] ->
