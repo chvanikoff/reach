@@ -21,6 +21,19 @@ defmodule Reach.Plugins.Ecto.Smells.UnpinnedQueryValueTest do
     assert [%Finding{kind: :ecto_unpinned_query_value}] = Smells.run(project)
   end
 
+  test "ignores malformed from calls" do
+    project =
+      project_from_file(~S'''
+      defmodule MyApp.Query do
+        def query do
+          from()
+        end
+      end
+      ''')
+
+    assert [] = Smells.run(project)
+  end
+
   test "allows pinned local variables" do
     project =
       project_from_file(~S'''

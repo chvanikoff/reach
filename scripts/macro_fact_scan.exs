@@ -69,6 +69,9 @@ defmodule Reach.MacroFactScan do
       File.regular?(path) ->
         [path]
 
+      File.dir?(path) and Path.basename(path) in ["lib", "test", "src"] ->
+        Path.wildcard(Path.join(path, "**/*.{ex,exs}"))
+
       File.dir?(path) ->
         Path.wildcard(Path.join(path, "{lib,test}/**/*.{ex,exs}")) ++
           Path.wildcard(Path.join(path, "*.{ex,exs}"))

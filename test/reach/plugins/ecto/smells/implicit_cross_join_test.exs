@@ -21,6 +21,19 @@ defmodule Reach.Plugins.Ecto.Smells.ImplicitCrossJoinTest do
     assert [%Finding{kind: :ecto_implicit_cross_join}] = Smells.run(project)
   end
 
+  test "ignores malformed from calls" do
+    project =
+      project_from_file(~S'''
+      defmodule MyApp.Query do
+        def query do
+          from()
+        end
+      end
+      ''')
+
+    assert [] = Smells.run(project)
+  end
+
   test "allows explicit joins" do
     project =
       project_from_file(~S'''

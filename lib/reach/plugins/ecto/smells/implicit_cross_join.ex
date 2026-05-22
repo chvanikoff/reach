@@ -26,12 +26,14 @@ defmodule Reach.Plugins.Ecto.Smells.ImplicitCrossJoin do
     Enum.reverse(findings)
   end
 
-  defp implicit_cross_join?(args) do
+  defp implicit_cross_join?(args) when is_list(args) do
     generators = Enum.count(args, &match?({:in, _, [_binding, _source]}, &1))
     keywords = Enum.flat_map(args, &keyword_entries/1)
 
     generators > 1 and not Keyword.has_key?(keywords, :join)
   end
+
+  defp implicit_cross_join?(_args), do: false
 
   defp keyword_entries(entries) when is_list(entries) do
     Enum.filter(entries, &match?({key, _value} when is_atom(key), &1))

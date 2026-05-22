@@ -239,6 +239,30 @@ defmodule Reach.MacroFactTest do
            end)
   end
 
+  test "refines Phoenix LiveComponent use facts" do
+    {:ok, facts} =
+      MacroFact.collect_source(
+        ~S'''
+        defmodule MyAppWeb.ModalComponent do
+          use Phoenix.LiveComponent
+        end
+        ''',
+        plugins: [Reach.Plugins.Phoenix]
+      )
+
+    assert [
+             %MacroFact{
+               kind: :phoenix_live_component_use,
+               framework: :phoenix,
+               data: %{explained_callbacks: callbacks},
+               confidence: :high
+             }
+           ] = facts
+
+    assert {:handle_event, 3} in callbacks
+    assert {:update, 2} in callbacks
+  end
+
   test "collects facts from project files" do
     path = Path.join(System.tmp_dir!(), "reach-macro-fact-project-#{System.unique_integer()}.ex")
 

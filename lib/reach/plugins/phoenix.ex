@@ -81,7 +81,7 @@ defmodule Reach.Plugins.Phoenix do
   ]
   @router_scope_dsl [:scope, :pipeline, :pipe_through, :plug]
   @component_dsl [:attr, :slot, :embed_templates]
-  @use_modules [Phoenix.Router, Phoenix.Component, Phoenix.LiveView]
+  @use_modules [Phoenix.Router, Phoenix.Component, Phoenix.LiveView, Phoenix.LiveComponent]
 
   @pure_remote_modules [Phoenix.Component, Phoenix.LiveView, Phoenix.Controller, Plug.Conn]
 
@@ -124,12 +124,26 @@ defmodule Reach.Plugins.Phoenix do
   defp phoenix_use_kind(Phoenix.Router), do: :phoenix_router_use
   defp phoenix_use_kind(Phoenix.Component), do: :phoenix_component_use
   defp phoenix_use_kind(Phoenix.LiveView), do: :phoenix_live_view_use
+  defp phoenix_use_kind(Phoenix.LiveComponent), do: :phoenix_live_component_use
 
   defp phoenix_use_data(Phoenix.LiveView, data) do
     Map.put(data, :explained_callbacks, [
       {:mount, 3},
       {:handle_event, 3},
       {:handle_info, 2},
+      {:handle_params, 3},
+      {:handle_async, 3},
+      {:render, 1}
+    ])
+  end
+
+  defp phoenix_use_data(Phoenix.LiveComponent, data) do
+    Map.put(data, :explained_callbacks, [
+      {:mount, 1},
+      {:update, 2},
+      {:update_many, 1},
+      {:handle_event, 3},
+      {:handle_async, 3},
       {:render, 1}
     ])
   end

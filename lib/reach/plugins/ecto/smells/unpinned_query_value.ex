@@ -25,7 +25,7 @@ defmodule Reach.Plugins.Ecto.Smells.UnpinnedQueryValue do
     Enum.reverse(findings)
   end
 
-  defp findings_for_from(args, file) do
+  defp findings_for_from(args, file) when is_list(args) do
     bindings = query_bindings(args)
 
     args
@@ -34,7 +34,9 @@ defmodule Reach.Plugins.Ecto.Smells.UnpinnedQueryValue do
     |> Enum.flat_map(&comparison_findings(&1, bindings, file))
   end
 
-  defp query_bindings(args) do
+  defp findings_for_from(_args, _file), do: []
+
+  defp query_bindings(args) when is_list(args) do
     args
     |> Enum.flat_map(fn
       {:in, _meta, [{name, _binding_meta, context}, _source]}
