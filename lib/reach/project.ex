@@ -42,6 +42,8 @@ defmodule Reach.Project do
   """
   @spec from_sources([Path.t()], keyword()) :: t()
   def from_sources(paths, opts \\ []) do
+    opts = Keyword.put_new(opts, :paths, paths)
+
     module_sdgs =
       paths
       |> parse_files(opts)

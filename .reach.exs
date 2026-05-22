@@ -8,7 +8,7 @@ end
 
 layers = [
   cli: ["Mix.Tasks.*", "Reach.CLI.*"],
-  plugin: ["Reach.Plugin", "Reach.Plugins.*"],
+  plugin: ["Reach.Plugin", "Reach.Plugin.*", "Reach.Plugins.*"],
   evidence: ["Reach.Evidence", "Reach.Evidence.*"],
   smell: ["Reach.Smell.*"],
   check: ["Reach.Check.*"],

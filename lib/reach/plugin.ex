@@ -52,6 +52,7 @@ defmodule Reach.Plugin do
   """
 
   alias Reach.IR.Node
+  alias Reach.Plugin.Inference
 
   @type edge_spec :: {Node.id(), Node.id(), term()}
   @type embedded_result :: {[Node.t()], [edge_spec()]}
@@ -156,11 +157,17 @@ defmodule Reach.Plugin do
   Resolves plugins from options, falling back to auto-detection.
   """
   def resolve(opts) do
-    case Keyword.get(opts, :plugins) do
-      nil -> detect()
-      [] -> []
-      list when is_list(list) -> list
+    case Keyword.fetch(opts, :plugins) do
+      {:ok, plugins} when is_list(plugins) -> plugins
+      :error -> resolve_detected(opts)
     end
+  end
+
+  defp resolve_detected(opts) do
+    paths = Keyword.get(opts, :paths, [])
+
+    (detect() ++ Inference.infer(paths))
+    |> Enum.uniq()
   end
 
   @doc """
