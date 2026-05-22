@@ -238,6 +238,8 @@ defmodule Reach.Smell.Checks.TrivialDelegate do
 
   defp import_option_allows?(_entries, _name, _arity, default), do: default
 
+  @attribute_lookup_window 12
+
   defp impl_before?(file, line), do: previous_attribute?(file, line, "@impl")
 
   defp previous_attribute?(file, line, attribute) when is_binary(file) and is_integer(line) do
@@ -247,7 +249,7 @@ defmodule Reach.Smell.Checks.TrivialDelegate do
       |> String.split("\n")
       |> Enum.take(line - 1)
       |> Enum.reverse()
-      |> Enum.take(12)
+      |> Enum.take(@attribute_lookup_window)
       |> Enum.any?(&(String.trim_leading(&1) |> String.starts_with?(attribute)))
     else
       false
