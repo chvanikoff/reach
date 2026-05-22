@@ -22,7 +22,6 @@ defmodule Reach.CLI.Commands.Check do
     * `--write-baseline` — write current findings to a Reach baseline file
     * `--candidates` — emit advisory refactoring candidates
     * `--top` — limit candidate output for `--candidates`
-    * `--plugins` — plugin module or short name for path scans, repeatable (for example: `--plugins Phoenix --plugins Ecto`)
 
   """
 
@@ -34,7 +33,6 @@ defmodule Reach.CLI.Commands.Check do
   alias Reach.Check.Finding
   alias Reach.CLI.Commands.Check.DeadCode
   alias Reach.CLI.Commands.Check.Smells
-  alias Reach.CLI.Plugins
   alias Reach.CLI.Project
   alias Reach.CLI.Render.Check, as: CheckRender
   alias Reach.Config
@@ -70,7 +68,7 @@ defmodule Reach.CLI.Commands.Check do
 
   defp maybe_put_shared_project(opts, modes, []) do
     if share_project?(opts, modes) do
-      Keyword.put(opts, :project, Project.load([quiet: false] ++ Plugins.project_opts(opts)))
+      Keyword.put(opts, :project, Project.load([quiet: false] ++ plugin_opts(opts)))
     else
       opts
     end
@@ -148,7 +146,7 @@ defmodule Reach.CLI.Commands.Check do
   defp run_changed(opts) do
     config = Config.read()
 
-    project = Project.load([quiet: opts[:format] == "json"] ++ Plugins.project_opts(opts))
+    project = Project.load([quiet: opts[:format] == "json"] ++ plugin_opts(opts))
 
     result = Changed.run(project, config, base: opts[:base])
 
@@ -163,6 +161,8 @@ defmodule Reach.CLI.Commands.Check do
     CheckRender.render_result(result, opts[:format], &CheckRender.render_candidates_text/1)
   end
 
+  defp plugin_opts(opts), do: Keyword.take(opts, [:plugins])
+
   defp load_candidates_project(opts, positional) do
     path = opts[:path] || List.first(positional)
 
@@ -171,12 +171,10 @@ defmodule Reach.CLI.Commands.Check do
         opts[:project]
 
       path ->
-        Project.load(
-          [paths: [path], quiet: opts[:format] == "json"] ++ Plugins.project_opts(opts)
-        )
+        Project.load([paths: [path], quiet: opts[:format] == "json"] ++ plugin_opts(opts))
 
       true ->
-        Project.load([quiet: opts[:format] == "json"] ++ Plugins.project_opts(opts))
+        Project.load([quiet: opts[:format] == "json"] ++ plugin_opts(opts))
     end
   end
 end

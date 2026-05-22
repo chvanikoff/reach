@@ -22,7 +22,6 @@ defmodule Mix.Tasks.Reach.Check do
     * `--write-baseline` — write current findings to a Reach baseline file
     * `--candidates` — emit advisory refactoring candidates
     * `--top` — limit candidate output for `--candidates`
-    * `--plugins` — plugin module or short name for path scans, repeatable (for example: `--plugins Phoenix --plugins Ecto`)
 
   """
 
@@ -46,7 +45,6 @@ defmodule Mix.Tasks.Reach.Check do
     write_baseline: :string,
     candidates: :boolean,
     path: :string,
-    plugins: :keep,
     top: :integer
   ]
 

@@ -11,9 +11,9 @@ defmodule Reach.MacroFactScan do
           kind: :string,
           limit: :integer,
           format: :string,
-          plugin: :keep
+          plugins: :keep
         ],
-        aliases: [f: :framework, k: :kind, n: :limit, p: :plugin]
+        aliases: [f: :framework, k: :kind, n: :limit, p: :plugins]
       )
 
     if invalid != [], do: usage("invalid option(s): #{inspect(invalid)}")
@@ -34,7 +34,7 @@ defmodule Reach.MacroFactScan do
   end
 
   defp plugins(opts) do
-    case Keyword.get_values(opts, :plugin) do
+    case Keyword.get_values(opts, :plugins) do
       [] -> Reach.Plugin.detect()
       names -> Enum.map(names, &module!/1)
     end
@@ -170,7 +170,7 @@ defmodule Reach.MacroFactScan do
 
     Options:
       --framework, -f NAME  Only include facts refined for a framework, e.g. phoenix, ecto, ash.
-      --plugin, -p MODULE   Plugin module. May be repeated. Defaults to auto-detected plugins.
+      --plugins, -p MODULE  Plugin module. May be repeated. Defaults to auto-detected plugins.
       --kind, -k KIND       Only include one macro fact kind.
       --limit, -n N         Number of text examples. Defaults to 20.
       --format FORMAT       text or json. Defaults to text.

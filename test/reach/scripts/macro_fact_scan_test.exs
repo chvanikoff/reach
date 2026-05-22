@@ -15,14 +15,14 @@ defmodule Reach.Scripts.MacroFactScanTest do
     end
     """)
 
-    assert {text, 0} = scan(["--plugin", "Reach.Plugins.Phoenix", "--framework", "phoenix", dir])
+    assert {text, 0} = scan(["--plugins", "Reach.Plugins.Phoenix", "--framework", "phoenix", dir])
     assert text =~ "Macro fact scan"
     assert text =~ "phoenix_router_use=1"
     assert text =~ "phoenix_route=1"
 
     assert {json, 0} =
              scan([
-               "--plugin",
+               "--plugins",
                "Reach.Plugins.Phoenix",
                "--framework",
                "phoenix",

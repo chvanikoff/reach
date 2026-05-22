@@ -18,7 +18,7 @@ defmodule Reach.Scripts.SmellCorpusScan do
           output: :string,
           limit: :integer,
           glob: :keep,
-          plugin: :keep,
+          plugins: :keep,
           include_tests: :boolean,
           kinds: :string,
           quiet_zero: :boolean,
@@ -26,7 +26,7 @@ defmodule Reach.Scripts.SmellCorpusScan do
           fail_fast: :boolean,
           help: :boolean
         ],
-        aliases: [r: :repo, o: :output, l: :limit, g: :glob, p: :plugin, h: :help]
+        aliases: [r: :repo, o: :output, l: :limit, g: :glob, p: :plugins, h: :help]
       )
 
     if Keyword.get(opts, :help, false) or invalid != [] do
@@ -95,7 +95,7 @@ defmodule Reach.Scripts.SmellCorpusScan do
   end
 
   defp plugins(opts) do
-    case Keyword.get_values(opts, :plugin) do
+    case Keyword.get_values(opts, :plugins) do
       [] -> @default_plugins
       names -> Enum.map(names, &module!/1)
     end
@@ -333,7 +333,7 @@ defmodule Reach.Scripts.SmellCorpusScan do
       --limit, -l N          Maximum source files per repository.
       --glob, -g GLOB        Source glob relative to each repo. May be repeated.
       --include-tests        Include test/**/*.exs and apps/*/test/**/*.exs.
-      --plugin, -p MODULE    Plugin module. May be repeated. Defaults to Ecto, Phoenix, Oban, ExUnit.
+      --plugins, -p MODULE   Plugin module. May be repeated. Defaults to Ecto, Phoenix, Oban, ExUnit.
       --kinds a,b,c          Only run checks that emit selected smell kinds, and only include those findings.
       --quiet-zero           Do not print per-repo lines for repositories with zero findings.
       --progress-every N     Print progress every N repositories. Defaults to 50. Use 0 to disable.

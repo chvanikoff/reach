@@ -2,7 +2,6 @@ defmodule Reach.CLI.Commands.Check.DeadCode do
   @moduledoc false
 
   alias Reach.Check.DeadCode, as: DeadCodeCheck
-  alias Reach.CLI.Plugins
   alias Reach.CLI.Project
   alias Reach.CLI.Render.Check.DeadCode, as: DeadCodeRender
 
@@ -16,7 +15,7 @@ defmodule Reach.CLI.Commands.Check.DeadCode do
     unless format == "json" or opts[:multi_check?],
       do: Mix.shell().info("Analyzing #{length(files)} file(s)...")
 
-    findings = DeadCodeCheck.run(files, Plugins.project_opts(opts))
+    findings = DeadCodeCheck.run(files, Keyword.take(opts, [:plugins]))
     DeadCodeRender.render(findings, format, command)
   end
 end
