@@ -49,6 +49,8 @@ Framework-specific policy should live behind plugins. Generic smell, evidence, t
 
 A good smell starts conservative. Prefer a small high-confidence rule over a broad noisy one.
 
+New or broader smell rules need a false-positive scan before they are merged. If you want to contribute a rule but are not ready to run the corpus workflow, please open an issue instead. Include the pattern you want Reach to catch, why it matters, and a few real examples if you have them. That gives maintainers enough context to turn the idea into a validated rule later.
+
 1. Add the smell under the right layer:
    - generic structural smells: `lib/reach/smell/checks/`
    - plugin-specific smells: `lib/reach/plugins/<plugin>/smells/`
@@ -66,7 +68,7 @@ A good smell starts conservative. Prefer a small high-confidence rule over a bro
    MIX_ENV=test mix reach.check --arch --smells --strict
    ```
 
-6. Run corpus validation before broadening the heuristic.
+6. Run corpus validation before broadening the heuristic. Review every finding for the new rule in the scan output, tune away false positives, and add regression tests for both the intended hit and any allowed nearby pattern.
 
 ### Corpus workflow
 
