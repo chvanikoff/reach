@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Changed
+
+- **Check text rendering** — normalized `mix reach.check` text section spacing through shared check rendering helpers and architecture policy guards.
+
+### Fixed
+
+- **Map-shaped locations in text output** — smell and OTP text renderers now format `%{file:, line:}` and `%{file:, start_line:}` locations instead of crashing while JSON output continues to use structured data.
+
 ## 2.6.0
 
 ### New

@@ -108,12 +108,22 @@ defmodule Reach.CLI.Format do
 
   def location_text("unknown"), do: "unknown"
 
+  def location_text(%{file: file, line: line}) when is_binary(file) do
+    loc(file, line)
+  end
+
+  def location_text(%{file: file, start_line: line}) when is_binary(file) do
+    loc(file, line)
+  end
+
   def location_text(location) when is_binary(location) do
     case Regex.run(~r/^(.*):(\d+)$/, location) do
       [_match, file, line] -> loc(file, line)
       _ -> faint(location)
     end
   end
+
+  def location_text(location), do: faint(to_string(location))
 
   def path(file) when is_binary(file) do
     expanded = Path.expand(file)
