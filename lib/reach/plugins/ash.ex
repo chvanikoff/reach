@@ -580,7 +580,7 @@ defmodule Reach.Plugins.Ash do
 
     [mod]
   rescue
-    _ -> []
+    _error in [ArgumentError, File.Error, MatchError] -> []
   end
 
   # {MyModule, opts} tuple

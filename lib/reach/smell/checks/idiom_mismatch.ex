@@ -314,7 +314,7 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
       map_get_sentinel(blocks, file) ++
       length_based_indexing(blocks, file)
   rescue
-    _ -> []
+    _error in [ArgumentError, File.Error, MatchError] -> []
   end
 
   defp missing_logger_requires(project) do

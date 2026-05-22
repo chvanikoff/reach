@@ -12,14 +12,7 @@ defmodule Reach.Plugins.Phoenix.Smells.PubSubSubscribeWithoutConnected do
 
   @impl true
   def run(project) do
-    project.nodes
-    |> Enum.flat_map(fn
-      {_id, %{type: :function_def, meta: %{name: :mount, arity: 3}} = function} ->
-        findings_for_mount(function)
-
-      _entry ->
-        []
-    end)
+    Reach.Plugins.Phoenix.Smells.Helpers.mount_findings(project, &findings_for_mount/1)
   end
 
   defp findings_for_mount(function) do
@@ -54,7 +47,7 @@ defmodule Reach.Plugins.Phoenix.Smells.PubSubSubscribeWithoutConnected do
     |> List.last()
     |> Kernel.==("PubSub")
   rescue
-    _ -> false
+    ArgumentError -> false
   end
 
   defp pubsub_subscribe?(_node), do: false

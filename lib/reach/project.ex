@@ -135,7 +135,7 @@ defmodule Reach.Project do
       []
     end
   rescue
-    _ -> []
+    _error in [ArgumentError, File.Error, MatchError] -> []
   end
 
   defp source_files({elixirc_paths, erlc_paths}, plugins) do

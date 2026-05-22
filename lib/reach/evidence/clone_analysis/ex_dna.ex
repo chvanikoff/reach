@@ -52,7 +52,7 @@ defmodule Reach.Evidence.CloneAnalysis.ExDNA do
 
     report.clones
   rescue
-    _ -> []
+    _error in [ArgumentError, File.Error, MatchError] -> []
   end
 
   defp to_clone(ex_dna_clone, project) do

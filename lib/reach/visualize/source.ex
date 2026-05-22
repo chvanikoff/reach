@@ -53,7 +53,7 @@ defmodule Reach.Visualize.Source do
   def format_source(source) do
     Code.format_string!(source) |> IO.iodata_to_binary()
   rescue
-    _ -> String.trim(source)
+    _error in [SyntaxError, TokenMissingError] -> String.trim(source)
   end
 
   def highlight_line(file, line) when is_binary(file) and is_integer(line) do

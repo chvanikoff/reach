@@ -52,7 +52,7 @@ defmodule Reach.Plugins.Oban.Smells.NewArgs do
     |> List.last()
     |> String.ends_with?("Worker")
   rescue
-    _ -> false
+    ArgumentError -> false
   end
 
   defp oban_new_call?(_call, _module_worker?), do: false

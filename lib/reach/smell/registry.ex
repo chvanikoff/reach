@@ -45,7 +45,7 @@ defmodule Reach.Smell.Registry do
     |> Enum.take(2)
     |> Kernel.==(["Reach", "Plugins"])
   rescue
-    _ -> false
+    ArgumentError -> false
   end
 
   defp check?(module) do

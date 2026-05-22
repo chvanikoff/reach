@@ -606,7 +606,7 @@ defmodule Reach.Effects do
         nil
     end
   rescue
-    _ -> nil
+    _error in [ArgumentError, ErlangError] -> nil
   end
 
   defp classify_from_spec(_, _, _), do: nil
@@ -629,7 +629,7 @@ defmodule Reach.Effects do
           nil
       end
     rescue
-      _ -> nil
+      _error in [ArgumentError, ErlangError] -> nil
     end
 
     defp classify_from_inferred(_, _, _), do: nil

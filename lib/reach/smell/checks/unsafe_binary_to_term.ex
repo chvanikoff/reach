@@ -58,7 +58,7 @@ defmodule Reach.Smell.Checks.UnsafeBinaryToTerm do
       String.contains?(text, "sobelow_skip") and String.contains?(text, "BinToTerm")
     end)
   rescue
-    _ -> false
+    _error in [ArgumentError, File.Error] -> false
   end
 
   defp suppressed?(_call), do: false

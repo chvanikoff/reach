@@ -49,7 +49,8 @@ defmodule Reach.Plugins.LiveView.HEEx.Parser do
       other -> {:error, other}
     end
   rescue
-    exception -> {:error, exception}
+    exception in [ArgumentError, CompileError, EEx.SyntaxError, SyntaxError, TokenMissingError] ->
+      {:error, exception}
   catch
     kind, reason -> {:error, {kind, reason}}
   end
@@ -157,7 +158,7 @@ defmodule Reach.Plugins.LiveView.HEEx.Parser do
   defp parse_expr(code, meta) do
     Code.string_to_quoted!(code, line: meta_line(meta), column: meta_column(meta), columns: true)
   rescue
-    _ -> code
+    _error in [SyntaxError, TokenMissingError] -> code
   end
 
   defp parse_block_head(code, meta) do

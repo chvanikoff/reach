@@ -744,12 +744,12 @@ defmodule Reach.Frontend.Gleam do
   defp parse_int(s) do
     s |> String.replace("_", "") |> String.to_integer()
   rescue
-    _ -> 0
+    ArgumentError -> 0
   end
 
   defp parse_float(s) do
     s |> String.replace("_", "") |> String.to_float()
   rescue
-    _ -> 0.0
+    ArgumentError -> 0.0
   end
 end

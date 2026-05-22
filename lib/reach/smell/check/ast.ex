@@ -23,7 +23,7 @@ defmodule Reach.Smell.Check.AST do
           []
         end
       rescue
-        _ -> []
+        _error in [File.Error, MatchError, SyntaxError, TokenMissingError] -> []
       end
 
       defp scan_source_file(_file), do: []

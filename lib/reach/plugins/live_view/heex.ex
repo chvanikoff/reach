@@ -70,7 +70,8 @@ defmodule Reach.Plugins.LiveView.HEEx do
   defp compile(source, opts) do
     {:ok, EEx.compile_string(source, opts)}
   rescue
-    exception -> {:error, exception}
+    exception in [ArgumentError, CompileError, EEx.SyntaxError, SyntaxError, TokenMissingError] ->
+      {:error, exception}
   catch
     kind, reason -> {:error, {kind, reason}}
   end

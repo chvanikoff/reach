@@ -43,7 +43,7 @@ defmodule Reach.Smell.ASTRunner do
       []
     end
   rescue
-    _ -> []
+    _error in [ArgumentError, File.Error, MatchError] -> []
   end
 
   defp entry_matches_source?(source, {_check, {_callback, _kind, _message, prefilter}}) do

@@ -59,7 +59,8 @@ defmodule Reach.Frontend.BEAM do
 
       {:ok, nodes}
     rescue
-      e -> {:error, {e.__struct__, Exception.message(e)}}
+      e in [ArgumentError, ErlangError, File.Error, MatchError] ->
+        {:error, {e.__struct__, Exception.message(e)}}
     after
       File.rm_rf(tmp_dir)
     end

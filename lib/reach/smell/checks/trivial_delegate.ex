@@ -323,7 +323,7 @@ defmodule Reach.Smell.Checks.TrivialDelegate do
     |> Enum.take(12)
     |> Enum.any?(&(String.trim_leading(&1) |> String.starts_with?(attribute)))
   rescue
-    _ -> false
+    ArgumentError -> false
   end
 
   defp previous_attribute?(_file, _line, _attribute), do: false

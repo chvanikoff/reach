@@ -414,7 +414,7 @@ defmodule Reach.Map.Analysis do
       []
     end
   rescue
-    _ -> []
+    _error in [ArgumentError, File.Error, MatchError] -> []
   end
 
   defp max_tree_depth(tree, node, depth, visited) do

@@ -1205,7 +1205,7 @@ defmodule Reach.Frontend.Elixir do
       []
     end
   rescue
-    _ -> []
+    _error in [ArgumentError, File.Error, MatchError] -> []
   end
 
   defp exported_of_kind(mod, kind) do
@@ -1215,7 +1215,7 @@ defmodule Reach.Frontend.Elixir do
       []
     end
   rescue
-    _ -> []
+    _error in [ArgumentError, File.Error, MatchError] -> []
   end
 
   defp resolve_import_funs(mod, opts) do

@@ -27,7 +27,8 @@ if Code.ensure_loaded?(QuickBEAM) do
             {:error, reason} -> {:error, reason}
           end
         rescue
-          e -> {:error, Exception.message(e)}
+          e in [ArgumentError, ErlangError, MatchError, RuntimeError] ->
+            {:error, Exception.message(e)}
         after
           QuickBEAM.stop(rt)
         end
