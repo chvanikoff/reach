@@ -31,11 +31,16 @@ defmodule Reach.Scripts.MacroFactScanTest do
                dir
              ])
 
-    assert [use_fact, route_fact] = Jason.decode!(json)
+    assert [use_fact, route_fact] = json |> extract_json() |> Jason.decode!()
     assert use_fact["kind"] == "phoenix_router_use"
     assert route_fact["kind"] == "phoenix_route"
 
     File.rm_rf(dir)
+  end
+
+  defp extract_json(output) do
+    output
+    |> String.slice((:binary.match(output, "[") |> elem(0))..-1//1)
   end
 
   defp scan(args) do

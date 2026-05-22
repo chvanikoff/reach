@@ -212,7 +212,17 @@ defmodule Reach.Plugins.Ash do
 
   @ash_phoenix_form_write [:submit, :submit!]
 
-  @ash_action_dsl [:actions, :read, :create, :update, :destroy, :action]
+  @ash_resource_block_dsl [
+    :attributes,
+    :relationships,
+    :actions,
+    :policies,
+    :preparations,
+    :validations,
+    :changes
+  ]
+
+  @ash_action_dsl [:read, :create, :update, :destroy, :action]
 
   # --- AshStateMachine DSL (compile-time) ---
 
@@ -240,7 +250,7 @@ defmodule Reach.Plugins.Ash do
   end
 
   def refine_macro_fact(%MacroFact{name: name} = fact, _context)
-      when name in @resource_dsl or name in @ash_action_dsl do
+      when name in @resource_dsl or name in @ash_resource_block_dsl or name in @ash_action_dsl do
     %{fact | framework: :ash, kind: ash_resource_kind(name), confidence: :high}
   end
 
@@ -259,6 +269,9 @@ defmodule Reach.Plugins.Ash do
     do: :ash_code_interface
 
   defp ash_resource_kind(:actions), do: :ash_actions
+
+  defp ash_resource_kind(name) when name in @ash_resource_block_dsl,
+    do: :ash_resource_dsl
 
   defp ash_resource_kind(name) when name in [:create, :read, :update, :destroy, :action],
     do: :ash_action

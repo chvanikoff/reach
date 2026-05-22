@@ -98,7 +98,14 @@ defmodule Reach.Plugins.Phoenix do
 
   def refine_macro_fact(%MacroFact{name: name, call_module: nil} = fact, _context)
       when name in @route_dsl do
-    %{fact | framework: :phoenix, kind: :phoenix_route, confidence: :high}
+    %{
+      fact
+      | framework: :phoenix,
+        kind: :phoenix_route,
+        target: phoenix_route_target(fact),
+        data: phoenix_route_data(fact),
+        confidence: :high
+    }
   end
 
   def refine_macro_fact(%MacroFact{name: name, call_module: nil} = fact, _context)
@@ -115,6 +122,79 @@ defmodule Reach.Plugins.Phoenix do
   defp phoenix_component_kind(:attr), do: :phoenix_component_attr
   defp phoenix_component_kind(:slot), do: :phoenix_component_slot
   defp phoenix_component_kind(:embed_templates), do: :phoenix_embed_templates
+
+  defp phoenix_route_target(%MacroFact{name: :live, data: %{args: [_path, live_view | _]}} = fact) do
+    %{live_view: expand_web_module(fact.owner_module, live_view)}
+  end
+
+  defp phoenix_route_target(
+         %MacroFact{name: name, data: %{args: [_path, controller, action | _]}} = fact
+       )
+       when name in [:get, :post, :put, :delete, :patch, :options, :connect, :trace] do
+    %{
+      route: phoenix_route_method(name),
+      action: {expand_web_module(fact.owner_module, controller), trim_atom(action), 2}
+    }
+  end
+
+  defp phoenix_route_target(%MacroFact{name: name, data: %{args: [path | _]}}) do
+    %{route: phoenix_route_method(name), path: trim_literal(path)}
+  end
+
+  defp phoenix_route_target(_fact), do: nil
+
+  defp phoenix_route_data(%MacroFact{name: name, data: %{args: args}}) do
+    %{method: phoenix_route_method(name), args: args}
+  end
+
+  defp phoenix_route_data(fact), do: fact.data
+
+  defp phoenix_route_method(name)
+       when name in [:get, :post, :put, :delete, :patch, :options, :connect, :trace], do: name
+
+  defp phoenix_route_method(name), do: name
+
+  defp expand_web_module(owner_module, module_string) do
+    module_string = trim_alias(module_string)
+
+    cond do
+      module_string == "" ->
+        nil
+
+      String.starts_with?(module_string, "Elixir.") ->
+        Module.concat([module_string])
+
+      owner_module_base(owner_module) ->
+        Module.concat([owner_module_base(owner_module), module_string])
+
+      true ->
+        Module.concat([module_string])
+    end
+  end
+
+  defp owner_module_base(module) when is_atom(module) do
+    case module |> Module.split() |> Enum.drop(-1) do
+      [] -> nil
+      parts -> Module.concat(parts)
+    end
+  end
+
+  defp owner_module_base(_module), do: nil
+
+  defp trim_alias(string) do
+    string
+    |> trim_literal()
+    |> String.trim_leading("Elixir.")
+  end
+
+  defp trim_atom(":" <> atom), do: atom
+  defp trim_atom(value), do: trim_literal(value)
+
+  defp trim_literal(value) do
+    value
+    |> String.trim()
+    |> String.trim("\"")
+  end
 
   @impl true
   def classify_effect(%Node{type: :call, meta: %{kind: :local, function: fun}})

@@ -56,6 +56,31 @@ defmodule Reach.MacroFactTest do
            ] = facts
   end
 
+  test "enriches Phoenix route targets" do
+    source = ~S'''
+    defmodule MyAppWeb.Router do
+      use Phoenix.Router
+
+      get "/health", HealthController, :show
+      live "/dashboard", DashboardLive
+    end
+    '''
+
+    assert {:ok, facts} = MacroFact.collect_source(source, plugins: [Reach.Plugins.Phoenix])
+
+    assert %MacroFact{
+             kind: :phoenix_route,
+             target: %{route: :get, action: {MyAppWeb.HealthController, "show", 2}},
+             data: %{method: :get, args: ["\"/health\"", "HealthController", ":show"]}
+           } = Enum.at(facts, 1)
+
+    assert %MacroFact{
+             kind: :phoenix_route,
+             target: %{live_view: MyAppWeb.DashboardLive},
+             data: %{method: :live}
+           } = Enum.at(facts, 2)
+  end
+
   test "collects Ash-style declarations without descending into function bodies" do
     source = ~S'''
     defmodule MyApp.Blog.Post do
@@ -121,7 +146,7 @@ defmodule Reach.MacroFactTest do
 
     assert Enum.map(facts, & &1.kind) == [
              :ash_resource_use,
-             :macro_dsl_declaration,
+             :ash_resource_dsl,
              :ash_attribute,
              :ash_attribute,
              :ash_actions,

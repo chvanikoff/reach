@@ -18,7 +18,7 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
     assert text =~ "manual_flat_map=1"
 
     assert {json, 0} = scan(["--kind", "stdlib", "--format", "json", dir])
-    assert [result] = Jason.decode!(json)
+    assert [result] = json |> extract_json() |> Jason.decode!()
     assert result["kind"] == "manual_flat_map"
     assert result["family"] == "stdlib"
 
@@ -44,7 +44,7 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
     """)
 
     assert {json, 0} = scan(["--kind", "stdlib", "--format", "json", dir])
-    assert [_result] = Jason.decode!(json)
+    assert [_result] = json |> extract_json() |> Jason.decode!()
     refute json =~ "warning:"
 
     File.rm_rf(dir)
@@ -66,7 +66,7 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
     """)
 
     assert {json, 0} = scan(["--kind", "map-contract", "--format", "json", dir])
-    assert [result] = Jason.decode!(json)
+    assert [result] = json |> extract_json() |> Jason.decode!()
     assert result["family"] == "map_contract"
     assert result["keys"] == ["email", "id", "name"]
     assert result["variable"] == "data"
@@ -100,13 +100,18 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
     """)
 
     assert {json, 0} = scan(["--kind", "map-contract", "--format", "json", dir])
-    assert [result] = Jason.decode!(json)
+    assert [result] = json |> extract_json() |> Jason.decode!()
     assert result["role"] == "external_payload"
 
     assert [%{"module" => "Elixir.Jason", "function" => "encode!", "arity" => 1}] =
              result["escapes"]
 
     File.rm_rf(dir)
+  end
+
+  defp extract_json(output) do
+    output
+    |> String.slice((:binary.match(output, "[") |> elem(0))..-1//1)
   end
 
   defp scan(args) do

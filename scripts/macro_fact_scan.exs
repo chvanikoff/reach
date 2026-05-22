@@ -120,7 +120,13 @@ defmodule Reach.MacroFactScan do
     |> Map.new(fn {key, value} -> {to_string(key), json_value(value)} end)
   end
 
-  defp json_value(value) when is_tuple(value), do: Tuple.to_list(value)
+  defp json_value(value) when is_tuple(value), do: value |> Tuple.to_list() |> json_value()
+  defp json_value(value) when is_list(value), do: Enum.map(value, &json_value/1)
+
+  defp json_value(value) when is_map(value) do
+    Map.new(value, fn {key, value} -> {to_string(key), json_value(value)} end)
+  end
+
   defp json_value(value), do: value
 
   defp atom_filter(nil), do: nil

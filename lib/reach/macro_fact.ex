@@ -67,6 +67,7 @@ defmodule Reach.MacroFact do
   @definition_forms [:def, :defp, :defmacro, :defmacrop]
   @module_forms [:defmodule, :defprotocol, :defimpl]
   @control_forms [:=, :->, :fn, :case, :cond, :if, :unless, :with, :for, :receive, :try]
+  @non_declaration_calls [:@, :alias, :require, :import]
 
   def family, do: @family
   def kinds, do: @kinds
@@ -206,18 +207,22 @@ defmodule Reach.MacroFact do
       call_module: call_module,
       meta: meta,
       target: call_module,
-      data: %{args: Macro.to_string(rest)}
+      data: %{args: Enum.map(rest, &Macro.to_string/1)}
     }
   end
 
+  defp declaration_call({name, _meta, _args}) when name in @non_declaration_calls, do: nil
+
   defp declaration_call({name, meta, args}) when is_atom(name) and is_list(args) do
+    arity = call_arity(args)
+
     %{
       name: name,
-      arity: call_arity(args),
+      arity: arity,
       call_module: nil,
       meta: meta,
-      target: {nil, name, call_arity(args)},
-      data: %{}
+      target: {nil, name, arity},
+      data: call_data(args)
     }
   end
 
@@ -232,7 +237,7 @@ defmodule Reach.MacroFact do
       call_module: call_module,
       meta: meta,
       target: {call_module, name, arity},
-      data: %{}
+      data: call_data(args)
     }
   end
 
@@ -242,6 +247,8 @@ defmodule Reach.MacroFact do
   defp use_module_and_args([]), do: {nil, []}
 
   defp call_arity(args), do: args |> Enum.reject(&keyword_block?/1) |> length()
+
+  defp call_data(args), do: %{args: Enum.map(args, &Macro.to_string/1)}
 
   defp keyword_block?(block) when is_list(block) do
     Keyword.keyword?(block) and Enum.any?(block, fn {key, _value} -> block_key?(key) end)
