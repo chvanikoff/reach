@@ -23,6 +23,7 @@
 - **Corpus-tuned evidence** — tightened evidence scanning after reviewing Hex corpus hits, including safe handling for dynamic aliases and avoiding `Enum.flat_map/2` suggestions for reduce callbacks shaped like `acc ++ [expr]`.
 - **CLI JSON boundary** — moved JSON output normalization into `Reach.CLI.JSON` and removed the old `jsonify` helper from formatting code.
 - **Self architecture policy** — tightened Reach's own `.reach.exs` with layer coverage, removed-namespace guards, and extra call-boundary rules that keep CLI/Mix orchestration out of evidence, smell, frontend, plugin, and visualization modules.
+- **Architecture hardening docs** — added a configuration recipe showing how to combine layer coverage, dependency rules, call bans, removed-source guards, exceptions, and baselines for stricter architecture enforcement.
 
 ### Fixed
 

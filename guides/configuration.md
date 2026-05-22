@@ -96,6 +96,56 @@ The file must evaluate to a keyword list. Start from [`examples/reach.exs`](../e
 
 The `deps`, `source`, `calls`, `effects`, `boundaries`, `risk`, `candidates`, `smells`, and `tests` sections use a uniform grouped shape: the section names the concern, and nested entries name the policy direction or threshold being tuned.
 
+## Architecture hardening recipe
+
+For larger codebases, start with broad layer ownership and then add precise guardrails for boundaries that should never regress:
+
+```elixir
+[
+  layers: [
+    cli: ["Mix.Tasks.*", "MyApp.CLI.*"],
+    domain: ["MyApp.Accounts.*", "MyApp.Billing.*"],
+    adapters: ["MyApp.Repo", "MyApp.Adapters.*"],
+    web: "MyAppWeb.*"
+  ],
+  deps: [
+    forbidden: [
+      {:domain, :cli},
+      {:domain, :web},
+      {:domain, :adapters, except: ["MyApp.Billing.PersistenceBoundary"]}
+    ]
+  ],
+  calls: [
+    forbidden: [
+      {"MyApp.Domain.*", ["MyApp.CLI.*", "Mix.Task.run/1", "Mix.Task.run/2"]},
+      {"MyApp.Adapters.*", ["MyAppWeb.*"]}
+    ]
+  ],
+  source: [
+    forbidden_modules: ["MyApp.Legacy.*", "MyApp.OldTaskRunner"],
+    forbidden_files: ["lib/my_app/legacy/**", "lib/my_app/old_task_runner.ex"]
+  ],
+  checks: [
+    layer_coverage: [
+      require_all_modules: true,
+      forbid_multiple_matches: true,
+      ignore: ["Mix.Tasks.*", "MyApp.Generated.*"]
+    ]
+  ]
+]
+```
+
+Use each policy layer for a different kind of guarantee:
+
+- `layers` plus `layer_coverage` makes architectural ownership explicit.
+- `deps` catches broad layer direction violations and reports concrete call-edge witnesses.
+- `calls` catches precise banned APIs such as `Mix.Task.run/2`, CLI renderers, or framework escape hatches.
+- `source` keeps removed namespaces and files from silently coming back.
+- `except` and `except_edges` document intentional seams instead of weakening the whole rule.
+- baselines should be reserved for known transitional findings; new findings still fail.
+
+Reach uses this pattern in its own `.reach.exs` to keep CLI/Mix orchestration out of evidence, smell, frontend, plugin, and visualization modules while preserving a baseline for one known broad layer cycle.
+
 ## Keys
 
 ### `layers`
