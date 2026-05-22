@@ -18,7 +18,7 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
     assert text =~ "manual_flat_map=1"
 
     assert {json, 0} = scan(["--kind", "stdlib", "--format", "json", dir])
-    assert [result] = json |> extract_json() |> Jason.decode!()
+    assert [result] = Jason.decode!(json)
     assert result["kind"] == "manual_flat_map"
     assert result["family"] == "stdlib"
 
@@ -44,7 +44,7 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
     """)
 
     assert {json, 0} = scan(["--kind", "stdlib", "--format", "json", dir])
-    assert [_result] = json |> extract_json() |> Jason.decode!()
+    assert [_result] = Jason.decode!(json)
     refute json =~ "warning:"
 
     File.rm_rf(dir)
@@ -66,7 +66,7 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
     """)
 
     assert {json, 0} = scan(["--kind", "map-contract", "--format", "json", dir])
-    assert [result] = json |> extract_json() |> Jason.decode!()
+    assert [result] = Jason.decode!(json)
     assert result["family"] == "map_contract"
     assert result["keys"] == ["email", "id", "name"]
     assert result["variable"] == "data"
@@ -100,7 +100,7 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
     """)
 
     assert {json, 0} = scan(["--kind", "map-contract", "--format", "json", dir])
-    assert [result] = json |> extract_json() |> Jason.decode!()
+    assert [result] = Jason.decode!(json)
     assert result["role"] == "external_payload"
 
     assert [%{"module" => "Elixir.Jason", "function" => "encode!", "arity" => 1}] =
@@ -109,16 +109,10 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
     File.rm_rf(dir)
   end
 
-  defp extract_json(output) do
-    case Regex.run(~r/(\[\s*\{.*\]\s*)\z/s, output) do
-      [_, json] -> json
-      nil -> flunk("expected JSON array in output:\n#{output}")
-    end
-  end
-
   defp scan(args) do
-    System.cmd("mix", ["run", "scripts/evidence_corpus_scan.exs", "--" | args],
-      stderr_to_stdout: true
+    System.cmd("mix", ["run", "--no-compile", "scripts/evidence_corpus_scan.exs", "--" | args],
+      stderr_to_stdout: true,
+      env: [{"NO_COLOR", "1"}, {"CLICOLOR", "0"}, {"TERM", "dumb"}]
     )
   end
 end

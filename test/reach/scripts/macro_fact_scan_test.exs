@@ -31,21 +31,17 @@ defmodule Reach.Scripts.MacroFactScanTest do
                dir
              ])
 
-    assert [use_fact, route_fact] = json |> extract_json() |> Jason.decode!()
+    assert [use_fact, route_fact] = Jason.decode!(json)
     assert use_fact["kind"] == "phoenix_router_use"
     assert route_fact["kind"] == "phoenix_route"
 
     File.rm_rf(dir)
   end
 
-  defp extract_json(output) do
-    case Regex.run(~r/(\[\s*\{.*\]\s*)\z/s, output) do
-      [_, json] -> json
-      nil -> flunk("expected JSON array in output:\n#{output}")
-    end
-  end
-
   defp scan(args) do
-    System.cmd("mix", ["run", "scripts/macro_fact_scan.exs", "--" | args], stderr_to_stdout: true)
+    System.cmd("mix", ["run", "--no-compile", "scripts/macro_fact_scan.exs", "--" | args],
+      stderr_to_stdout: true,
+      env: [{"NO_COLOR", "1"}, {"CLICOLOR", "0"}, {"TERM", "dumb"}]
+    )
   end
 end
