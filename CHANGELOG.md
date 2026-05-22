@@ -4,6 +4,8 @@
 
 ### New
 
+- **LiveView/HEEx lowering** — added an optional LiveView plugin that recognizes `~H` and `.heex` templates, lowers HEEx control flow (`if`/`case`, `:if`, `:for`) into Reach's Elixir IR with template source labels/spans, and hides LiveView rendering helper edges from graph presentation. The plugin uses LiveView's parser when available and falls back to the stable `TagEngine` path for current 1.1.x projects.
+- **LiveView semantic edges** — LiveView analysis now connects `JS.push`/`push_event` calls to `handle_event/3`, assign writes to HEEx assign reads, parser-lowered component attr values to component calls, and stream writes to `@streams.*` reads. Static `phx-*` event attrs are modeled by the parser-backed HEEx lowerer when available.
 - **Architecture layer ergonomics** — `.reach.exs` now validates unknown layer references, supports allowlist-style dependency policy, dependency exceptions, optional layer coverage checks, and layer-cycle violations with concrete call-edge witnesses.
 
 ### Changed
