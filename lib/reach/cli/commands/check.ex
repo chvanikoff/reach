@@ -70,7 +70,7 @@ defmodule Reach.CLI.Commands.Check do
 
   defp maybe_put_shared_project(opts, modes, []) do
     if share_project?(opts, modes) do
-      Keyword.put(opts, :project, Project.load(quiet: false))
+      Keyword.put(opts, :project, Project.load([quiet: false] ++ Plugins.project_opts(opts)))
     else
       opts
     end

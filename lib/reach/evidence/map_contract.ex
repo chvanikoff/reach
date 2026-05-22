@@ -5,6 +5,27 @@ defmodule Reach.Evidence.MapContract do
 
   defmodule Contract do
     @moduledoc false
+    @type t :: %__MODULE__{
+            variable: String.t() | nil,
+            keys: [String.t()],
+            location: String.t() | nil,
+            reads: [term()],
+            updates: [term()],
+            confidence: atom() | nil,
+            source: term(),
+            producer: term(),
+            role: atom() | nil,
+            key_coverage: float() | nil,
+            observed_keys: [String.t()],
+            unused_keys: [String.t()],
+            read_count: non_neg_integer(),
+            mutation_count: non_neg_integer(),
+            escaped?: boolean(),
+            escapes: [term()],
+            consumer: term(),
+            file: String.t() | nil
+          }
+
     defstruct [
       :variable,
       :keys,
@@ -22,7 +43,8 @@ defmodule Reach.Evidence.MapContract do
       :mutation_count,
       :escaped?,
       :escapes,
-      :consumer
+      :consumer,
+      :file
     ]
   end
 

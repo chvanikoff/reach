@@ -239,6 +239,27 @@ defmodule Reach.MacroFactTest do
            end)
   end
 
+  test "explained callbacks only include high-confidence framework facts" do
+    low_confidence = %MacroFact{
+      kind: :macro_dsl_declaration,
+      owner_module: MyApp.Mock,
+      framework: nil,
+      data: %{explained_callbacks: [{:run, 1}]},
+      confidence: :low
+    }
+
+    high_confidence = %MacroFact{
+      kind: :phoenix_live_component_use,
+      owner_module: MyApp.Mock,
+      framework: :phoenix,
+      data: %{explained_callbacks: [{:render, 1}]},
+      confidence: :high
+    }
+
+    assert MacroFact.explained_callbacks([low_confidence, high_confidence], MyApp.Mock) ==
+             MapSet.new([{:render, 1}])
+  end
+
   test "refines Phoenix LiveComponent use facts" do
     {:ok, facts} =
       MacroFact.collect_source(
@@ -259,6 +280,7 @@ defmodule Reach.MacroFactTest do
              }
            ] = facts
 
+    assert :phoenix_live_component_use in MacroFact.kinds()
     assert {:handle_event, 3} in callbacks
     assert {:update, 2} in callbacks
   end

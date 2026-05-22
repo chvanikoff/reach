@@ -43,6 +43,7 @@ defmodule Reach.MacroFact do
     :phoenix_router_use,
     :phoenix_component_use,
     :phoenix_live_view_use,
+    :phoenix_live_component_use,
     :phoenix_component_attr,
     :phoenix_component_slot,
     :phoenix_embed_templates,
@@ -139,9 +140,16 @@ defmodule Reach.MacroFact do
   def explained_callbacks(facts, owner_module) do
     facts
     |> by_owner(owner_module)
+    |> Enum.filter(&high_confidence_framework_fact?/1)
     |> Enum.flat_map(fn fact -> Map.get(fact.data || %{}, :explained_callbacks, []) end)
     |> MapSet.new()
   end
+
+  defp high_confidence_framework_fact?(%__MODULE__{confidence: :high, framework: framework})
+       when not is_nil(framework),
+       do: true
+
+  defp high_confidence_framework_fact?(_fact), do: false
 
   def at_source(facts, %{file: file, line: line}) do
     Enum.filter(facts, fn fact ->

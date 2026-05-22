@@ -190,6 +190,7 @@ defmodule Reach.Evidence.MapContractTest do
              |> Enum.filter(&(&1.source == :cross_file_return))
 
     assert contract.file == consumer
+    assert Map.has_key?(Map.from_struct(contract), :file)
     assert contract.producer == {Accounts.Profile, :build, 1}
     assert contract.consumer == {Web.ProfileView, :render, 1}
     assert contract.role == :domain
