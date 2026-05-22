@@ -9,6 +9,7 @@ if Code.ensure_loaded?(Jason.Encoder) do
   defimpl Jason.Encoder, for: Reach.CLI.JSONEnvelope do
     def encode(%{command: command, tool: tool, data: data}, opts) do
       data
+      |> Reach.CLI.JSON.to_data()
       |> Map.merge(%{command: command})
       |> maybe_put_tool(tool)
       |> Jason.Encode.map(opts)

@@ -73,11 +73,7 @@ defmodule Reach.CLI.Format do
   end
 
   defp render_json(data, tool, opts) do
-    output = %Reach.CLI.JSONEnvelope{
-      command: tool,
-      tool: tool,
-      data: jsonify(data)
-    }
+    output = %Reach.CLI.JSONEnvelope{command: tool, tool: tool, data: data}
 
     json = Jason.encode!(output, pretty: Keyword.get(opts, :pretty, true))
     IO.write(json)
@@ -92,47 +88,6 @@ defmodule Reach.CLI.Format do
     IO.write(findings)
   end
 
-  # ── JSON encoding ──
-
-  def jsonify(%Reach.IR.Node{} = node) do
-    %{type: Atom.to_string(node.type), id: node.id}
-    |> maybe_add(:name, node.meta[:name])
-    |> maybe_add(:module, node.meta[:module])
-    |> maybe_add(:function, node.meta[:function])
-    |> maybe_add(:location, raw_location(node))
-  end
-
-  def jsonify(%{__struct__: _} = struct) do
-    struct
-    |> Map.from_struct()
-    |> jsonify()
-  end
-
-  def jsonify(%{} = map) do
-    Map.new(map, fn {k, v} -> {jsonify_key(k), jsonify(v)} end)
-  end
-
-  def jsonify(list) when is_list(list), do: Enum.map(list, &jsonify/1)
-
-  def jsonify({_m, _f, _a} = t) when is_tuple(t) and tuple_size(t) == 3 do
-    case t do
-      {m, f, a} when is_atom(m) and is_atom(f) and is_number(a) ->
-        "#{inspect(m)}.#{f}/#{a}"
-
-      _ ->
-        t |> Tuple.to_list() |> jsonify()
-    end
-  end
-
-  def jsonify(tuple) when is_tuple(tuple), do: jsonify(Tuple.to_list(tuple))
-  def jsonify(atom) when is_atom(atom) and not is_nil(atom), do: Atom.to_string(atom)
-  def jsonify(nil), do: nil
-  def jsonify(other), do: other
-
-  defp jsonify_key(k) when is_binary(k), do: k
-  defp jsonify_key(k) when is_atom(k), do: Atom.to_string(k)
-  defp jsonify_key(k), do: inspect(k)
-
   # ── Formatting ──
 
   def location(node) do
@@ -142,13 +97,6 @@ defmodule Reach.CLI.Format do
 
       _ ->
         "unknown"
-    end
-  end
-
-  def raw_location(node) do
-    case node.source_span do
-      %{file: f, start_line: l} -> "#{f}:#{l}"
-      _ -> "unknown"
     end
   end
 
@@ -227,7 +175,4 @@ defmodule Reach.CLI.Format do
       true -> to_string(value)
     end
   end
-
-  defp maybe_add(map, _key, nil), do: map
-  defp maybe_add(map, key, val), do: Map.put(map, key, jsonify(val))
 end
