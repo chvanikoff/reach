@@ -18,4 +18,22 @@ defmodule Reach.Source do
 
   def span_from_origin(%Origin{span: span}), do: Span.to_map(span)
   def span_from_origin(_), do: nil
+
+  def project_files(project) do
+    project.nodes
+    |> Map.values()
+    |> Enum.flat_map(fn node ->
+      case node.source_span do
+        %{file: file} when is_binary(file) -> [file]
+        _span -> []
+      end
+    end)
+    |> Enum.uniq()
+    |> Enum.reject(&dependency_file?/1)
+    |> Enum.sort()
+  end
+
+  defp dependency_file?(file) do
+    String.contains?(file, "/deps/") or String.contains?(file, "/_build/")
+  end
 end

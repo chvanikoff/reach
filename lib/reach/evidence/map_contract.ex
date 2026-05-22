@@ -91,23 +91,7 @@ defmodule Reach.Evidence.MapContract do
   defp project_plugins(project) when is_map(project), do: Map.get(project, :plugins, [])
   defp project_plugins(_project), do: []
 
-  defp project_source_files(project) do
-    project.nodes
-    |> Map.values()
-    |> Enum.flat_map(fn node ->
-      case node.source_span do
-        %{file: file} when is_binary(file) -> [file]
-        _span -> []
-      end
-    end)
-    |> Enum.uniq()
-    |> Enum.reject(&dependency_source_file?/1)
-    |> Enum.sort()
-  end
-
-  defp dependency_source_file?(file) do
-    String.contains?(file, "/deps/") or String.contains?(file, "/_build/")
-  end
+  defp project_source_files(project), do: Reach.Source.project_files(project)
 
   defp source_file_ast(file) do
     with {:ok, source} <- File.read(file),

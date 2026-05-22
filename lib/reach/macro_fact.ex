@@ -37,9 +37,39 @@ defmodule Reach.MacroFact do
           confidence: atom() | nil
         }
 
+  @family :macro_fact
+  @kinds [
+    :macro_dsl_declaration,
+    :phoenix_router_use,
+    :phoenix_component_use,
+    :phoenix_live_view_use,
+    :phoenix_component_attr,
+    :phoenix_component_slot,
+    :phoenix_embed_templates,
+    :phoenix_route,
+    :phoenix_router_dsl,
+    :ecto_schema_use,
+    :ecto_migration_use,
+    :ecto_schema,
+    :ecto_schema_field,
+    :ecto_migration_dsl,
+    :ash_resource_use,
+    :ash_domain_use,
+    :ash_policy_authorizer_use,
+    :ash_actions,
+    :ash_action,
+    :ash_attribute,
+    :ash_code_interface,
+    :ash_resource_dsl,
+    :ash_state_machine_dsl
+  ]
+
   @definition_forms [:def, :defp, :defmacro, :defmacrop]
   @module_forms [:defmodule, :defprotocol, :defimpl]
   @control_forms [:=, :->, :fn, :case, :cond, :if, :unless, :with, :for, :receive, :try]
+
+  def family, do: @family
+  def kinds, do: @kinds
 
   @doc "Collects source-level macro/DSL declaration facts from quoted Elixir AST."
   @spec collect_ast(Macro.t(), keyword()) :: [t()]
@@ -71,17 +101,54 @@ defmodule Reach.MacroFact do
   end
 
   @doc "Reads and collects macro/DSL facts from a source file."
-  @spec collect_file(Path.t()) :: {:ok, [t()]} | {:error, term()}
-  def collect_file(path) do
+  @spec collect_file(Path.t(), keyword()) :: {:ok, [t()]} | {:error, term()}
+  def collect_file(path, opts \\ []) do
     with {:ok, source} <- File.read(path) do
-      collect_source(source, file: path)
+      collect_source(source, Keyword.put(opts, :file, path))
     end
+  end
+
+  @doc "Collects macro/DSL facts from all source files in a project."
+  @spec collect_project(map(), keyword()) :: [t()]
+  def collect_project(project, opts \\ []) do
+    plugins = Keyword.get(opts, :plugins, Map.get(project, :plugins, []))
+
+    project
+    |> Reach.Source.project_files()
+    |> Enum.flat_map(fn file ->
+      case collect_file(file, Keyword.put(opts, :plugins, plugins)) do
+        {:ok, facts} -> facts
+        {:error, _reason} -> []
+      end
+    end)
+    |> Enum.uniq_by(&dedupe_key/1)
+  end
+
+  def by_kind(facts, kind) when is_atom(kind), do: Enum.filter(facts, &(&1.kind == kind))
+  def by_kind(facts, kinds) when is_list(kinds), do: Enum.filter(facts, &(&1.kind in kinds))
+
+  def by_framework(facts, framework), do: Enum.filter(facts, &(&1.framework == framework))
+
+  def by_owner(facts, owner_module), do: Enum.filter(facts, &(&1.owner_module == owner_module))
+
+  def at_source(facts, %{file: file, line: line}) do
+    Enum.filter(facts, fn fact ->
+      fact.source[:file] == file and fact.source[:line] == line
+    end)
+  end
+
+  def at_source(facts, %{line: line}) do
+    Enum.filter(facts, fn fact -> fact.source[:line] == line end)
   end
 
   defp refine_facts(facts, [], _context), do: facts
 
   defp refine_facts(facts, plugins, context) do
     Enum.map(facts, &Reach.Plugin.refine_macro_fact(plugins, &1, context))
+  end
+
+  defp dedupe_key(fact) do
+    {fact.kind, fact.source, fact.owner_module, fact.target, fact.name, fact.arity, fact.nesting}
   end
 
   defp collect_module({:defmodule, _meta, [module_ast, body]}, file) do

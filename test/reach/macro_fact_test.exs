@@ -150,6 +150,50 @@ defmodule Reach.MacroFactTest do
            ] = facts
   end
 
+  test "filters facts with query helpers" do
+    facts = [
+      %MacroFact{
+        kind: :phoenix_route,
+        framework: :phoenix,
+        owner_module: MyApp.Router,
+        source: %{file: "router.ex", line: 10}
+      },
+      %MacroFact{
+        kind: :ecto_schema,
+        framework: :ecto,
+        owner_module: MyApp.User,
+        source: %{file: "user.ex", line: 3}
+      }
+    ]
+
+    assert [%MacroFact{kind: :phoenix_route}] = MacroFact.by_kind(facts, :phoenix_route)
+    assert [%MacroFact{framework: :ecto}] = MacroFact.by_framework(facts, :ecto)
+    assert [%MacroFact{owner_module: MyApp.Router}] = MacroFact.by_owner(facts, MyApp.Router)
+
+    assert [%MacroFact{source: %{line: 10}}] =
+             MacroFact.at_source(facts, %{file: "router.ex", line: 10})
+  end
+
+  test "collects facts from project files" do
+    path = Path.join(System.tmp_dir!(), "reach-macro-fact-project-#{System.unique_integer()}.ex")
+
+    File.write!(path, ~S'''
+    defmodule MyAppWeb.Router do
+      use Phoenix.Router
+      get "/health", HealthController, :show
+    end
+    ''')
+
+    on_exit(fn -> File.rm(path) end)
+
+    project = Reach.Project.from_sources([path], plugins: [Reach.Plugins.Phoenix])
+
+    assert [
+             %MacroFact{kind: :phoenix_router_use, source: %{file: ^path}},
+             %MacroFact{kind: :phoenix_route, source: %{file: ^path}}
+           ] = MacroFact.collect_project(project)
+  end
+
   test "keeps dynamic module names as nil instead of crashing" do
     source = ~S'''
     defmodule MyApp.Dynamic do
