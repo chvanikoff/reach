@@ -11,7 +11,7 @@ Elixir 1.18+ / OTP 27+.
 ```elixir
 def deps do
   [
-    {:reach, "~> 2.0", only: [:dev, :test], runtime: false}
+    {:reach, "~> 2.6", only: [:dev, :test], runtime: false}
   ]
 end
 ```
@@ -167,6 +167,8 @@ HexDocs guides are organized by workflow:
 - Validation and ProgramFacts oracle checks
 - Recipes and contributing notes
 
+For repository workflow and smell-rule validation expectations, see [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 ## Contributing
 
 Reach welcomes bug reports, feature ideas, and new smell-rule proposals. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the local workflow, architecture expectations, and corpus-validation process.
@@ -186,7 +188,6 @@ Reach itself is validated with:
 ```bash
 mix compile --force --warnings-as-errors
 mix ci
-/tmp/reach_validate_canonical_full.sh
 mix docs
 mix hex.build
 ```
@@ -195,7 +196,7 @@ mix hex.build
 
 ## Credo overlap
 
-A handful of Reach smell patterns overlap with Credo refactoring checks (`MapJoin`, `FilterCount`, `FilterFilter`, `MapInto`, `UnlessWithElse`, `CondStatements`, `ExpensiveEmptyEnumCheck`). Both tools can run together — Reach findings are advisory and never fail the build.
+A handful of Reach smell patterns overlap with Credo refactoring checks (`MapJoin`, `FilterCount`, `FilterFilter`, `MapInto`, `UnlessWithElse`, `CondStatements`, `ExpensiveEmptyEnumCheck`). Both tools can run together. Reach findings are advisory by default; they only fail a build when you opt into strict/CI checks such as `mix reach.check --smells --strict` or project policy does so.
 
 ## Acknowledgements
 
