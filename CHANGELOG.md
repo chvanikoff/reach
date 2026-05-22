@@ -13,7 +13,7 @@
 - **ETS partial-key match smell** — added a check for wildcard ETS matches over tuple keys that can return arbitrary stale/versioned rows.
 - **Macro fact foundation** — added `Reach.MacroFact` as the source-first representation for macro/DSL declarations, with plugin refinement for Phoenix, Ecto, and Ash declarations without generic framework allowlists.
 - **Macro-aware dead-code filtering** — dead-code checks now use high-confidence macro facts to avoid reporting framework DSL declarations such as Phoenix `attr`, `slot`, router scopes, and routes as unused results.
-- **Macro-aware behaviour candidates** — behaviour-candidate checks now use macro facts that explain framework callback surfaces, suppressing LiveView-style callback groups without hardcoded framework allowlists in the generic smell.
+- **Macro-aware behaviour candidates** — behaviour-candidate checks now use macro facts that explain framework callback surfaces, including local `use MyAppWeb, :live_view` macro aliases, suppressing LiveView-style callback groups without hardcoded framework allowlists in the generic smell.
 
 ## 2.6.1
 

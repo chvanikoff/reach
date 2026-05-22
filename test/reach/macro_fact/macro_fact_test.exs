@@ -204,6 +204,41 @@ defmodule Reach.MacroFactTest do
              MacroFact.at_source(facts, %{file: "router.ex", line: 10})
   end
 
+  test "resolves local use macro aliases in project facts" do
+    path = Path.join(System.tmp_dir!(), "reach-macro-fact-alias-#{System.unique_integer()}.ex")
+
+    File.write!(path, ~S'''
+    defmodule MyAppWeb do
+      def live_view do
+        quote do
+          use Phoenix.LiveView
+        end
+      end
+    end
+
+    defmodule MyAppWeb.PageLive do
+      use MyAppWeb, :live_view
+    end
+    ''')
+
+    on_exit(fn -> File.rm(path) end)
+
+    project = Reach.Project.from_sources([path], plugins: [Reach.Plugins.Phoenix])
+
+    assert Enum.any?(MacroFact.collect_project(project), fn
+             %MacroFact{
+               kind: :phoenix_live_view_use,
+               owner_module: MyAppWeb.PageLive,
+               target: Phoenix.LiveView,
+               data: %{resolved_from: {MyAppWeb, :live_view}}
+             } ->
+               true
+
+             _fact ->
+               false
+           end)
+  end
+
   test "collects facts from project files" do
     path = Path.join(System.tmp_dir!(), "reach-macro-fact-project-#{System.unique_integer()}.ex")
 

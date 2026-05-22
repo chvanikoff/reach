@@ -114,14 +114,18 @@ defmodule Reach.MacroFact do
   def collect_project(project, opts \\ []) do
     plugins = Keyword.get(opts, :plugins, Map.get(project, :plugins, []))
 
-    project
-    |> Reach.Source.project_files()
+    files = Reach.Source.project_files(project)
+    aliases = local_use_aliases(files)
+
+    files
     |> Enum.flat_map(fn file ->
       case collect_file(file, Keyword.put(opts, :plugins, plugins)) do
         {:ok, facts} -> facts
         {:error, _reason} -> []
       end
     end)
+    |> Enum.map(&apply_local_use_alias(&1, aliases))
+    |> refine_facts(plugins, %{})
     |> Enum.uniq_by(&dedupe_key/1)
   end
 
@@ -148,6 +152,114 @@ defmodule Reach.MacroFact do
   def at_source(facts, %{line: line}) do
     Enum.filter(facts, fn fact -> fact.source[:line] == line end)
   end
+
+  defp local_use_aliases(files) do
+    files
+    |> Enum.flat_map(fn file ->
+      with {:ok, source} <- File.read(file),
+           {:ok, ast} <- Code.string_to_quoted(source, emit_warnings: false) do
+        collect_local_use_aliases(ast)
+      else
+        _error -> []
+      end
+    end)
+    |> Map.new()
+  end
+
+  defp collect_local_use_aliases(ast) do
+    ast
+    |> Reach.AST.modules_in_file()
+    |> Enum.flat_map(&local_use_aliases_in_module/1)
+  end
+
+  defp local_use_aliases_in_module({:defmodule, _meta, [module_ast, body]}) do
+    module = module_name(module_ast)
+
+    body
+    |> module_body()
+    |> statements()
+    |> Enum.flat_map(&local_use_alias(module, &1))
+  end
+
+  defp local_use_alias(module, {kind, _meta, [head, body]}) when kind in [:def, :defp] do
+    with {name, _meta, args} when is_atom(name) <- unwrap_head(head),
+         true <- args in [[], nil],
+         target when is_atom(target) <- quoted_use_target(body) do
+      [{{module, Atom.to_string(name)}, {name, target}}]
+    else
+      _other -> []
+    end
+  end
+
+  defp local_use_alias(_module, _statement), do: []
+
+  defp unwrap_head({:when, _meta, [head | _guards]}), do: unwrap_head(head)
+  defp unwrap_head(head), do: head
+
+  defp quoted_use_target(body) do
+    body
+    |> body_value()
+    |> find_quoted_use_target()
+  end
+
+  defp body_value([block]) when is_list(block), do: body_value(block)
+
+  defp body_value(body) when is_list(body) do
+    Keyword.get(body, :do) ||
+      Enum.find_value(body, fn
+        {{:__block__, _meta, [:do]}, value} -> value
+        _entry -> nil
+      end)
+  end
+
+  defp body_value(value), do: value
+
+  defp find_quoted_use_target({:quote, _meta, args}) when is_list(args) do
+    args
+    |> body_value()
+    |> find_use_target()
+  end
+
+  defp find_quoted_use_target(_body), do: nil
+
+  defp find_use_target(ast) do
+    {_ast, target} =
+      Macro.prewalk(ast, nil, fn
+        {:use, _meta, [module_ast | _args]} = node, nil ->
+          {node, module_name(module_ast)}
+
+        node, target ->
+          {node, target}
+      end)
+
+    target
+  end
+
+  defp apply_local_use_alias(
+         %__MODULE__{name: :use, target: module, data: %{args: [arg | _]}} = fact,
+         aliases
+       ) do
+    alias_name = trim_alias_arg(arg)
+
+    case Map.get(aliases, {module, alias_name}) do
+      nil ->
+        fact
+
+      {alias_atom, target} ->
+        %{
+          fact
+          | target: target,
+            call_module: target,
+            data: Map.put(fact.data, :resolved_from, {module, alias_atom})
+        }
+    end
+  end
+
+  defp apply_local_use_alias(fact, _aliases), do: fact
+
+  defp trim_alias_arg(":" <> atom), do: atom
+  defp trim_alias_arg(atom) when is_atom(atom), do: Atom.to_string(atom)
+  defp trim_alias_arg(_value), do: nil
 
   defp refine_facts(facts, [], _context), do: facts
 
