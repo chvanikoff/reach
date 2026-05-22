@@ -8,7 +8,7 @@ defmodule Reach.CLI.Commands.Check.DeadCode do
   def run(opts, positional, command \\ "reach.check") do
     format = opts[:format] || "text"
 
-    Project.compile(format == "json" or opts[:multi_check?])
+    Project.compile(format == "json" or opts[:multi_check?] == true)
 
     files = DeadCodeCheck.collect_files(opts[:path] || List.first(positional))
 

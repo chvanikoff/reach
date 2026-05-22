@@ -51,21 +51,39 @@ defmodule Reach.MacroFactScan do
   end
 
   defp scan(paths, plugins, framework, kind, limit, format) do
-    paths
-    |> Enum.flat_map(&Path.wildcard(Path.join(&1, "{lib,test}/**/*.{ex,exs}")))
-    |> Enum.uniq()
-    |> Enum.sort()
-    |> Enum.flat_map(&scan_file(&1, plugins))
+    files =
+      paths
+      |> Enum.flat_map(&source_paths/1)
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    files
+    |> scan_project(plugins)
     |> filter_framework(framework)
     |> filter_kind(kind)
     |> print_results(limit, format)
   end
 
-  defp scan_file(path, plugins) do
-    case Reach.MacroFact.collect_file(path, plugins: plugins) do
-      {:ok, facts} -> facts
-      {:error, _reason} -> []
+  defp source_paths(path) do
+    cond do
+      File.regular?(path) ->
+        [path]
+
+      File.dir?(path) ->
+        Path.wildcard(Path.join(path, "{lib,test}/**/*.{ex,exs}")) ++
+          Path.wildcard(Path.join(path, "*.{ex,exs}"))
+
+      true ->
+        Path.wildcard(path)
     end
+  end
+
+  defp scan_project([], _plugins), do: []
+
+  defp scan_project(files, plugins) do
+    files
+    |> Reach.Project.from_sources(plugins: plugins)
+    |> Reach.MacroFact.collect_project(plugins: plugins)
   end
 
   defp filter_framework(facts, nil), do: facts

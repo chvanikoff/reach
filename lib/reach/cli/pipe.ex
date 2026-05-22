@@ -10,7 +10,19 @@ defmodule Reach.CLI.Pipe do
     try do
       fun.()
     rescue
-      error in ErlangError ->
+      error in [
+        ErlangError,
+        FunctionClauseError,
+        RuntimeError,
+        ArgumentError,
+        MatchError,
+        CaseClauseError,
+        WithClauseError,
+        KeyError,
+        BadMapError,
+        UndefinedFunctionError,
+        Protocol.UndefinedError
+      ] ->
         if broken_pipe?(error), do: :ok, else: reraise(error, __STACKTRACE__)
     catch
       :exit, reason ->
@@ -21,6 +33,7 @@ defmodule Reach.CLI.Pipe do
   end
 
   defp broken_pipe?(%ErlangError{original: reason}), do: broken_pipe_reason?(reason)
+  defp broken_pipe?(_error), do: false
 
   defp broken_pipe_reason?(:epipe), do: true
   defp broken_pipe_reason?(:terminated), do: true
