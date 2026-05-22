@@ -53,9 +53,18 @@ defmodule Reach.Frontend.Elixir do
   end
 
   @doc false
-  def translate_ast(ast, counter, file) do
-    result = translate(ast, counter, file)
-    List.wrap(result)
+  def translate_ast(ast, counter, file, opts \\ []) do
+    plugins = Plugin.resolve(opts)
+    previous_plugins = Process.get(:reach_plugins)
+    Process.put(:reach_plugins, plugins)
+
+    try do
+      ast
+      |> translate(counter, file)
+      |> List.wrap()
+    after
+      restore_process_value(:reach_plugins, previous_plugins)
+    end
   end
 
   # --- Translation ---

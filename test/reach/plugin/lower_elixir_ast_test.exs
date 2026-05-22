@@ -58,6 +58,30 @@ defmodule Reach.Plugin.LowerElixirASTTest do
     assert lowered_case.source_span.start_line == 3
   end
 
+  test "ast_to_graph applies plugin lowering" do
+    ast =
+      Code.string_to_quoted!(
+        """
+        defmodule Demo do
+          def render(assigns) do
+            dsl_if(assigns.ok, :visible)
+          end
+        end
+        """,
+        columns: true
+      )
+
+    assert {:ok, graph} = Reach.ast_to_graph(ast, file: "demo.ex", plugins: [LoweringPlugin])
+
+    lowered_case =
+      graph
+      |> Reach.nodes()
+      |> Enum.find(&(&1.type == :case and &1.meta[:origin]))
+
+    assert lowered_case.meta.origin.label == "dsl_if"
+    assert lowered_case.source_span.file == "demo.ex"
+  end
+
   defp flatten(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &flatten/1)
   defp flatten(%{children: children} = node), do: [node | flatten(children)]
 end

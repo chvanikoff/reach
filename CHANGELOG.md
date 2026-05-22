@@ -21,7 +21,8 @@
 - **Safer CLI plugin resolution** — `--plugins` resolves known aliases and already-loaded modules without creating atoms from unknown plugin names.
 - **Atom-safe Phoenix route facts** — Phoenix route macro facts now keep controller/live-view targets as source-level strings instead of creating module atoms from source aliases.
 - **Strict CLI option parsing** — canonical command option parsing now raises on unknown switches instead of silently ignoring typos.
-- **Target-project plugin inference** — path scans now infer built-in plugins from nearby `mix.exs` dependencies and source markers without executing the target project.
+- **Target-project plugin inference** — path scans now infer built-in plugins from nearby `mix.exs` dependencies and source markers without executing the target project, with each plugin owning its own inference hints.
+- **Plugin-aware AST entrypoint** — `Reach.ast_to_graph/2` now applies configured plugin AST lowering, matching source parsing behavior.
 - **Macro fact scanner project scope** — `scripts/macro_fact_scan.exs` now scans explicit files and `lib`/`test` directories at project scope so local macro aliases are resolved during real-project scans.
 
 ## 2.6.1

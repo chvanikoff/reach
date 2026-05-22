@@ -190,7 +190,7 @@ defmodule Reach do
   def ast_to_graph(ast, opts \\ []) do
     counter = Counter.new()
     file = Keyword.get(opts, :file, "nofile")
-    nodes = Frontend.Elixir.translate_ast(ast, counter, file)
+    nodes = Frontend.Elixir.translate_ast(ast, counter, file, opts)
     {:ok, SystemDependence.build(List.wrap(nodes), opts)}
   end
 
