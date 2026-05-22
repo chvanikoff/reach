@@ -4,6 +4,17 @@ Program dependence graph and release-safety toolkit for Elixir, Erlang, Gleam, J
 
 Reach builds a graph of **what depends on what** in your code: control flow, call graph, data flow, effects, and OTP/process relationships. Use it to inspect risky functions, trace values, validate architecture policy, and generate interactive HTML reports.
 
+Use Reach when you want to answer questions like:
+
+- What depends on this function before I change it?
+- Can user input reach a database, shell command, file write, or external boundary?
+- Did this PR cross an architecture boundary?
+- Which modules are coupled, effect-heavy, or likely hotspots?
+- Which OTP processes, callbacks, and handlers interact?
+- Are there review leads worth checking before a release?
+
+Reach is designed to surface review leads, not replace judgment. Smell findings are advisory by default; use strict checks when you want them to gate CI.
+
 Elixir 1.18+ / OTP 27+.
 
 ## Installation
@@ -27,6 +38,18 @@ Optional dependencies enable richer output:
 ```
 
 ## Quickstart
+
+Start with the HTML report, then run one focused check:
+
+```bash
+mix reach
+mix reach.check --smells
+mix reach.inspect MyApp.Accounts.create_user/1 --context
+```
+
+- `mix reach` writes an interactive report for exploring control flow, calls, and data flow.
+- `mix reach.check --smells` prints advisory review leads.
+- `mix reach.inspect ... --context` shows the local dependency context around a target.
 
 Generate an interactive report:
 
@@ -75,6 +98,22 @@ mix reach.otp
 mix reach.otp --concurrency
 ```
 
+## Common workflows
+
+| I want to… | Run |
+|---|---|
+| Open an interactive HTML report | `mix reach` |
+| See modules, coupling, effects, hotspots, and depth | `mix reach.map` |
+| Review module coupling | `mix reach.map --coupling` |
+| Inspect what a function depends on | `mix reach.inspect MyApp.Accounts.create_user/1 --deps` |
+| Estimate impact before changing a function or line | `mix reach.inspect MyApp.Accounts.create_user/1 --impact` |
+| Understand why a target reaches another target | `mix reach.inspect MyApp.Accounts.create_user/1 --why MyApp.Repo` |
+| Trace data from a source to a sink | `mix reach.trace --from conn.params --to Repo` |
+| Run architecture policy checks | `mix reach.check --arch` |
+| Run advisory smell checks | `mix reach.check --smells` |
+| Gate CI on architecture and smells | `mix reach.check --arch --smells --strict` |
+| Inspect OTP/process relationships | `mix reach.otp --concurrency` |
+
 ## Canonical CLI
 
 Reach 2.x uses five canonical analysis tasks plus the HTML report task.
@@ -90,7 +129,9 @@ Reach 2.x uses five canonical analysis tasks plus the HTML report task.
 
 Use `--format json` for automation. Canonical commands emit pure JSON envelopes with stable command names.
 
-Reach separates reusable evidence from user-facing output. `Reach.Evidence.*` providers collect facts that can be consumed by smells, checks, and advisory candidates; plugin-specific evidence and smells live under `Reach.Plugins.*` and are auto-enabled only when the dependency is present. Plugins can also refine generic evidence with dependency-specific context, such as marking maps passed to `Jason.encode!/1` as external payload contracts. For provider and refinement conventions, see `docs/evidence-providers.md`. For tuning evidence providers across real projects, use `scripts/evidence_corpus_scan.exs`; see `docs/evidence-heuristics.md` for the evidence-first backlog and promotion rules.
+Reach automatically enables extra semantics when it sees dependencies such as Phoenix, LiveView, Ecto, Oban, Jason, ExUnit, and related ecosystem libraries.
+
+Internally, Reach separates reusable evidence from user-facing output. `Reach.Evidence.*` providers collect facts that can be consumed by smells, checks, and advisory candidates; plugin-specific evidence and smells live under `Reach.Plugins.*` and are auto-enabled only when the dependency is present. Plugins can also refine generic evidence with dependency-specific context, such as marking maps passed to `Jason.encode!/1` as external payload contracts. For provider and refinement conventions, see `docs/evidence-providers.md`. For tuning evidence providers across real projects, use `scripts/evidence_corpus_scan.exs`; see `docs/evidence-heuristics.md` for the evidence-first backlog and promotion rules.
 
 Older task names were removed in Reach 2.0 and fail fast with migration guidance. See the [Canonical CLI guide](guides/cli.md).
 
@@ -128,6 +169,14 @@ Reach reads `.reach.exs` for architecture and change-safety policy:
 ]
 ```
 
+Then run:
+
+```bash
+mix reach.check --arch
+```
+
+Reach reports forbidden layer, source, and call violations from the policy.
+
 Start from [`examples/reach.exs`](examples/reach.exs). See the [configuration guide](guides/configuration.md) for the full reference and narrative examples.
 
 ## Library API
@@ -157,6 +206,8 @@ Reach.data_flows?(graph, source_id, sink_id)
 ```
 
 ## Documentation
+
+Read the full docs at [hexdocs.pm/reach](https://hexdocs.pm/reach).
 
 HexDocs guides are organized by workflow:
 
