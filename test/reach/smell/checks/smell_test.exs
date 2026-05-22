@@ -561,6 +561,49 @@ defmodule Reach.SmellTest do
                Enum.filter(findings, &(&1.kind == :behaviour_candidate))
     end
 
+    test "does not flag LiveComponent callback sets explained by local use macro facts" do
+      findings =
+        run_smell_task(
+          """
+          defmodule MyAppWeb do
+            def live_component do
+              quote do
+                use Phoenix.LiveComponent
+              end
+            end
+          end
+
+          defmodule MyAppWeb.AComponent do
+            use MyAppWeb, :live_component
+            def mount(socket), do: {:ok, socket}
+            def update(assigns, socket), do: {:ok, assign(socket, assigns)}
+            def handle_event(_event, _params, socket), do: {:noreply, socket}
+            def render(assigns), do: assigns
+          end
+
+          defmodule MyAppWeb.BComponent do
+            use MyAppWeb, :live_component
+            def mount(socket), do: {:ok, socket}
+            def update(assigns, socket), do: {:ok, assign(socket, assigns)}
+            def handle_event(_event, _params, socket), do: {:noreply, socket}
+            def render(assigns), do: assigns
+          end
+
+          defmodule MyAppWeb.CComponent do
+            use MyAppWeb, :live_component
+            def mount(socket), do: {:ok, socket}
+            def update(assigns, socket), do: {:ok, assign(socket, assigns)}
+            def handle_event(_event, _params, socket), do: {:noreply, socket}
+            def render(assigns), do: assigns
+          end
+          """,
+          [],
+          plugins: [Reach.Plugins.Phoenix]
+        )
+
+      assert Enum.filter(findings, &(&1.kind == :behaviour_candidate)) == []
+    end
+
     test "does not flag callback sets explained by local use macro facts" do
       findings =
         run_smell_task(

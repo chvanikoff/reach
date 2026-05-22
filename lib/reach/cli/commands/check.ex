@@ -22,6 +22,7 @@ defmodule Reach.CLI.Commands.Check do
     * `--write-baseline` — write current findings to a Reach baseline file
     * `--candidates` — emit advisory refactoring candidates
     * `--top` — limit candidate output for `--candidates`
+    * `--plugin` — plugin module or short name for path scans, repeatable (for example: `--plugin Phoenix --plugin Ecto`)
 
   """
 
@@ -33,6 +34,7 @@ defmodule Reach.CLI.Commands.Check do
   alias Reach.Check.Finding
   alias Reach.CLI.Commands.Check.DeadCode
   alias Reach.CLI.Commands.Check.Smells
+  alias Reach.CLI.Plugins
   alias Reach.CLI.Project
   alias Reach.CLI.Render.Check, as: CheckRender
   alias Reach.Config
@@ -145,7 +147,9 @@ defmodule Reach.CLI.Commands.Check do
 
   defp run_changed(opts) do
     config = Config.read()
-    project = Project.load(quiet: opts[:format] == "json")
+
+    project = Project.load([quiet: opts[:format] == "json"] ++ Plugins.project_opts(opts))
+
     result = Changed.run(project, config, base: opts[:base])
 
     CheckRender.render_result(result, opts[:format], &CheckRender.render_changed_text/1)
@@ -163,9 +167,16 @@ defmodule Reach.CLI.Commands.Check do
     path = opts[:path] || List.first(positional)
 
     cond do
-      opts[:project] -> opts[:project]
-      path -> Project.load(paths: [path], quiet: opts[:format] == "json")
-      true -> Project.load(quiet: opts[:format] == "json")
+      opts[:project] ->
+        opts[:project]
+
+      path ->
+        Project.load(
+          [paths: [path], quiet: opts[:format] == "json"] ++ Plugins.project_opts(opts)
+        )
+
+      true ->
+        Project.load([quiet: opts[:format] == "json"] ++ Plugins.project_opts(opts))
     end
   end
 end

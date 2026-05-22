@@ -110,8 +110,10 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
   end
 
   defp extract_json(output) do
-    output
-    |> String.slice((:binary.match(output, "[") |> elem(0))..-1//1)
+    case Regex.run(~r/(\[\s*\{.*\]\s*)\z/s, output) do
+      [_, json] -> json
+      nil -> flunk("expected JSON array in output:\n#{output}")
+    end
   end
 
   defp scan(args) do

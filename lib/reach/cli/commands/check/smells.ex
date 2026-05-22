@@ -4,6 +4,7 @@ defmodule Reach.CLI.Commands.Check.Smells do
   alias Reach.Check.Baseline
   alias Reach.Check.Finding
   alias Reach.Check.Smells, as: SmellsCheck
+  alias Reach.CLI.Plugins
   alias Reach.CLI.Project
   alias Reach.CLI.Render.Check.Smells, as: SmellsRender
   alias Reach.Config
@@ -24,7 +25,7 @@ defmodule Reach.CLI.Commands.Check.Smells do
 
   defp load_project(opts, positional) do
     path = opts[:path] || List.first(positional)
-    project_opts = [quiet: opts[:format] == "json"]
+    project_opts = [quiet: opts[:format] == "json"] ++ Plugins.project_opts(opts)
     project_opts = if path, do: Keyword.put(project_opts, :paths, [path]), else: project_opts
     opts[:project] || Project.load(project_opts)
   end
