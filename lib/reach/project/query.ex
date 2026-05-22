@@ -3,21 +3,9 @@ defmodule Reach.Project.Query do
 
   alias Reach.IR.Helpers, as: IRHelpers
 
-  @func_index_key {__MODULE__, :func_index}
+  def function_index(project), do: build_function_index(project)
 
-  def function_index(project) do
-    case Process.get(@func_index_key) do
-      nil ->
-        index = build_function_index(project)
-        Process.put(@func_index_key, index)
-        index
-
-      index ->
-        index
-    end
-  end
-
-  def reset_cache, do: Process.delete(@func_index_key)
+  def reset_cache, do: :ok
 
   def find_function(project, target) do
     index = function_index(project)

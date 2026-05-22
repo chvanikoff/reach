@@ -16,6 +16,8 @@
 - **Macro-aware behaviour candidates** — behaviour-candidate checks now use macro facts that explain framework callback surfaces, including local `use MyAppWeb, :live_view` and `:live_component` macro aliases, suppressing LiveView-style callback groups without hardcoded framework allowlists in the generic smell.
 - **Explicit CLI plugins for path scans** — `mix reach.check` now accepts repeatable `--plugin` values such as `--plugin Phoenix --plugin Ecto`, improving macro facts and plugin smells when analyzing source paths outside the target Mix project.
 - **Project-scoped effect classification** — effect inference and effect-based summaries now use the project/plugin configuration instead of reusing unscoped local-function cache entries across plugin sets.
+- **Project query isolation** — target/function query indexes no longer reuse process-local state across projects analyzed in the same VM.
+- **Plugin-aware dead-code graphing** — dead-code checks now pass configured plugins into graph construction, not only macro fact collection.
 - **Macro fact scanner project scope** — `scripts/macro_fact_scan.exs` now scans explicit files and `lib`/`test` directories at project scope so local macro aliases are resolved during real-project scans.
 
 ## 2.6.1

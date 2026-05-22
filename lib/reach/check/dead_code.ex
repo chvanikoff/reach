@@ -26,9 +26,10 @@ defmodule Reach.Check.DeadCode do
     declaration_lines = value_discard_safe_lines(files, plugins)
 
     files
-    |> Task.async_stream(&find_in_file/1,
+    |> Task.async_stream(&find_in_file(&1, opts),
       max_concurrency: System.schedulers_online(),
-      ordered: false
+      ordered: false,
+      timeout: Keyword.get(opts, :task_timeout, 30_000)
     )
     |> Enum.flat_map(fn {:ok, results} -> results end)
     |> Enum.reject(&value_discard_safe?(&1, declaration_lines))
@@ -58,8 +59,8 @@ defmodule Reach.Check.DeadCode do
 
   defp value_discard_safe_fact?(_fact), do: false
 
-  defp find_in_file(file) do
-    case Reach.file_to_graph(file) do
+  defp find_in_file(file, opts) do
+    case Reach.file_to_graph(file, opts) do
       {:ok, graph} ->
         graph
         |> Reach.dead_code()
