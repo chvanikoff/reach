@@ -106,10 +106,14 @@ defmodule Reach.Evidence.AST do
   end
 
   defp safe_module_concat(module_parts) do
-    if Enum.all?(module_parts, &is_atom/1) do
+    if valid_module_parts?(module_parts) do
       Module.concat(module_parts)
     end
-  rescue
-    ArgumentError -> nil
   end
+
+  defp valid_module_parts?(parts) when is_list(parts) do
+    Enum.all?(parts, fn part -> is_atom(part) and part != nil end)
+  end
+
+  defp valid_module_parts?(_parts), do: false
 end

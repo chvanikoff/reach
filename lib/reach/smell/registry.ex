@@ -39,14 +39,18 @@ defmodule Reach.Smell.Registry do
     end)
   end
 
-  defp plugin_check?(module) do
+  defp plugin_check?(module) when is_atom(module) do
     module
-    |> Module.split()
-    |> Enum.take(2)
-    |> Kernel.==(["Reach", "Plugins"])
-  rescue
-    ArgumentError -> false
+    |> Atom.to_string()
+    |> String.split(".")
+    |> case do
+      ["Elixir", "Reach", "Plugins" | _] -> true
+      ["Reach", "Plugins" | _] -> true
+      _parts -> false
+    end
   end
+
+  defp plugin_check?(_module), do: false
 
   defp check?(module) do
     Code.ensure_loaded?(module) and Check in behaviours(module)

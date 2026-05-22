@@ -742,14 +742,22 @@ defmodule Reach.Frontend.Gleam do
   defp extract_call_info(_), do: {nil, :unknown}
 
   defp parse_int(s) do
-    s |> String.replace("_", "") |> String.to_integer()
-  rescue
-    ArgumentError -> 0
+    s
+    |> String.replace("_", "")
+    |> Integer.parse()
+    |> case do
+      {value, ""} -> value
+      _invalid -> 0
+    end
   end
 
   defp parse_float(s) do
-    s |> String.replace("_", "") |> String.to_float()
-  rescue
-    ArgumentError -> 0.0
+    s
+    |> String.replace("_", "")
+    |> Float.parse()
+    |> case do
+      {value, ""} -> value
+      _invalid -> 0.0
+    end
   end
 end

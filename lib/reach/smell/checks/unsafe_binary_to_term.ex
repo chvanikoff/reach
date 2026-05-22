@@ -50,15 +50,17 @@ defmodule Reach.Smell.Checks.UnsafeBinaryToTerm do
 
   defp suppressed?(%{source_span: %{file: file, start_line: line}})
        when is_binary(file) and line > 0 do
-    file
-    |> File.stream!()
-    |> Stream.with_index(1)
-    |> Stream.filter(fn {_text, index} -> index >= line - 3 and index <= line end)
-    |> Enum.any?(fn {text, _index} ->
-      String.contains?(text, "sobelow_skip") and String.contains?(text, "BinToTerm")
-    end)
-  rescue
-    _error in [ArgumentError, File.Error] -> false
+    if File.regular?(file) do
+      file
+      |> File.stream!()
+      |> Stream.with_index(1)
+      |> Stream.filter(fn {_text, index} -> index >= line - 3 and index <= line end)
+      |> Enum.any?(fn {text, _index} ->
+        String.contains?(text, "sobelow_skip") and String.contains?(text, "BinToTerm")
+      end)
+    else
+      false
+    end
   end
 
   defp suppressed?(_call), do: false

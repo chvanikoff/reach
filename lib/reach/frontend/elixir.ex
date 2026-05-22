@@ -1198,24 +1198,18 @@ defmodule Reach.Frontend.Elixir do
 
   defp extract_import_forms(_), do: []
 
-  defp exported_functions(mod) do
-    if Code.ensure_loaded?(mod) do
-      mod.__info__(:functions) ++ mod.__info__(:macros)
-    else
-      []
+  defp exported_functions(mod) when is_atom(mod) do
+    case Code.ensure_loaded(mod) do
+      {:module, ^mod} -> mod.__info__(:functions) ++ mod.__info__(:macros)
+      {:error, _reason} -> []
     end
-  rescue
-    _error in [ArgumentError, File.Error, MatchError] -> []
   end
 
-  defp exported_of_kind(mod, kind) do
-    if Code.ensure_loaded?(mod) do
-      mod.__info__(kind)
-    else
-      []
+  defp exported_of_kind(mod, kind) when is_atom(mod) and kind in [:functions, :macros] do
+    case Code.ensure_loaded(mod) do
+      {:module, ^mod} -> mod.__info__(kind)
+      {:error, _reason} -> []
     end
-  rescue
-    _error in [ArgumentError, File.Error, MatchError] -> []
   end
 
   defp resolve_import_funs(mod, opts) do

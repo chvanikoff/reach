@@ -128,14 +128,13 @@ defmodule Reach.Project do
   defp app_mix_config(app_path) do
     mix_file = Path.join(app_path, "mix.exs")
 
-    if File.regular?(mix_file) do
-      [{module, _}] = Code.compile_file(mix_file)
+    with true <- File.regular?(mix_file),
+         [{module, _bytecode}] <- Code.compile_file(mix_file),
+         true <- function_exported?(module, :project, 0) do
       module.project()
     else
-      []
+      _missing_or_invalid -> []
     end
-  rescue
-    _error in [ArgumentError, File.Error, MatchError] -> []
   end
 
   defp source_files({elixirc_paths, erlc_paths}, plugins) do

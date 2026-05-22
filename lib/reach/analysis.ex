@@ -31,9 +31,14 @@ defmodule Reach.Analysis do
   defp mix_task_module?(nil), do: false
 
   defp mix_task_module?(module) when is_atom(module) do
-    match?(["Mix", "Tasks" | _], Module.split(module))
-  rescue
-    ArgumentError -> false
+    module
+    |> Atom.to_string()
+    |> String.split(".")
+    |> case do
+      ["Elixir", "Mix", "Tasks" | _] -> true
+      ["Mix", "Tasks" | _] -> true
+      _parts -> false
+    end
   end
 
   defp mix_task_module?(_module), do: false

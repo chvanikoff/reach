@@ -77,11 +77,10 @@ defmodule Reach.Plugins.Phoenix.Smells.DisconnectedMountRepo do
 
   defp repo_module?(module) when is_atom(module) and module != nil do
     module
-    |> Module.split()
+    |> Atom.to_string()
+    |> String.split(".")
     |> List.last()
     |> Kernel.==("Repo")
-  rescue
-    ArgumentError -> false
   end
 
   defp repo_module?(_module), do: false

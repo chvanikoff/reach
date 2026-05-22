@@ -48,11 +48,10 @@ defmodule Reach.Plugins.Oban.Smells.NewArgs do
 
   defp oban_new_call?(%{meta: %{module: module}}, _module_worker?) when is_atom(module) do
     module
-    |> Module.split()
+    |> Atom.to_string()
+    |> String.split(".")
     |> List.last()
     |> String.ends_with?("Worker")
-  rescue
-    ArgumentError -> false
   end
 
   defp oban_new_call?(_call, _module_worker?), do: false

@@ -573,14 +573,18 @@ defmodule Reach.Plugins.Ash do
          meta: %{function: :__aliases__},
          children: segments
        }) do
-    mod =
-      segments
-      |> Enum.map(fn %Node{type: :literal, meta: %{value: seg}} -> seg end)
-      |> Module.concat()
+    segments
+    |> Enum.reduce_while([], fn
+      %Node{type: :literal, meta: %{value: seg}}, acc when is_atom(seg) ->
+        {:cont, [seg | acc]}
 
-    [mod]
-  rescue
-    _error in [ArgumentError, File.Error, MatchError] -> []
+      _segment, _acc ->
+        {:halt, :invalid}
+    end)
+    |> case do
+      :invalid -> []
+      parts -> [Module.concat(Enum.reverse(parts))]
+    end
   end
 
   # {MyModule, opts} tuple

@@ -43,11 +43,10 @@ defmodule Reach.Plugins.Phoenix.Smells.PubSubSubscribeWithoutConnected do
   defp pubsub_subscribe?(%{type: :call, meta: %{function: :subscribe, module: module}})
        when is_atom(module) and module != nil do
     module
-    |> Module.split()
+    |> Atom.to_string()
+    |> String.split(".")
     |> List.last()
     |> Kernel.==("PubSub")
-  rescue
-    ArgumentError -> false
   end
 
   defp pubsub_subscribe?(_node), do: false

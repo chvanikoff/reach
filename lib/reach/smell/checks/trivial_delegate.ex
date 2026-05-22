@@ -315,15 +315,17 @@ defmodule Reach.Smell.Checks.TrivialDelegate do
   defp documented_before?(file, line), do: previous_attribute?(file, line, "@doc")
 
   defp previous_attribute?(file, line, attribute) when is_binary(file) and is_integer(line) do
-    file
-    |> File.read!()
-    |> String.split("\n")
-    |> Enum.take(line - 1)
-    |> Enum.reverse()
-    |> Enum.take(12)
-    |> Enum.any?(&(String.trim_leading(&1) |> String.starts_with?(attribute)))
-  rescue
-    ArgumentError -> false
+    if line > 1 and File.regular?(file) do
+      file
+      |> File.read!()
+      |> String.split("\n")
+      |> Enum.take(line - 1)
+      |> Enum.reverse()
+      |> Enum.take(12)
+      |> Enum.any?(&(String.trim_leading(&1) |> String.starts_with?(attribute)))
+    else
+      false
+    end
   end
 
   defp previous_attribute?(_file, _line, _attribute), do: false
