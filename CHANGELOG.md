@@ -5,6 +5,7 @@
 ### Changed
 
 - **Smell suppressions** — `mix reach.check --smells` now supports config-level path/module ignores plus Credo-style `# reach:disable-next-line` and `# reach:disable-for-this-file` comments for local suppressions.
+- **Non-Elixir source safety** — source-backed smell checks now skip non-Elixir module files contributed by plugin frontends instead of parsing them with Sourceror.
 
 ## 2.7.0 - 2026-05-23
 

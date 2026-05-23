@@ -13,17 +13,8 @@ defmodule Reach.Smell.PatternRunner do
       end)
 
     project
-    |> source_files()
+    |> Source.module_files()
     |> Enum.flat_map(&scan_file(&1, check_configs))
-  end
-
-  defp source_files(project) do
-    project.nodes
-    |> Enum.flat_map(fn
-      {_, %{type: :module_def, source_span: %{file: file}}} when is_binary(file) -> [file]
-      _ -> []
-    end)
-    |> Enum.uniq()
   end
 
   defp scan_file(file, check_configs) do
