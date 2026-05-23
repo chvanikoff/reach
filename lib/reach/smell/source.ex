@@ -13,8 +13,8 @@ defmodule Reach.Smell.Source do
     |> Enum.uniq()
   end
 
-  defp elixir_file?(file) when is_binary(file), do: Path.extname(file) in @elixir_extensions
-  defp elixir_file?(_file), do: false
+  def elixir_file?(file) when is_binary(file), do: Path.extname(file) in @elixir_extensions
+  def elixir_file?(_file), do: false
 
   def cached_ast(file) do
     key = {:reach_smell_ast, file}

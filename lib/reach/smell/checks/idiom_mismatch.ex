@@ -330,6 +330,7 @@ defmodule Reach.Smell.Checks.IdiomMismatch do
       logger_calls
       |> Enum.map(& &1.source_span[:file])
       |> Enum.uniq()
+      |> Enum.reject(&(not Source.elixir_file?(&1) or not File.regular?(&1)))
       |> Map.new(fn file ->
         available? = file |> File.read!() |> logger_available?()
         {file, available?}
