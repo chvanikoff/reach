@@ -77,7 +77,16 @@ defmodule Reach.ConfigTest do
                clone_analysis: [
                  provider: :ex_dna,
                  min_mass: 12,
+                 min_occurrences: 3,
                  min_similarity: 0.9,
+                 max_window_size: 5,
+                 mass_tolerance: 0.4,
+                 literal_mode: :abstract,
+                 normalize_pipes: true,
+                 excluded_macros: [:schema],
+                 ignored_attributes: [:route],
+                 parse_timeout: 2_000,
+                 ignore: ["lib/generated/**"],
                  max_clones: 7
                ]
              )
@@ -127,7 +136,16 @@ defmodule Reach.ConfigTest do
     assert config.smells.behaviour_candidate.ignore == [modules: ["MyAppWeb.*Live"]]
     assert config.clone_analysis.provider == :ex_dna
     assert config.clone_analysis.min_mass == 12
+    assert config.clone_analysis.min_occurrences == 3
     assert config.clone_analysis.min_similarity == 0.9
+    assert config.clone_analysis.max_window_size == 5
+    assert config.clone_analysis.mass_tolerance == 0.4
+    assert config.clone_analysis.literal_mode == :abstract
+    assert config.clone_analysis.normalize_pipes == true
+    assert config.clone_analysis.excluded_macros == [:schema]
+    assert config.clone_analysis.ignored_attributes == [:route]
+    assert config.clone_analysis.parse_timeout == 2_000
+    assert config.clone_analysis.ignore == ["lib/generated/**"]
     assert config.clone_analysis.max_clones == 7
   end
 

@@ -69,7 +69,16 @@ defmodule Reach.Config do
     @moduledoc false
     defstruct provider: :ex_dna,
               min_mass: 30,
+              min_occurrences: 2,
               min_similarity: 1.0,
+              max_window_size: 4,
+              mass_tolerance: 0.3,
+              literal_mode: :keep,
+              normalize_pipes: false,
+              excluded_macros: [],
+              ignored_attributes: nil,
+              parse_timeout: 5_000,
+              ignore: [],
               max_clones: 50
   end
 
@@ -274,7 +283,16 @@ defmodule Reach.Config do
       clone_analysis: %CloneAnalysis{
         provider: nested(config, [:clone_analysis, :provider], nil, :ex_dna),
         min_mass: nested(config, [:clone_analysis, :min_mass], nil, 30),
+        min_occurrences: nested(config, [:clone_analysis, :min_occurrences], nil, 2),
         min_similarity: nested(config, [:clone_analysis, :min_similarity], nil, 1.0),
+        max_window_size: nested(config, [:clone_analysis, :max_window_size], nil, 4),
+        mass_tolerance: nested(config, [:clone_analysis, :mass_tolerance], nil, 0.3),
+        literal_mode: nested(config, [:clone_analysis, :literal_mode], nil, :keep),
+        normalize_pipes: nested(config, [:clone_analysis, :normalize_pipes], nil, false),
+        excluded_macros: nested(config, [:clone_analysis, :excluded_macros], nil, []),
+        ignored_attributes: nested(config, [:clone_analysis, :ignored_attributes], nil, nil),
+        parse_timeout: nested(config, [:clone_analysis, :parse_timeout], nil, 5_000),
+        ignore: nested(config, [:clone_analysis, :ignore], nil, []),
         max_clones: nested(config, [:clone_analysis, :max_clones], nil, 50)
       },
       smells: %Smells{
@@ -476,9 +494,63 @@ defmodule Reach.Config do
     )
     |> check(
       config,
+      [:clone_analysis, :min_occurrences],
+      &valid_integer_at_least_two?/1,
+      "expected integer >= 2"
+    )
+    |> check(
+      config,
       [:clone_analysis, :min_similarity],
       &valid_similarity?/1,
       "expected float between 0.0 and 1.0"
+    )
+    |> check(
+      config,
+      [:clone_analysis, :max_window_size],
+      &valid_integer_at_least_two?/1,
+      "expected integer >= 2"
+    )
+    |> check(
+      config,
+      [:clone_analysis, :mass_tolerance],
+      &valid_positive_similarity?/1,
+      "expected float greater than 0.0 and at most 1.0"
+    )
+    |> check(
+      config,
+      [:clone_analysis, :literal_mode],
+      &valid_clone_literal_mode?/1,
+      "expected :keep or :abstract"
+    )
+    |> check(
+      config,
+      [:clone_analysis, :normalize_pipes],
+      &valid_boolean?/1,
+      "expected boolean"
+    )
+    |> check(
+      config,
+      [:clone_analysis, :excluded_macros],
+      &valid_atom_list?/1,
+      "expected list of atoms"
+    )
+    |> check(
+      config,
+      [:clone_analysis, :ignored_attributes],
+      &valid_nil_or_atom_list?/1,
+      "expected list of atoms"
+    )
+    |> check(
+      config,
+      [:clone_analysis, :parse_timeout],
+      &valid_positive_integer?/1,
+      "expected positive integer"
+    )
+    |> check(
+      config,
+      [:clone_analysis, :ignore],
+      &valid_pattern_list?/1,
+      "expected string or list of path globs"
     )
     |> check(
       config,
@@ -679,7 +751,16 @@ defmodule Reach.Config do
     |> unknown_nested_key_errors(config, [:clone_analysis], [
       :provider,
       :min_mass,
+      :min_occurrences,
       :min_similarity,
+      :max_window_size,
+      :mass_tolerance,
+      :literal_mode,
+      :normalize_pipes,
+      :excluded_macros,
+      :ignored_attributes,
+      :parse_timeout,
+      :ignore,
       :max_clones
     ])
     |> unknown_nested_key_errors(config, [:candidates], [:thresholds, :limits])
@@ -781,13 +862,23 @@ defmodule Reach.Config do
 
   defp valid_group?(value), do: Keyword.keyword?(value)
   defp valid_boolean?(value), do: is_boolean(value)
-  defp valid_module_list?(value) when is_list(value), do: Enum.all?(value, &is_atom/1)
-  defp valid_module_list?(_value), do: false
+  defp valid_module_list?(value), do: valid_atom_list?(value)
   defp valid_positive_integer?(value), do: is_integer(value) and value > 0
+  defp valid_integer_at_least_two?(value), do: is_integer(value) and value >= 2
 
-  defp valid_similarity?(value) when is_number(value), do: value >= 0.0 and value <= 1.0
+  defp valid_similarity?(value) when is_float(value), do: value >= 0.0 and value <= 1.0
   defp valid_similarity?(_value), do: false
 
+  defp valid_positive_similarity?(value) when is_float(value), do: value > 0.0 and value <= 1.0
+  defp valid_positive_similarity?(_value), do: false
+
+  defp valid_atom_list?(value) when is_list(value), do: Enum.all?(value, &is_atom/1)
+  defp valid_atom_list?(_value), do: false
+
+  defp valid_nil_or_atom_list?(nil), do: true
+  defp valid_nil_or_atom_list?(value), do: valid_atom_list?(value)
+
+  defp valid_clone_literal_mode?(value), do: value in [:keep, :abstract]
   defp valid_clone_provider?(value), do: value in [:ex_dna, false, nil]
 
   defp valid_layers?(value) when is_list(value) do

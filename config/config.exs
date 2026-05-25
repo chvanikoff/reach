@@ -1,7 +1,9 @@
 import Config
 
-if Code.ensure_loaded?(Volt) do
+if config_env() == :dev do
   config :volt,
-    define: %{"process.env.NODE_ENV" => ~s("production")},
+    entry: "assets/js/app.ts",
+    outdir: "priv/static",
+    hash: false,
     aliases: %{"@reach" => "assets/js"}
 end

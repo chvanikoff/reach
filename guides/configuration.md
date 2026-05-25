@@ -411,7 +411,16 @@ checks: [
 clone_analysis: [
   provider: :ex_dna,
   min_mass: 30,
+  min_occurrences: 2,
   min_similarity: 1.0,
+  max_window_size: 4,
+  mass_tolerance: 0.3,
+  literal_mode: :keep,
+  normalize_pipes: false,
+  excluded_macros: [],
+  ignored_attributes: nil,
+  parse_timeout: 5_000,
+  ignore: [],
   max_clones: 50
 ]
 
@@ -438,7 +447,7 @@ smells: [
 ]
 ```
 
-Reach runs ExDNA when the package is available; package consumers can disable clone evidence with `provider: false` or tune clone mass/similarity when needed.
+Reach runs ExDNA when the package is available; package consumers can disable clone evidence with `provider: false` or tune clone mass/similarity when needed. ExDNA options are forwarded so clone evidence can use occurrence budgets, Type-II literal abstraction, Type-III similarity, pipe normalization, macro/attribute exclusions, path ignores, and parser timeouts. ExDNA's source suppression comments are also honored by the provider.
 
 ### `checks[:baseline]`
 

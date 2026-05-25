@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **Dependency refresh** — updated ExDNA, ExDoc, QuickBEAM, Volt, and transitive frontend tooling to current releases.
+- **Clone evidence tuning** — Reach clone-analysis configuration now forwards ExDNA options for occurrences, Type-II/III matching, pipe normalization, macro/attribute exclusions, path ignores, parser timeouts, and source suppressions.
+- **Clone source safety** — ExDNA-backed clone evidence now ignores non-Elixir source files contributed by plugin frontends.
+- **Volt build config** — asset builds now use Volt's config-backed build settings while keeping stable `reach` output names.
+
 ## 2.7.1 - 2026-05-23
 
 ### Changed

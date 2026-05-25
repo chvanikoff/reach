@@ -7,6 +7,8 @@ defmodule Reach.Evidence.CloneAnalysis.ExDNA do
   alias Reach.IR
   alias Reach.Project.Query
 
+  @elixir_extensions [".ex", ".exs"]
+
   def analyze(project, config) do
     if available?() do
       project
@@ -34,7 +36,7 @@ defmodule Reach.Evidence.CloneAnalysis.ExDNA do
       end
     end)
     |> Enum.uniq()
-    |> Enum.filter(&File.regular?/1)
+    |> Enum.filter(&(elixir_file?(&1) and File.regular?(&1)))
   end
 
   defp run_ex_dna([], _config), do: []
@@ -42,18 +44,37 @@ defmodule Reach.Evidence.CloneAnalysis.ExDNA do
   defp run_ex_dna(paths, config) do
     ex_dna = Module.concat([ExDNA])
 
-    report =
-      ex_dna.analyze(
+    opts =
+      [
         paths: paths,
         min_mass: config.min_mass,
+        min_occurrences: config.min_occurrences,
         min_similarity: config.min_similarity,
+        max_window_size: config.max_window_size,
+        mass_tolerance: config.mass_tolerance,
+        literal_mode: config.literal_mode,
+        normalize_pipes: config.normalize_pipes,
+        excluded_macros: config.excluded_macros,
+        parse_timeout: config.parse_timeout,
+        ignore: config.ignore,
         reporters: []
-      )
+      ]
+      |> maybe_apply_ignored_attributes(config)
 
+    report = ex_dna.analyze(opts)
     report.clones
   rescue
     _error in [ArgumentError, File.Error, MatchError] -> []
   end
+
+  defp maybe_apply_ignored_attributes(opts, %{ignored_attributes: nil}), do: opts
+
+  defp maybe_apply_ignored_attributes(opts, %{ignored_attributes: ignored_attributes}) do
+    Keyword.put(opts, :ignored_attributes, ignored_attributes)
+  end
+
+  defp elixir_file?(file) when is_binary(file), do: Path.extname(file) in @elixir_extensions
+  defp elixir_file?(_file), do: false
 
   defp to_clone(ex_dna_clone, project) do
     Clone.new(
