@@ -698,7 +698,7 @@ defmodule Reach.Plugins.Ash do
   defp changeset_action_name(:for_destroy), do: :destroy
   defp changeset_action_name(_), do: :unknown
 
-  defp domain_module?(mod) when is_atom(mod) and not is_nil(mod) do
+  defp domain_module?(mod) when is_atom(mod) do
     mod
     |> Atom.to_string()
     |> excluded_domain_module?()
@@ -706,8 +706,6 @@ defmodule Reach.Plugins.Ash do
     |> Kernel.and(Code.ensure_loaded?(mod))
     |> Kernel.and(function_exported?(mod, :spark_dsl_config, 0))
   end
-
-  defp domain_module?(_), do: false
 
   defp excluded_domain_module?(mod_str) do
     Enum.any?(@domain_module_suffixes, &String.ends_with?(mod_str, &1))

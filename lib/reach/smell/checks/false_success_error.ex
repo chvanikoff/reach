@@ -130,8 +130,8 @@ defmodule Reach.Smell.Checks.FalseSuccessError do
     module_parts(module) ++ split_atom(function)
   end
 
-  defp call_parts({function, _meta, _args}) when is_atom(function), do: split_atom(function)
   defp call_parts({:__block__, _meta, [value]}), do: call_parts(value)
+  defp call_parts({function, _meta, _args}) when is_atom(function), do: split_atom(function)
   defp call_parts(_subject), do: []
 
   defp module_parts({:__aliases__, _meta, parts}), do: Enum.flat_map(parts, &split_atom/1)

@@ -49,8 +49,6 @@ defmodule Reach.Smell.Checks.MissingExternalResource do
       end)
   end
 
-  defp module_body(_body), do: nil
-
   defp external_resource_path({:@, _meta, [{:external_resource, _attr_meta, [path_ast]}]}) do
     case literal_string(path_ast) do
       nil -> []

@@ -290,7 +290,6 @@ defmodule Reach.Smell.Checks.TrivialDelegate do
 
   defp module_names(_ast, _aliases, _dynamic_targets), do: []
 
-  defp call_label(%{module: nil, name: name}), do: Atom.to_string(name)
   defp call_label(%{module: module, name: name}), do: "#{module}.#{name}"
 
   defp location(file, meta), do: "#{file}:#{meta[:line] || 0}"

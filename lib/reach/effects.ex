@@ -570,7 +570,6 @@ defmodule Reach.Effects do
       classify_messaging(module, function) ||
       classify_state(module, function) ||
       classify_exception(module, function) ||
-      classify_nif(module) ||
       classify_config(module, function) ||
       classify_from_spec(module, function, arity) ||
       :unknown
@@ -655,8 +654,6 @@ defmodule Reach.Effects do
     rescue
       _error in [ArgumentError, ErlangError] -> nil
     end
-
-    defp classify_from_inferred(_, _, _), do: nil
 
     defp read_inferred_sig(module, function, arity) do
       with path when is_list(path) <- :code.which(module),
@@ -908,10 +905,6 @@ defmodule Reach.Effects do
     if exception_function?(module, function), do: :exception
   end
 
-  defp classify_nif(module) do
-    if nif_module?(module), do: :nif
-  end
-
   # --- Pure function database ---
 
   @doc "Returns modules whose functions are pure by default unless explicitly listed otherwise."
@@ -937,7 +930,6 @@ defmodule Reach.Effects do
   defp send_function?(GenServer, :call), do: true
   defp send_function?(GenServer, :cast), do: true
   defp send_function?(GenServer, :reply), do: true
-  defp send_function?(Process, :send), do: true
   defp send_function?(Process, :send_after), do: true
   defp send_function?(_, _), do: false
 
@@ -1019,6 +1011,4 @@ defmodule Reach.Effects do
   defp exception_function?(Kernel, f) when f in [:raise, :throw, :exit], do: true
   defp exception_function?(:erlang, f) when f in [:error, :throw, :exit], do: true
   defp exception_function?(_, _), do: false
-
-  defp nif_module?(_), do: false
 end

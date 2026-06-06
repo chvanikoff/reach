@@ -8,7 +8,7 @@ defmodule Reach.MixProject do
     [
       app: :reach,
       version: @version,
-      elixir: "~> 1.18",
+      elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),

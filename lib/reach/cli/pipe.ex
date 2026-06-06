@@ -1,8 +1,6 @@
 defmodule Reach.CLI.Pipe do
   @moduledoc false
 
-  require Logger
-
   def safely(fun) when is_function(fun, 0) do
     previous_level = Logger.level()
     Logger.configure(level: :emergency)

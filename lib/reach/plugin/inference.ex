@@ -85,10 +85,10 @@ defmodule Reach.Plugin.Inference do
   defp dependency_names(ast) do
     {_ast, names} =
       Macro.prewalk(ast, [], fn
-        {dep, _meta, _args} = node, names when is_atom(dep) ->
+        {:{}, _meta, [dep | _rest]} = node, names when is_atom(dep) ->
           {node, [dep | names]}
 
-        {:{}, _meta, [dep | _rest]} = node, names when is_atom(dep) ->
+        {dep, _meta, _args} = node, names when is_atom(dep) ->
           {node, [dep | names]}
 
         tuple, names when is_tuple(tuple) ->
