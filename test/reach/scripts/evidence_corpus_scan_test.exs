@@ -37,7 +37,6 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
 
     File.write!(Path.join(lib, "sample.ex"), """
     defmodule Sample do
-      def deprecated_escape, do: "\\x{FF}"
       def charlist, do: 'abc'
       def run(items), do: items |> Enum.map(&List.wrap/1) |> List.flatten()
     end
