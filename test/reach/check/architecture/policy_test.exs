@@ -12,7 +12,7 @@ defmodule Reach.Check.ArchitecturePolicyTest do
 
     output = capture_io(fn -> Check.run(arch: true, format: "json", project: project) end)
 
-    assert {:ok, data} = Jason.decode(output)
+    assert {:ok, data} = JSON.decode(output)
     assert data["status"] == "ok"
     assert data["violations"] == []
   end
@@ -32,7 +32,7 @@ defmodule Reach.Check.ArchitecturePolicyTest do
 
     output = capture_io(fn -> Check.run(arch: true, format: "json", project: project) end)
 
-    assert {:ok, data} = Jason.decode(output)
+    assert {:ok, data} = JSON.decode(output)
     assert data["status"] == "ok"
     assert data["violations"] == []
   end
@@ -166,7 +166,7 @@ defmodule Reach.Check.ArchitecturePolicyTest do
 
     output = capture_io(fn -> Check.run(arch: true, format: "json", project: project) end)
 
-    assert {:ok, data} = Jason.decode(output)
+    assert {:ok, data} = JSON.decode(output)
     assert data["status"] == "ok"
     assert data["violations"] == []
   end
@@ -187,7 +187,7 @@ defmodule Reach.Check.ArchitecturePolicyTest do
 
     assert_raise Mix.Error, ~r/Architecture policy failed/, fn ->
       output = capture_io(fn -> Check.run(arch: true, format: "json", project: project) end)
-      assert {:ok, data} = Jason.decode(output)
+      assert {:ok, data} = JSON.decode(output)
       assert Enum.any?(data["violations"], &(&1["type"] == "missing_layer"))
       assert Enum.any?(data["violations"], &(&1["type"] == "multiple_layers"))
     end
@@ -240,7 +240,7 @@ defmodule Reach.Check.ArchitecturePolicyTest do
 
     output = capture_io(fn -> Check.run(arch: true, format: "json", project: project) end)
 
-    assert {:ok, data} = Jason.decode(output)
+    assert {:ok, data} = JSON.decode(output)
     assert data["status"] == "ok"
     assert data["violations"] == []
   end

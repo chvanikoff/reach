@@ -68,7 +68,7 @@ defmodule Reach.ProgramFactsStress do
     |> String.split("\n")
     |> Enum.drop_while(&(not String.starts_with?(&1, "{")))
     |> Enum.join("\n")
-    |> Jason.decode!()
+    |> JSON.decode!()
   end
 
   defp commands(program) do

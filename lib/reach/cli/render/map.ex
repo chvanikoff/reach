@@ -13,7 +13,7 @@ defmodule Reach.CLI.Render.Map do
 
   def render(result, "json") do
     Requirements.json!()
-    IO.puts(Jason.encode!(json_envelope(result), pretty: true))
+    IO.puts(JSON.encode!(json_envelope(result)))
   end
 
   def render(result, "oneline"), do: render_oneline_map(result)

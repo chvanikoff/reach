@@ -95,7 +95,8 @@ removed_files = [
       ignore: [
         "Reach.MixProject",
         "Reach.CLI.JSONEnvelope",
-        "Jason.Encoder.*"
+        "Jason.Encoder.*",
+        "JSON.Encoder.*"
       ]
     ]
   ],

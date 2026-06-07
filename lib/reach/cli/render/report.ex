@@ -37,7 +37,7 @@ defmodule Reach.CLI.Render.Report do
 
     File.mkdir_p!(output_dir)
 
-    graph_json = Jason.encode!(graph_data)
+    graph_json = JSON.encode!(graph_data)
     makeup_css = Reach.Visualize.makeup_stylesheet()
 
     html =
@@ -75,7 +75,7 @@ defmodule Reach.CLI.Render.Report do
     File.mkdir_p!(output_dir)
     path = Path.join(output_dir, "reach.json")
 
-    File.write!(path, Jason.encode!(graph_data, pretty: true))
+    File.write!(path, JSON.encode!(graph_data))
 
     Mix.shell().info("JSON file: #{path}")
   end

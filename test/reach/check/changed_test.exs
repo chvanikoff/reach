@@ -72,7 +72,7 @@ defmodule Reach.Check.ChangedTest do
       |> Enum.drop_while(&(not String.starts_with?(&1, "{")))
       |> Enum.join("\n")
 
-    assert {:ok, data} = Jason.decode(json)
+    assert {:ok, data} = JSON.decode(json)
     assert is_list(data["changed_files"])
     assert is_list(data["changed_functions"])
   end

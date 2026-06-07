@@ -244,7 +244,7 @@ defmodule Reach.EffectsTest do
       graph =
         Reach.string_to_graph!("""
         def load(path) do
-          path |> File.read!() |> Jason.decode!()
+          path |> File.read!() |> JSON.decode!()
         end
         """)
 

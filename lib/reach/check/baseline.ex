@@ -3,7 +3,7 @@ defmodule Reach.Check.Baseline do
 
   alias Reach.Check.Finding
 
-  @derive Jason.Encoder
+  @derive JSON.Encoder
   defstruct version: 1, tool: "reach", findings: []
 
   def path(opts, config) do
@@ -30,7 +30,7 @@ defmodule Reach.Check.Baseline do
       end)
 
     baseline = %__MODULE__{existing | findings: Enum.sort_by(retained ++ findings, &sort_key/1)}
-    File.write!(path, Jason.encode!(baseline, pretty: true) <> "\n")
+    File.write!(path, JSON.encode!(baseline) <> "\n")
   end
 
   def read(nil), do: %__MODULE__{}
@@ -39,30 +39,42 @@ defmodule Reach.Check.Baseline do
     if File.exists?(path) do
       path
       |> File.read!()
-      |> Jason.decode!(keys: :atoms)
+      |> JSON.decode!()
       |> from_map()
     else
       %__MODULE__{}
     end
   end
 
-  defp from_map(%{findings: findings} = data) do
+  defp from_map(data) do
+    findings = field(data, :findings, [])
+
     %__MODULE__{
-      version: Map.get(data, :version, 1),
-      tool: Map.get(data, :tool, "reach"),
+      version: field(data, :version, 1),
+      tool: field(data, :tool, "reach"),
       findings: Enum.map(findings, &finding_from_map/1)
     }
   end
 
   defp finding_from_map(data) do
     %Finding{
-      source: Map.get(data, :source),
-      kind: Map.get(data, :kind),
-      fingerprint: Map.fetch!(data, :fingerprint),
-      message: Map.get(data, :message),
-      file: Map.get(data, :file),
-      line: Map.get(data, :line)
+      source: field(data, :source),
+      kind: field(data, :kind),
+      fingerprint: field!(data, :fingerprint),
+      message: field(data, :message),
+      file: field(data, :file),
+      line: field(data, :line)
     }
+  end
+
+  defp field(map, key, default \\ nil),
+    do: Map.get(map, key) || Map.get(map, to_string(key), default)
+
+  defp field!(map, key) do
+    case Map.fetch(map, key) do
+      {:ok, value} -> value
+      :error -> Map.fetch!(map, to_string(key))
+    end
   end
 
   defp sort_key(finding) do

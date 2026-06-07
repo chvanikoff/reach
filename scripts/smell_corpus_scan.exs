@@ -56,7 +56,7 @@ defmodule Reach.Scripts.SmellCorpusScan do
       )
 
     File.mkdir_p!(Path.dirname(Path.expand(output)))
-    File.write!(output, Jason.encode!(rows, pretty: true))
+    File.write!(output, JSON.encode!(rows))
 
     print_summary(rows, output)
     if stopped?, do: System.halt(2)

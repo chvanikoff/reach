@@ -58,7 +58,7 @@ defmodule Reach.Plugins.Jason.Evidence.HandRolledEncoderTest do
       end
       """)
 
-    assert [%{kind: :manual_jason_encoder_map, replacement: "@derive Jason.Encoder"}] =
+    assert [%{kind: :manual_jason_encoder_map, replacement: "@derive JSON.Encoder"}] =
              HandRolledEncoder.collect_ast(ast)
   end
 

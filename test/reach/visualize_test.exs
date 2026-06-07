@@ -81,7 +81,7 @@ defmodule Reach.VisualizeTest do
 
       json = Reach.Visualize.to_json(graph)
       assert is_binary(json)
-      assert {:ok, parsed} = Jason.decode(json)
+      assert {:ok, parsed} = JSON.decode(json)
       assert is_list(parsed["control_flow"])
     end
   end

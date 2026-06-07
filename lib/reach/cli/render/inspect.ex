@@ -220,7 +220,7 @@ defmodule Reach.CLI.Render.Inspect do
 
   defp render_json(data) do
     Requirements.json!()
-    IO.puts(Jason.encode!(json_envelope(data), pretty: true))
+    IO.puts(JSON.encode!(json_envelope(data)))
   end
 
   defp json_envelope(%{command: command} = data) do

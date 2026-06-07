@@ -1,7 +1,7 @@
 defmodule Reach.Check.Changed.Function do
   @moduledoc "Struct for a changed function with risk metadata."
 
-  @derive Jason.Encoder
+  @derive JSON.Encoder
   defstruct [
     :id,
     :file,

@@ -14,7 +14,7 @@ defmodule Reach.CLI.Render.Check do
 
   def render_result(result, "json", _text_fun) do
     Requirements.json!()
-    IO.puts(Jason.encode!(json_envelope(result), pretty: true))
+    IO.puts(JSON.encode!(json_envelope(result)))
   end
 
   def render_result(result, _format, text_fun), do: text_fun.(result)

@@ -1,6 +1,6 @@
 defmodule Reach.Map.Cycle do
   @moduledoc "Struct for a module dependency cycle with its components."
-  @derive Jason.Encoder
+  @derive JSON.Encoder
   defstruct [:modules]
   def new(attrs), do: struct!(__MODULE__, attrs)
 end

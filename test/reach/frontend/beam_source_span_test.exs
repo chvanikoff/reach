@@ -90,7 +90,7 @@ defmodule Reach.Frontend.BEAM.SourceSpanTest do
       for mod <- [Access, Enum, Map] do
         {:ok, g} = Reach.module_to_graph(mod)
         json = Reach.Visualize.to_json(g)
-        parsed = Jason.decode!(json)
+        parsed = JSON.decode!(json)
         funcs = Enum.flat_map(parsed["control_flow"], & &1["functions"])
 
         assert funcs != [],
@@ -102,7 +102,7 @@ defmodule Reach.Frontend.BEAM.SourceSpanTest do
       for mod <- [:gen_server, :ets, :lists] do
         {:ok, g} = Reach.module_to_graph(mod)
         json = Reach.Visualize.to_json(g)
-        parsed = Jason.decode!(json)
+        parsed = JSON.decode!(json)
         funcs = Enum.flat_map(parsed["control_flow"], & &1["functions"])
 
         assert funcs != [],

@@ -72,10 +72,10 @@ defmodule Reach.CLI.Format do
     IO.write(findings)
   end
 
-  defp render_json(data, tool, opts) do
+  defp render_json(data, tool, _opts) do
     output = %Reach.CLI.JSONEnvelope{command: tool, tool: tool, data: data}
 
-    json = Jason.encode!(output, pretty: Keyword.get(opts, :pretty, true))
+    json = JSON.encode!(output)
     IO.write(json)
     IO.write("\n")
   end

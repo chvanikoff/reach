@@ -14,11 +14,7 @@ defmodule Reach.Visualize do
   end
 
   def to_json(graph, opts \\ []) do
-    unless Code.ensure_loaded?(Jason) do
-      raise RuntimeError, "Jason is required. Add {:jason, ~s(~> 1.0)} to your deps."
-    end
-
-    graph |> to_graph_json(opts) |> Jason.encode!()
+    graph |> to_graph_json(opts) |> JSON.encode!()
   end
 
   def makeup_stylesheet do

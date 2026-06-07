@@ -312,7 +312,7 @@ defmodule Reach.ProgramFactsIntegrationTest do
       |> Enum.drop_while(&(not String.starts_with?(&1, "{")))
       |> Enum.join("\n")
 
-    assert {:ok, data} = Jason.decode(json)
+    assert {:ok, data} = JSON.decode(json)
     data
   end
 

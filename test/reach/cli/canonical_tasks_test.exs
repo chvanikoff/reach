@@ -44,13 +44,13 @@ defmodule Reach.CLI.CanonicalTasksTest do
 
     depth = capture_io(fn -> Map.run(depth: true, top: 1, format: "json", project: project) end)
 
-    assert {:ok, %{"sections" => %{"depth" => depth_rows}}} = Jason.decode(depth)
+    assert {:ok, %{"sections" => %{"depth" => depth_rows}}} = JSON.decode(depth)
     assert is_list(depth_rows)
 
     data = capture_io(fn -> Map.run(data: true, top: 1, format: "json", project: project) end)
 
     assert {:ok, %{"sections" => %{"data" => %{"cross_function_edges" => edges}}}} =
-             Jason.decode(data)
+             JSON.decode(data)
 
     assert is_list(edges)
   end
@@ -83,7 +83,7 @@ defmodule Reach.CLI.CanonicalTasksTest do
       |> Enum.drop_while(&(not String.starts_with?(&1, "{")))
       |> Enum.join("\n")
 
-    assert {:ok, data} = Jason.decode(json)
+    assert {:ok, data} = JSON.decode(json)
     data
   end
 end

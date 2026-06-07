@@ -1,7 +1,7 @@
 defmodule Reach.Check.Violation do
   @moduledoc "Struct for an architecture policy violation."
 
-  @derive Jason.Encoder
+  @derive JSON.Encoder
   defstruct [
     :type,
     :caller_module,

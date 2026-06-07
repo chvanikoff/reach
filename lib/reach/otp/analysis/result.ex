@@ -1,7 +1,7 @@
 defmodule Reach.OTP.Analysis.Result do
   @moduledoc "Struct holding the combined results of an OTP analysis run."
 
-  @derive Jason.Encoder
+  @derive JSON.Encoder
   defstruct [
     :behaviours,
     :state_machines,

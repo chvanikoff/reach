@@ -33,7 +33,7 @@ defmodule Reach.Visualize.BlockQualityTest do
 
       {:ok, graph} ->
         json = Reach.Visualize.to_json(graph)
-        parsed = Jason.decode!(json)
+        parsed = JSON.decode!(json)
         all_nodes = Reach.nodes(graph)
 
         for mod <- parsed["control_flow"],

@@ -31,7 +31,7 @@ defmodule Reach.Scripts.MacroFactScanTest do
                dir
              ])
 
-    assert [use_fact, route_fact] = Jason.decode!(json)
+    assert [use_fact, route_fact] = JSON.decode!(json)
     assert use_fact["kind"] == "phoenix_router_use"
     assert route_fact["kind"] == "phoenix_route"
 

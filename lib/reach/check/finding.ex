@@ -1,7 +1,7 @@
 defmodule Reach.Check.Finding do
   @moduledoc false
 
-  @derive Jason.Encoder
+  @derive JSON.Encoder
   @enforce_keys [:source, :kind, :fingerprint, :message]
   defstruct [:source, :kind, :fingerprint, :message, :file, :line]
 

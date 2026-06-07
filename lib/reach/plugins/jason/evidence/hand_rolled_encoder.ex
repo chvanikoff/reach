@@ -77,8 +77,8 @@ defmodule Reach.Plugins.Jason.Evidence.HandRolledEncoder do
       [
         evidence(
           :manual_jason_encoder_map,
-          "Jason encoder delegates through a direct to_map/1 projection; use @derive Jason.Encoder",
-          "@derive Jason.Encoder",
+          "Jason encoder delegates through a direct to_map/1 projection; use @derive JSON.Encoder",
+          "@derive JSON.Encoder",
           jason_encoder_meta(node),
           :high
         )

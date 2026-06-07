@@ -66,7 +66,7 @@ defmodule Mix.Tasks.ReachTest do
 
     json_path = Path.join(@output_dir, "reach.json")
     assert File.exists?(json_path)
-    assert {:ok, data} = Jason.decode(File.read!(json_path))
+    assert {:ok, data} = JSON.decode(File.read!(json_path))
     assert is_list(data["control_flow"])
     assert is_map(data["call_graph"])
   end

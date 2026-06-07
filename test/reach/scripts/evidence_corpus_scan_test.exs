@@ -18,7 +18,7 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
     assert text =~ "manual_flat_map=1"
 
     assert {json, 0} = scan(["--kind", "stdlib", "--format", "json", dir])
-    assert [result] = Jason.decode!(json)
+    assert [result] = JSON.decode!(json)
     assert result["kind"] == "manual_flat_map"
     assert result["family"] == "stdlib"
 
@@ -43,7 +43,7 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
     """)
 
     assert {json, 0} = scan(["--kind", "stdlib", "--format", "json", dir])
-    assert [_result] = Jason.decode!(json)
+    assert [_result] = JSON.decode!(json)
     refute json =~ "warning:"
 
     File.rm_rf(dir)
@@ -65,7 +65,7 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
     """)
 
     assert {json, 0} = scan(["--kind", "map-contract", "--format", "json", dir])
-    assert [result] = Jason.decode!(json)
+    assert [result] = JSON.decode!(json)
     assert result["family"] == "map_contract"
     assert result["keys"] == ["email", "id", "name"]
     assert result["variable"] == "data"
@@ -99,7 +99,7 @@ defmodule Reach.Scripts.EvidenceCorpusScanTest do
     """)
 
     assert {json, 0} = scan(["--kind", "map-contract", "--format", "json", dir])
-    assert [result] = Jason.decode!(json)
+    assert [result] = JSON.decode!(json)
     assert result["role"] == "external_payload"
 
     assert [%{"module" => "Elixir.Jason", "function" => "encode!", "arity" => 1}] =

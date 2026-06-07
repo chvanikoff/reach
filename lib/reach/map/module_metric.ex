@@ -1,6 +1,6 @@
 defmodule Reach.Map.ModuleMetric do
   @moduledoc "Struct for per-module complexity metrics."
-  @derive Jason.Encoder
+  @derive JSON.Encoder
   defstruct [
     :name,
     :file,

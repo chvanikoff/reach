@@ -12,7 +12,7 @@ defmodule Reach.CLI.JSONOutputTest do
     output = capture_io(fn -> Map.run(format: "json", top: 2, project: project) end)
 
     assert String.starts_with?(output, "{")
-    assert {:ok, data} = Jason.decode(output)
+    assert {:ok, data} = JSON.decode(output)
     assert data["command"] == "reach.map"
     assert is_map(data["summary"])
     assert is_map(data["sections"])
@@ -55,7 +55,7 @@ defmodule Reach.CLI.JSONOutputTest do
       end)
 
     assert String.starts_with?(output, "{")
-    assert {:ok, data} = Jason.decode(output)
+    assert {:ok, data} = JSON.decode(output)
     assert data["command"] == "reach.inspect"
     assert data["relation"] in ["call_path", "none"]
     assert is_list(data["paths"])
@@ -65,7 +65,7 @@ defmodule Reach.CLI.JSONOutputTest do
     project = fixture_project()
     output = capture_io(fn -> Check.run(candidates: true, format: "json", project: project) end)
 
-    assert {:ok, data} = Jason.decode(output)
+    assert {:ok, data} = JSON.decode(output)
     assert is_list(data["candidates"])
     assert Enum.all?(data["candidates"], &:maps.is_key("confidence", &1))
     assert Enum.all?(data["candidates"], &:maps.is_key("proof", &1))
@@ -110,7 +110,7 @@ defmodule Reach.CLI.JSONOutputTest do
       |> Enum.drop_while(&(not String.starts_with?(&1, "{")))
       |> Enum.join("\n")
 
-    assert {:ok, data} = Jason.decode(json)
+    assert {:ok, data} = JSON.decode(json)
     data
   end
 end

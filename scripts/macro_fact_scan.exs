@@ -98,7 +98,7 @@ defmodule Reach.MacroFactScan do
   defp print_results(facts, _limit, "json") do
     facts
     |> Enum.map(&json_fact/1)
-    |> Jason.encode!(pretty: true)
+    |> JSON.encode!()
     |> IO.puts()
   end
 

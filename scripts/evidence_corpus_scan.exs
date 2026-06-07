@@ -121,7 +121,7 @@ defmodule Reach.EvidenceCorpusScan do
   defp print_results(results, _limit, "json") do
     results
     |> Enum.map(&json_result/1)
-    |> Jason.encode!(pretty: true)
+    |> JSON.encode!()
     |> IO.puts()
   end
 

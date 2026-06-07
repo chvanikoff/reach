@@ -42,7 +42,7 @@ defmodule Reach.ProgramFactsVisualizeFuzzTest do
     data =
       graph
       |> Reach.Visualize.to_json()
-      |> Jason.decode!()
+      |> JSON.decode!()
 
     for module <- data["control_flow"], function <- module["functions"] do
       assert function["nodes"] != []

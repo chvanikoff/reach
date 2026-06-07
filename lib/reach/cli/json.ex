@@ -1,10 +1,10 @@
 defmodule Reach.CLI.JSON do
   @moduledoc false
 
-  def encode!(data, opts \\ []) do
+  def encode!(data, _opts \\ []) do
     data
     |> to_data()
-    |> Jason.encode!(opts)
+    |> JSON.encode!()
   end
 
   def to_data(%Reach.IR.Node{} = node) do

@@ -1,7 +1,7 @@
 defmodule Reach.Trace.Slice.Statement do
   @moduledoc "Struct for a single statement in a program slice."
 
-  @derive Jason.Encoder
+  @derive JSON.Encoder
   defstruct [:file, :line, :description, :type]
 
   def new(attrs), do: struct!(__MODULE__, attrs)

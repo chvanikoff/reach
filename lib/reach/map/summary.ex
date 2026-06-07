@@ -1,6 +1,6 @@
 defmodule Reach.Map.Summary do
   @moduledoc "Struct for project-level summary statistics."
-  @derive Jason.Encoder
+  @derive JSON.Encoder
   defstruct [
     :modules,
     :functions,
