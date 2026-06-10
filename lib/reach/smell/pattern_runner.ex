@@ -6,15 +6,14 @@ defmodule Reach.Smell.PatternRunner do
   alias Reach.Smell.PatternConfig
   alias Reach.Smell.Source
 
-  def run(project, checks) do
+  def run(project, checks, files \\ nil) do
     check_configs =
       Enum.map(checks, fn check ->
         {check, PatternConfig.normalize(check, check.__reach_pattern_check__())}
       end)
 
-    project
-    |> Source.module_files()
-    |> Enum.flat_map(&scan_file(&1, check_configs))
+    files = files || Source.module_files(project)
+    Enum.flat_map(files, &scan_file(&1, check_configs))
   end
 
   defp scan_file(file, check_configs) do

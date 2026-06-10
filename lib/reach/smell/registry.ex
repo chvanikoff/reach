@@ -16,41 +16,49 @@ defmodule Reach.Smell.Registry do
     :reach
     |> Application.spec(:modules)
     |> List.wrap()
-    |> Enum.reject(&plugin_check?/1)
-    |> Enum.filter(&check?/1)
+    |> Enum.filter(&(builtin_check_module?(&1) and check?(&1)))
     |> Enum.sort()
   end
 
   defp plugin_checks(%{plugins: plugins}),
-    do: plugins |> Reach.Plugin.smell_checks() |> validate_custom_checks()
+    do: plugins |> Reach.Plugin.smell_checks() |> validate_plugin_checks()
 
   defp plugin_checks(_project), do: []
 
   defp custom_checks(%{smells: %{custom_checks: checks}}), do: validate_custom_checks(checks)
   defp custom_checks(_config), do: []
 
-  defp validate_custom_checks(checks) do
+  defp validate_plugin_checks(checks) do
     Enum.map(checks, fn check ->
-      if check?(check) do
-        check
-      else
-        Mix.raise("Configured smell check #{inspect(check)} must implement Reach.Smell.Check")
-      end
+      if reach_plugin_check?(check), do: check, else: validate_custom_check(check)
     end)
   end
 
-  defp plugin_check?(module) when is_atom(module) do
-    module
-    |> Atom.to_string()
-    |> String.split(".")
-    |> case do
-      ["Elixir", "Reach", "Plugins" | _] -> true
-      ["Reach", "Plugins" | _] -> true
-      _parts -> false
+  defp validate_custom_checks(checks), do: Enum.map(checks, &validate_custom_check/1)
+
+  defp validate_custom_check(check) do
+    if check?(check) do
+      check
+    else
+      Mix.raise("Configured smell check #{inspect(check)} must implement Reach.Smell.Check")
     end
   end
 
-  defp plugin_check?(_module), do: false
+  defp builtin_check_module?(module) when is_atom(module) do
+    module
+    |> Atom.to_string()
+    |> String.starts_with?("Elixir.Reach.Smell.Checks.")
+  end
+
+  defp builtin_check_module?(_module), do: false
+
+  defp reach_plugin_check?(module) when is_atom(module) do
+    module
+    |> Atom.to_string()
+    |> String.starts_with?("Elixir.Reach.Plugins.")
+  end
+
+  defp reach_plugin_check?(_module), do: false
 
   defp check?(module) do
     Code.ensure_loaded?(module) and Check in behaviours(module)

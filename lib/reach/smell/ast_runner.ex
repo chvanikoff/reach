@@ -5,10 +5,10 @@ defmodule Reach.Smell.ASTRunner do
   alias Reach.Smell.PatternConfig
   alias Reach.Smell.Source
 
-  def run(project, checks) do
+  def run(project, checks, files \\ nil) do
     checks
     |> Enum.flat_map(&check_entries/1)
-    |> run_entries(project)
+    |> run_entries(project, files)
   end
 
   defp check_entries(check) do
@@ -19,12 +19,11 @@ defmodule Reach.Smell.ASTRunner do
     end
   end
 
-  defp run_entries([], _project), do: []
+  defp run_entries([], _project, _files), do: []
 
-  defp run_entries(entries, project) do
-    project
-    |> Source.module_files()
-    |> Enum.flat_map(&scan_file(&1, entries))
+  defp run_entries(entries, project, files) do
+    files = files || Source.module_files(project)
+    Enum.flat_map(files, &scan_file(&1, entries))
   end
 
   defp scan_file(file, entries) do

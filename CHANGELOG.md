@@ -2,8 +2,11 @@
 
 ## Unreleased
 
+## 2.7.2 - 2026-06-10
+
 ### Changed
 
+- **Smell check performance** — `mix reach.check --smells` now avoids expensive registry discovery over non-smell Reach modules, skips redundant validation for Reach-owned plugin smell checks, and shares source file discovery across source smell runners while preserving existing smell results.
 - **Dependency refresh** — updated ExDNA, ExDoc, QuickBEAM, Volt, and transitive frontend tooling to current releases.
 - **Clone evidence tuning** — Reach clone-analysis configuration now forwards ExDNA options for occurrences, Type-II/III matching, pipe normalization, macro/attribute exclusions, path ignores, parser timeouts, and source suppressions.
 - **Clone source safety** — ExDNA-backed clone evidence now ignores non-Elixir source files contributed by plugin frontends.
