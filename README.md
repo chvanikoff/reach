@@ -253,6 +253,17 @@ A handful of Reach smell patterns overlap with Credo refactoring checks (`MapJoi
 
 Some structural smell patterns were informed by public [Credence](https://github.com/Cinderella-Man/credence) rules and [Clippy](https://rust-lang.github.io/rust-clippy/) lint categories. Framework-specific smell ideas are also informed by the public [claude-elixir-phoenix](https://github.com/oliver-kriska/claude-elixir-phoenix) rule set. Reach implements them over its own IR/project model and keeps them advisory.
 
+## Part of Elixir Vibe
+
+Reach answers "what depends on this, and can you prove it?" — dependence graphs, slicing, effects, and architecture checks for BEAM projects.
+
+It is one building block of a larger stack — tools that make AI-generated
+software checkable: structural search, dependence analysis, duplication and
+slop detection, session replay, and ecosystem-wide code search. See the
+[Elixir Vibe](https://github.com/elixir-vibe) organization for the rest, and
+[Building Blocks for the Future Web](https://github.com/elixir-vibe/building-blocks)
+for the thesis, architecture, and roadmap that tie them together.
+
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
