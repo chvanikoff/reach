@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.7.3 - 2026-06-12
+
+### Fixed
+
+- HEEx lowering now handles atom-named component attributes emitted by Phoenix metadata, fixing `CodeMap.reflect/1` crashes on generated Phoenix layouts.
+
 ## 2.7.2 - 2026-06-10
 
 ### Changed
