@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.7.5 - 2026-06-12
+
+### Changed
+
+- Suppressed optional Makeup integration warnings when compiling Reach without syntax-highlighting dependencies installed.
+
 ## 2.7.4 - 2026-06-12
 
 ### Fixed

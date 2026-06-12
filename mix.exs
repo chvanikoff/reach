@@ -1,7 +1,7 @@
 defmodule Reach.MixProject do
   use Mix.Project
 
-  @version "2.7.4"
+  @version "2.7.5"
   @source_url "https://github.com/elixir-vibe/reach"
 
   def project do
@@ -12,6 +12,12 @@ defmodule Reach.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
+      elixirc_options: [
+        no_warn_undefined: [
+          {Makeup, :highlight_inner_html, 2},
+          {Makeup, :stylesheet, 0}
+        ]
+      ],
       dialyzer: [
         plt_add_apps: [:mix, :eex, :boxart],
         flags: [:no_opaque]
