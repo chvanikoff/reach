@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.7.4 - 2026-06-12
+
+### Fixed
+
+- Target resolution now returns `nil` for unsupported non-string targets instead of crashing, so module-only context requests fail gracefully.
+
 ## 2.7.3 - 2026-06-12
 
 ### Fixed

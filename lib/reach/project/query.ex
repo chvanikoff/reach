@@ -39,6 +39,8 @@ defmodule Reach.Project.Query do
     end
   end
 
+  def resolve_target(project, raw), do: resolve_function(project, raw)
+
   def parse_file_line(raw) do
     case raw |> String.reverse() |> String.split(":", parts: 2) do
       [rev_digits, rev_file] when rev_file != "" ->

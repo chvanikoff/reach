@@ -116,6 +116,7 @@ defmodule Reach.ProjectTest do
       project_b = CLIProject.load(paths: [path_b], quiet: true)
       assert Query.resolve_target(project_b, "only_b/0") == {CacheB, :only_b, 0}
       assert Query.resolve_target(project_b, "only_a/0") == nil
+      assert Query.resolve_target(project_b, CacheB) == nil
     end
   end
 
