@@ -85,6 +85,29 @@ defmodule Reach.Plugins.LiveView.HEExLowererTest do
     assert Enum.any?(nodes, &(&1.type == :call and &1.meta[:function] == :__live_event__))
   end
 
+  test "lowers atom-named component attributes from Phoenix metadata" do
+    span = %Span{file: "demo.heex", start_line: 1, start_col: 1}
+
+    tree = %Node.Template{
+      children: [
+        %Node.Tag{
+          type: :local_component,
+          name: "app",
+          open_span: span,
+          span: span,
+          attrs: [%Node.Attr{name: :root, value: {:string, "true"}, span: span}],
+          special: [],
+          children: []
+        }
+      ],
+      span: span
+    }
+
+    ast = Lowerer.to_ast(tree)
+
+    assert {:app, _meta, [{:%{}, [], [root: "true"]}]} = ast
+  end
+
   test "lowers local components to component calls instead of LiveView runtime helpers" do
     span = %Span{file: "demo.heex", start_line: 1, start_col: 1}
 

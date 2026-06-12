@@ -216,6 +216,7 @@ defmodule Reach.Plugins.LiveView.HEEx.Lowerer do
     end
   end
 
+  defp source_atom(name) when is_atom(name), do: name
   defp source_atom(name) when is_binary(name), do: :erlang.binary_to_atom(name, :utf8)
 
   defp block_ast([], _origin), do: nil
