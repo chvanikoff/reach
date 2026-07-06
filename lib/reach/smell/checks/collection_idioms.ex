@@ -88,18 +88,6 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
   )
 
   smell(
-    ~p[Map.keys(_) |> Enum.map(_)],
-    :suboptimal,
-    "Map.keys/1 → Enum.map: iterate the map directly as {key, value} pairs"
-  )
-
-  smell(
-    ~p[Map.keys(_) |> Enum.filter(_)],
-    :suboptimal,
-    "Map.keys/1 → Enum.filter: iterate the map directly as {key, value} pairs"
-  )
-
-  smell(
     ~p[Map.keys(_) |> Enum.each(_)],
     :suboptimal,
     "Map.keys/1 → Enum.each: iterate the map directly as {key, value} pairs"
@@ -157,18 +145,6 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
     ~p[Map.values(_) |> Enum.find(_)],
     :suboptimal,
     "Map.values/1 → Enum.find: iterate the map directly as {key, value} pairs"
-  )
-
-  smell(
-    ~p[Map.values(_) |> Enum.filter(_)],
-    :suboptimal,
-    "Map.values/1 → Enum.filter: iterate the map directly as {key, value} pairs"
-  )
-
-  smell(
-    ~p[Map.values(_) |> Enum.map(_)],
-    :suboptimal,
-    "Map.values/1 → Enum.map: iterate the map directly as {key, value} pairs"
   )
 
   smell(

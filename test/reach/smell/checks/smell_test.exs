@@ -991,6 +991,20 @@ defmodule Reach.SmellTest do
       assert Enum.any?(findings, &(&1.message =~ "Map.values"))
     end
 
+    test "does not flag Map key/value transform and select pipelines" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def key_names(m), do: m |> Map.keys() |> Enum.map(&to_string/1)
+          def value_names(m), do: m |> Map.values() |> Enum.map(&to_string/1)
+          def filtered_keys(m), do: m |> Map.keys() |> Enum.filter(&is_atom/1)
+          def filtered_values(m), do: m |> Map.values() |> Enum.filter(&is_binary/1)
+        end
+        """)
+
+      refute Enum.any?(findings, &(&1.message =~ ~r/Map\.(keys|values)\/1 → Enum\.(map|filter)/))
+    end
+
     test "flags Enum.map |> Enum.max" do
       findings =
         run_smell_task("""
