@@ -1046,11 +1046,15 @@ defmodule Reach.SmellTest do
       assert Enum.any?(findings, &(&1.message =~ "MapSet"))
     end
 
-    test "does not flag Map.put with atom key and boolean value" do
+    test "does not flag Map.put with constant key and boolean value" do
       findings =
         run_smell_task("""
         defmodule A do
           def activate(struct), do: Map.put(struct, :active, true)
+          def stream(body), do: Map.put(body, :stream, true)
+          def mark_current(acc), do: Map.put(acc, __MODULE__, true)
+          def mark_module(acc), do: Map.put(acc, Some.Module, false)
+          def mark_string(acc), do: Map.put(acc, "active", true)
         end
         """)
 

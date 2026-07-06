@@ -203,7 +203,7 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
 
   smell(
     from(~p[Map.put(_, key, value)])
-    |> where(not is_atom(^key) and not is_binary(^key) and ^value in [true, false]),
+    |> where(not constant_map_key?(^key) and literal_boolean?(^value)),
     :suboptimal,
     "Map.put/3 with variable key and boolean value suggests membership tracking; use MapSet"
   )
@@ -330,6 +330,23 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
     :suboptimal,
     "Enum.into(enum, %{}): use Map.new/1"
   )
+
+  defp constant_map_key?(value), do: literal_atom_or_binary?(value) or module_literal?(value)
+
+  defp literal_atom_or_binary?({:__block__, _meta, [value]})
+       when is_atom(value) or is_binary(value),
+       do: true
+
+  defp literal_atom_or_binary?(value) when is_atom(value) or is_binary(value), do: true
+  defp literal_atom_or_binary?(_value), do: false
+
+  defp literal_boolean?({:__block__, _meta, [value]}) when is_boolean(value), do: true
+  defp literal_boolean?(value) when is_boolean(value), do: true
+  defp literal_boolean?(_value), do: false
+
+  defp module_literal?({:__MODULE__, _meta, _context}), do: true
+  defp module_literal?({:__aliases__, _meta, aliases}) when is_list(aliases), do: true
+  defp module_literal?(_value), do: false
 
   smell(
     ~p[if _, do: true, else: false],
