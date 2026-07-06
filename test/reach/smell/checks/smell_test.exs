@@ -1289,6 +1289,64 @@ defmodule Reach.SmellTest do
       assert Enum.any?(findings, &(&1.message =~ "map_size"))
     end
 
+    test "flags redundant Enum.dedup or Enum.uniq before MapSet.new" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def a(items), do: Enum.dedup(items) |> MapSet.new()
+          def b(items), do: items |> Enum.uniq() |> MapSet.new()
+          def c(items), do: MapSet.new(Enum.dedup(items))
+          def d(items), do: MapSet.new(Enum.uniq(items))
+        end
+        """)
+
+      matching = Enum.filter(findings, &(&1.message =~ "MapSet.new/1"))
+      assert length(matching) == 4
+    end
+
+    test "does not flag non-redundant MapSet.new inputs" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def a(items), do: MapSet.new(items)
+          def b(items), do: Enum.sort(items) |> MapSet.new()
+          def c(items), do: items |> Enum.uniq() |> Enum.sort() |> MapSet.new()
+        end
+        """)
+
+      refute Enum.any?(findings, &(&1.message =~ "MapSet.new/1"))
+    end
+
+    test "flags Map.new/2 mapper returning a bare non-pair literal" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def a(n), do: Map.new(0..n, fn _k -> [] end)
+          def b(items), do: Map.new(items, fn _ -> 0 end)
+          def c(items), do: Map.new(items, fn x -> "v" end)
+          def d(items), do: Map.new(items, fn x -> %{} end)
+        end
+        """)
+
+      matching = Enum.filter(findings, &(&1.message =~ "Map.new/2 mapper"))
+      assert length(matching) == 4
+    end
+
+    test "does not flag working Map.new/2 mappers" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def a(keys), do: Map.new(keys, fn k -> {k, 0} end)
+          def b(enum), do: Map.new(enum, fn x -> compute(x) end)
+          def c(pairs), do: Map.new(pairs, fn p -> p end)
+          def d(pairs), do: Map.new(pairs, fn {k, v} -> {k, v} end)
+          def e(pairs), do: Map.new(pairs)
+        end
+        """)
+
+      refute Enum.any?(findings, &(&1.message =~ "Map.new/2 mapper"))
+    end
+
     test "flags Enum.map |> List.flatten" do
       findings =
         run_smell_task("""
@@ -1800,7 +1858,7 @@ defmodule Reach.SmellTest do
       assert Enum.any?(findings, &(&1.message =~ "parts: 2"))
     end
 
-    test "flags Enum.filter |> List.first" do
+    test "does not flag eager Enum.filter |> List.first as an Enum.find rewrite" do
       findings =
         run_smell_task("""
         defmodule A do
@@ -1808,7 +1866,19 @@ defmodule Reach.SmellTest do
         end
         """)
 
-      assert Enum.any?(findings, &(&1.message =~ "Enum.find"))
+      refute Enum.any?(findings, &(&1.message =~ "Enum.find"))
+    end
+
+    test "flags lazy Stream.filter |> Enum.at(0)" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def first_match(list), do: list |> Stream.filter(&(&1 > 0)) |> Enum.at(0)
+          def nested(list), do: Enum.at(Stream.filter(list, &(&1 > 0)), 0)
+        end
+        """)
+
+      assert length(Enum.filter(findings, &(&1.message =~ "lazy single-pass search"))) == 2
     end
   end
 end

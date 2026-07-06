@@ -295,6 +295,25 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
   )
 
   smell(
+    ~p[Enum.dedup(_) |> MapSet.new()],
+    :redundant_traversal,
+    "Enum.dedup/1 before MapSet.new/1 is redundant; MapSet stores unique elements already"
+  )
+
+  smell(
+    ~p[Enum.uniq(_) |> MapSet.new()],
+    :redundant_traversal,
+    "Enum.uniq/1 before MapSet.new/1 is redundant; MapSet stores unique elements already"
+  )
+
+  smell(
+    from(~p[Map.new(_, fn param -> body end)])
+    |> where(bare_param?(^param) and definitely_not_pair?(^body)),
+    :bug_risk,
+    "Map.new/2 mapper must return a {key, value} tuple; this bare literal raises ArgumentError"
+  )
+
+  smell(
     ~p[Enum.map(_, _) |> Enum.concat()],
     :eager_pattern,
     "Enum.map/2 |> Enum.concat/1: use Enum.flat_map/2"
@@ -306,6 +325,21 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
     :suboptimal,
     "Enum.into(enum, %{}): use Map.new/1"
   )
+
+  defp bare_param?({name, _meta, context}) when is_atom(name) and is_atom(context), do: true
+  defp bare_param?(_value), do: false
+
+  defp definitely_not_pair?({:__block__, _meta, [inner]}), do: definitely_not_pair?(inner)
+  defp definitely_not_pair?(list) when is_list(list), do: true
+
+  defp definitely_not_pair?(literal)
+       when is_integer(literal) or is_float(literal) or is_atom(literal) or is_binary(literal),
+       do: true
+
+  defp definitely_not_pair?({:%{}, _meta, _fields}), do: true
+  defp definitely_not_pair?({:<<>>, _meta, _parts}), do: true
+  defp definitely_not_pair?({:{}, _meta, elements}) when length(elements) != 2, do: true
+  defp definitely_not_pair?(_value), do: false
 
   defp constant_map_key?(value), do: literal_atom_or_binary?(value) or module_literal?(value)
 
@@ -358,18 +392,6 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
     ~p[String.split(_, _) |> List.first()],
     :suboptimal,
     "String.split/2 |> List.first/1 splits the entire string; use String.split/3 with parts: 2"
-  )
-
-  smell(
-    ~p[Enum.filter(_, _) |> List.first()],
-    :suboptimal,
-    "Enum.filter/2 |> List.first/1: use Enum.find/2"
-  )
-
-  smell(
-    ~p[Enum.filter(_, _) |> hd()],
-    :suboptimal,
-    "Enum.filter/2 |> hd/1: use Enum.find/2"
   )
 
   smell(

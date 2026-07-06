@@ -28,6 +28,12 @@ defmodule Reach.Smell.Checks.PipelineWaste do
   )
 
   smell(
+    ~p[Stream.filter(_, _) |> Enum.at(0)],
+    :suboptimal,
+    "Stream.filter/2 |> Enum.at(0) can be replaced with Enum.find/2 for lazy single-pass search"
+  )
+
+  smell(
     ~p[Enum.sort(_) |> Enum.take(_)],
     :eager_pattern,
     "Enum.sort → Enum.take: sorts entire list; use Enum.min/max or partial top-k"
