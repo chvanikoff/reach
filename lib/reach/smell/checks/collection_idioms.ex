@@ -307,6 +307,27 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
   )
 
   smell(
+    from(~p[Enum.map(Enum.chunk_by(_, callback), first_fn)])
+    |> where(identity_fn?(^callback) and first_element_fn?(^first_fn)),
+    :suboptimal,
+    "Enum.chunk_by/2 with identity followed by first-element mapping reimplements Enum.dedup/1"
+  )
+
+  smell(
+    from(~p[Enum.map_join(Enum.chunk_by(_, callback), first_fn)])
+    |> where(identity_fn?(^callback) and first_element_fn?(^first_fn)),
+    :suboptimal,
+    "Enum.chunk_by/2 with identity followed by map_join reimplements Enum.dedup/1 |> Enum.join/1"
+  )
+
+  smell(
+    from(~p[Map.new(Enum.group_by(_, _), callback)])
+    |> where(length_of_group_fn?(^callback)),
+    :suboptimal,
+    "Enum.group_by/2 followed by Map.new/2 counting group lengths is a manual frequency count; use Enum.frequencies_by/2"
+  )
+
+  smell(
     from(~p[Map.new(_, fn param -> body end)])
     |> where(bare_param?(^param) and definitely_not_pair?(^body)),
     :bug_risk,
@@ -453,4 +474,73 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
     :suboptimal,
     "Enum.take_while/2 |> Enum.count/1 materializes a prefix just to count it; use Enum.reduce_while/3"
   )
+
+  defp identity_fn?({:fn, _, [{:->, _, [[{var, _, ctx}], {var, _, ctx}]}]})
+       when is_atom(var) and is_atom(ctx),
+       do: true
+
+  defp identity_fn?({:&, _, [{:&, _, [1]}]}), do: true
+  defp identity_fn?({:&, _, [{:&, _, [{:__block__, _, [1]}]}]}), do: true
+  defp identity_fn?(_callback), do: false
+
+  defp first_element_fn?(
+         {:&, _,
+          [
+            {:/, _,
+             [
+               {{:., _, [{:__aliases__, _, [:List]}, :first]}, _, []},
+               arity
+             ]}
+          ]}
+       ),
+       do: unwrap_literal(arity) == 1
+
+  defp first_element_fn?({:&, _, [{:hd, _, [{:&, _, [1]}]}]}), do: true
+  defp first_element_fn?(_callback), do: false
+
+  defp length_of_group_fn?(
+         {:fn, _,
+          [
+            {:->, _,
+             [
+               [pattern],
+               result
+             ]}
+          ]}
+       ) do
+    with {:ok, key_var, group_var} <- group_tuple(pattern),
+         {:ok, result_key, length_call} <- result_tuple(result) do
+      same_var?(key_var, result_key) and length_call_on?(length_call, group_var)
+    else
+      _ -> false
+    end
+  end
+
+  defp length_of_group_fn?(_callback), do: false
+
+  defp group_tuple({:__block__, _meta, [inner]}), do: group_tuple(inner)
+  defp group_tuple({key_var, group_var}), do: {:ok, key_var, group_var}
+  defp group_tuple({:{}, _meta, [key_var, group_var]}), do: {:ok, key_var, group_var}
+  defp group_tuple(_other), do: :error
+
+  defp result_tuple({:__block__, _meta, [inner]}), do: result_tuple(inner)
+  defp result_tuple({key_var, length_call}), do: {:ok, key_var, length_call}
+  defp result_tuple({:{}, _meta, [key_var, length_call]}), do: {:ok, key_var, length_call}
+  defp result_tuple(_other), do: :error
+
+  defp length_call_on?({:length, _, [var]}, group_var), do: same_var?(var, group_var)
+
+  defp length_call_on?({{:., _, [{:__aliases__, _, [:Kernel]}, :length]}, _, [var]}, group_var),
+    do: same_var?(var, group_var)
+
+  defp length_call_on?({{:., _, [{:__aliases__, _, [:Enum]}, :count]}, _, [var]}, group_var),
+    do: same_var?(var, group_var)
+
+  defp length_call_on?(_call, _group_var), do: false
+
+  defp same_var?({name, _, ctx}, {name, _, ctx}) when is_atom(name) and is_atom(ctx), do: true
+  defp same_var?(_left, _right), do: false
+
+  defp unwrap_literal({:__block__, _meta, [value]}), do: value
+  defp unwrap_literal(value), do: value
 end

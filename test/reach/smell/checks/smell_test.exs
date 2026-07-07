@@ -20,6 +20,7 @@ defmodule Reach.SmellTest do
       assert Reach.Smell.Checks.CollectionIdioms in checks
       assert Reach.Smell.Checks.CloneConsistency in checks
       assert Reach.Smell.Checks.ConfigPhase in checks
+      assert Reach.Smell.Checks.KeywordGetIntegerKey in checks
       assert Reach.Smell.Checks.PipelineWaste in checks
       assert Reach.Smell.Checks.TrivialDelegate in checks
       assert Reach.Smell.Checks.StandardLibraryBypass in checks
@@ -1119,6 +1120,32 @@ defmodule Reach.SmellTest do
       assert Enum.any?(findings, &(&1.message =~ "pattern matching"))
     end
 
+    test "flags identity chunk_by then first-element map" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def dedup(items), do: items |> Enum.chunk_by(& &1) |> Enum.map(&List.first/1)
+        end
+        """)
+
+      assert Enum.any?(findings, &(&1.message =~ "reimplements Enum.dedup/1"))
+    end
+
+    test "flags group_by then Map.new counting group lengths" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def counts(items) do
+            items
+            |> Enum.group_by(&String.downcase/1)
+            |> Map.new(fn {key, group} -> {key, length(group)} end)
+          end
+        end
+        """)
+
+      assert Enum.any?(findings, &(&1.message =~ "manual frequency count"))
+    end
+
     test "flags direct grapheme count and length" do
       findings =
         run_smell_task("""
@@ -1843,6 +1870,29 @@ defmodule Reach.SmellTest do
         """)
 
       refute Enum.any?(findings, &(&1.message =~ "nil default"))
+    end
+
+    test "flags Keyword.get with integer key" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def direct(items), do: Keyword.get(items, -1)
+          def piped(items), do: items |> Keyword.get(0)
+        end
+        """)
+
+      assert length(Enum.filter(findings, &(&1.message =~ "integer key always raises"))) == 2
+    end
+
+    test "does not confuse piped Keyword.get default for an integer key" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def timeout(opts), do: opts |> Keyword.get(:timeout, 5000)
+        end
+        """)
+
+      refute Enum.any?(findings, &(&1.message =~ "integer key always raises"))
     end
   end
 
