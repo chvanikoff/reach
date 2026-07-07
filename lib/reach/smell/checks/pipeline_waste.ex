@@ -173,6 +173,13 @@ defmodule Reach.Smell.Checks.PipelineWaste do
   )
 
   smell(
+    from(~p[Enum.flat_map(_, callback)])
+    |> where(identity_fn?(^callback)),
+    :suboptimal,
+    "Enum.flat_map/2 with identity function; use Enum.concat/1"
+  )
+
+  smell(
     ~p[Enum.filter(_, _) |> Enum.filter(_, _)],
     :eager_pattern,
     "Enum.filter → Enum.filter: combine predicates into one Enum.filter/2 call"
@@ -306,4 +313,12 @@ defmodule Reach.Smell.Checks.PipelineWaste do
   defp wildcard?(node), do: match?({:_, _, _}, unwrap_literal(node))
   defp unwrap_literal({:__block__, _meta, [value]}), do: value
   defp unwrap_literal(value), do: value
+
+  defp identity_fn?({:fn, _, [{:->, _, [[{var, _, ctx}], {var, _, ctx}]}]})
+       when is_atom(var) and is_atom(ctx),
+       do: true
+
+  defp identity_fn?({:&, _, [{:&, _, [1]}]}), do: true
+  defp identity_fn?({:&, _, [{:&, _, [{:__block__, _, [1]}]}]}), do: true
+  defp identity_fn?(_callback), do: false
 end

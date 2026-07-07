@@ -1272,6 +1272,42 @@ defmodule Reach.SmellTest do
       assert Enum.any?(findings, &(&1.message =~ "Enum.dedup/1"))
     end
 
+    test "flags Enum.flat_map with identity function" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def direct(items), do: Enum.flat_map(items, fn x -> x end)
+          def piped(items), do: items |> Enum.flat_map(fn x -> x end)
+        end
+        """)
+
+      assert length(Enum.filter(findings, &(&1.message =~ "Enum.concat/1"))) == 2
+    end
+
+    test "does not flag Enum.flat_map with transformation" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def rows(items), do: items |> Enum.flat_map(fn x -> [x, x] end)
+        end
+        """)
+
+      refute Enum.any?(findings, &(&1.message =~ "Enum.concat/1"))
+    end
+
+    test "does not flag Enum.flat_map callback with pattern matching" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def points(corners) do
+            corners |> Enum.flat_map(fn [{x, y, z}] -> [{x, y, z}] end)
+          end
+        end
+        """)
+
+      refute Enum.any?(findings, &(&1.message =~ "Enum.concat/1"))
+    end
+
     test "flags length(String.split) - 1" do
       findings =
         run_smell_task("""
