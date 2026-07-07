@@ -15,6 +15,7 @@ defmodule Reach.SmellTest do
       checks = Reach.Smell.Registry.checks()
 
       assert Reach.Smell.Checks.DualKeyAccess in checks
+      assert Reach.Smell.Checks.EmptyMapNew in checks
       assert Reach.Smell.Checks.FixedShapeMap in checks
       assert Reach.Smell.Checks.BehaviourCandidate in checks
       assert Reach.Smell.Checks.CollectionIdioms in checks
@@ -1788,6 +1789,47 @@ defmodule Reach.SmellTest do
         """)
 
       assert Enum.any?(findings, &(&1.message =~ "MapSet.new/1"))
+    end
+
+    test "flags zero-argument Map.new" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def empty, do: Map.new()
+        end
+        """)
+
+      assert Enum.any?(findings, &(&1.message =~ "%{} literal"))
+    end
+
+    test "does not flag piped Map.new, Map.new arity capture, or arrow-pattern DSL" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def from_pairs(pairs), do: pairs |> Map.new()
+          def constructor, do: &Map.new/0
+          def pattern(value), do: case value do
+            Map.new() -> :macro_dsl_shape
+            _ -> :other
+          end
+        end
+        """)
+
+      refute Enum.any?(findings, &(&1.message =~ "%{} literal"))
+    end
+
+    test "still flags Map.new in arrow bodies" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def empty(value), do: case value do
+            nil -> Map.new()
+            _ -> %{ok: true}
+          end
+        end
+        """)
+
+      assert Enum.any?(findings, &(&1.message =~ "%{} literal"))
     end
 
     test "flags redundant Enum.to_list before Map.new and MapSet.new" do
