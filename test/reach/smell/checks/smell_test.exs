@@ -703,14 +703,25 @@ defmodule Reach.SmellTest do
       findings =
         run_smell_task("""
         defmodule CollectionIdioms do
-          def join(parts), do: Enum.join(parts, "")
+          def direct(parts), do: Enum.join(parts, "")
+          def piped(parts), do: parts |> Enum.join("")
         end
         """)
 
-      assert [%{kind: :suboptimal} = finding] =
-               Enum.filter(findings, &String.contains?(&1.message, "empty separator"))
+      matching = Enum.filter(findings, &String.contains?(&1.message, "empty separator"))
+      assert length(matching) == 2
+      assert Enum.all?(matching, &(&1.kind == :suboptimal))
+    end
 
-      assert finding.message =~ "Enum.join"
+    test "does not treat Enum.join single empty-string argument as redundant separator" do
+      findings =
+        run_smell_task("""
+        defmodule CollectionIdioms do
+          def invalid_but_not_separator, do: Enum.join("")
+        end
+        """)
+
+      refute Enum.any?(findings, &String.contains?(&1.message, "empty separator"))
     end
 
     test "flags String.graphemes counted through length or Enum.count" do
@@ -1211,11 +1222,23 @@ defmodule Reach.SmellTest do
       findings =
         run_smell_task("""
         defmodule A do
-          def compact(items), do: items |> Enum.map_join("", &to_string/1)
+          def direct(items), do: Enum.map_join(items, "", &to_string/1)
+          def piped(items), do: items |> Enum.map_join("", &to_string/1)
         end
         """)
 
-      assert Enum.any?(findings, &(&1.message =~ "Enum.map_join/3 defaults"))
+      assert length(Enum.filter(findings, &(&1.message =~ "Enum.map_join/3 defaults"))) == 2
+    end
+
+    test "does not treat Enum.map_join two-argument call as redundant separator" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def compact(items), do: Enum.map_join(items, &to_string/1)
+        end
+        """)
+
+      refute Enum.any?(findings, &(&1.message =~ "Enum.map_join/3 defaults"))
     end
 
     test "flags Map.values before aggregate" do
