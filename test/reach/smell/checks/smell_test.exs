@@ -1882,6 +1882,32 @@ defmodule Reach.SmellTest do
       refute Enum.any?(findings, &(&1.message =~ "String.duplicate/2"))
     end
 
+    test "flags bare-variable List.duplicate with positive literal followed by Enum.concat" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def direct(list), do: Enum.concat(List.duplicate(list, 3))
+          def piped(list), do: list |> List.duplicate(2) |> Enum.concat()
+        end
+        """)
+
+      assert length(Enum.filter(findings, &(&1.message =~ "repeats a list"))) == 2
+    end
+
+    test "does not flag unsafe List.duplicate followed by Enum.concat variants" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def dynamic_count(list, count), do: Enum.concat(List.duplicate(list, count))
+          def zero_count(list), do: Enum.concat(List.duplicate(list, 0))
+          def expression(items), do: Enum.concat(List.duplicate(Enum.reverse(items), 3))
+          def recursive_flatten(list), do: List.flatten(List.duplicate(list, 3))
+        end
+        """)
+
+      refute Enum.any?(findings, &(&1.message =~ "repeats a list"))
+    end
+
     test "flags bare Enum.into(enum, %{})" do
       findings =
         run_smell_task("""

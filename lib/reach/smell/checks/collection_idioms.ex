@@ -366,6 +366,13 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
   )
 
   smell(
+    from(~p[Enum.concat(List.duplicate(list, count))])
+    |> where(bare_variable?(^list) and positive_integer_literal?(^count)),
+    :suboptimal,
+    "List.duplicate/2 followed by Enum.concat/1 repeats a list through an intermediate list; use Enum.flat_map/2"
+  )
+
+  smell(
     from(~p[Enum.into(_, target)])
     |> where(match?({:%{}, _, []}, ^target)),
     :suboptimal,
@@ -403,6 +410,16 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
   defp string_literal?({:__block__, _meta, [value]}) when is_binary(value), do: true
   defp string_literal?(value) when is_binary(value), do: true
   defp string_literal?(_value), do: false
+
+  defp bare_variable?({name, _meta, context}) when is_atom(name) and is_atom(context), do: true
+  defp bare_variable?(_value), do: false
+
+  defp positive_integer_literal?({:__block__, _meta, [value]})
+       when is_integer(value) and value > 0,
+       do: true
+
+  defp positive_integer_literal?(value) when is_integer(value) and value > 0, do: true
+  defp positive_integer_literal?(_value), do: false
 
   defp module_literal?({:__MODULE__, _meta, _context}), do: true
   defp module_literal?({:__aliases__, _meta, aliases}) when is_list(aliases), do: true
