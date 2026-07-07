@@ -295,6 +295,18 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
   )
 
   smell(
+    ~p[Map.new(Enum.to_list(_))],
+    :suboptimal,
+    "Enum.to_list/1 before Map.new/1 is redundant; Map.new/1 accepts any enumerable"
+  )
+
+  smell(
+    ~p[MapSet.new(Enum.to_list(_))],
+    :suboptimal,
+    "Enum.to_list/1 before MapSet.new/1 is redundant; MapSet.new/1 accepts any enumerable"
+  )
+
+  smell(
     ~p[Enum.dedup(_) |> MapSet.new()],
     :redundant_traversal,
     "Enum.dedup/1 before MapSet.new/1 is redundant; MapSet stores unique elements already"

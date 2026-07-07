@@ -1754,6 +1754,20 @@ defmodule Reach.SmellTest do
       assert Enum.any?(findings, &(&1.message =~ "MapSet.new/1"))
     end
 
+    test "flags redundant Enum.to_list before Map.new and MapSet.new" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def a(items), do: items |> Enum.to_list() |> Map.new()
+          def b(items), do: Map.new(Enum.to_list(items))
+          def c(items), do: items |> Enum.to_list() |> MapSet.new()
+          def d(items), do: MapSet.new(Enum.to_list(items))
+        end
+        """)
+
+      assert length(Enum.filter(findings, &(&1.message =~ "Enum.to_list/1 before"))) == 4
+    end
+
     test "flags bare Enum.into(enum, %{})" do
       findings =
         run_smell_task("""
