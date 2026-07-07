@@ -1791,6 +1791,18 @@ defmodule Reach.SmellTest do
       assert Enum.any?(findings, &(&1.message =~ "MapSet.new/1"))
     end
 
+    test "flags Enum.into(enum, MapSet.new(), mapper)" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def direct(list), do: Enum.into(list, MapSet.new(), &String.downcase/1)
+          def piped(list), do: list |> Enum.into(MapSet.new(), &String.downcase/1)
+        end
+        """)
+
+      assert length(Enum.filter(findings, &(&1.message =~ "MapSet.new/2"))) == 2
+    end
+
     test "flags zero-argument Map.new" do
       findings =
         run_smell_task("""
@@ -1844,6 +1856,30 @@ defmodule Reach.SmellTest do
         """)
 
       assert length(Enum.filter(findings, &(&1.message =~ "Enum.to_list/1 before"))) == 4
+    end
+
+    test "flags string literal List.duplicate followed by Enum.join" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def direct(n), do: Enum.join(List.duplicate("=", n))
+          def piped(n), do: "-" |> List.duplicate(n) |> Enum.join()
+        end
+        """)
+
+      assert length(Enum.filter(findings, &(&1.message =~ "String.duplicate/2"))) == 2
+    end
+
+    test "does not flag non-literal List.duplicate followed by Enum.join" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def dynamic(value, n), do: value |> List.duplicate(n) |> Enum.join()
+          def number(n), do: Enum.join(List.duplicate(7, n))
+        end
+        """)
+
+      refute Enum.any?(findings, &(&1.message =~ "String.duplicate/2"))
     end
 
     test "flags bare Enum.into(enum, %{})" do

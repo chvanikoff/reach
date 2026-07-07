@@ -295,6 +295,12 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
   )
 
   smell(
+    ~p[Enum.into(_, MapSet.new(), _)],
+    :suboptimal,
+    "Enum.into(enum, MapSet.new(), mapper): use MapSet.new/2"
+  )
+
+  smell(
     ~p[Map.new(Enum.to_list(_))],
     :suboptimal,
     "Enum.to_list/1 before Map.new/1 is redundant; Map.new/1 accepts any enumerable"
@@ -353,6 +359,13 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
   )
 
   smell(
+    from(~p[Enum.join(List.duplicate(value, _))])
+    |> where(string_literal?(^value)),
+    :suboptimal,
+    "List.duplicate/2 followed by Enum.join/1 repeats a string through an intermediate list; use String.duplicate/2"
+  )
+
+  smell(
     from(~p[Enum.into(_, target)])
     |> where(match?({:%{}, _, []}, ^target)),
     :suboptimal,
@@ -386,6 +399,10 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
   defp literal_boolean?({:__block__, _meta, [value]}) when is_boolean(value), do: true
   defp literal_boolean?(value) when is_boolean(value), do: true
   defp literal_boolean?(_value), do: false
+
+  defp string_literal?({:__block__, _meta, [value]}) when is_binary(value), do: true
+  defp string_literal?(value) when is_binary(value), do: true
+  defp string_literal?(_value), do: false
 
   defp module_literal?({:__MODULE__, _meta, _context}), do: true
   defp module_literal?({:__aliases__, _meta, aliases}) when is_list(aliases), do: true
