@@ -16,6 +16,12 @@ defmodule Reach.Smell.Checks.PipelineWaste do
   )
 
   smell(
+    ~p[Enum.filter(_, _) |> length()],
+    :suboptimal,
+    "Enum.filter → length: use Enum.count/2 instead"
+  )
+
+  smell(
     ~p[Enum.map(_, _) |> Enum.count()],
     :suboptimal,
     "Enum.map → Enum.count: use Enum.count/2 with transform"

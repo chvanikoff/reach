@@ -1218,6 +1218,32 @@ defmodule Reach.SmellTest do
       assert Enum.any?(findings, &(&1.message =~ "Stream.with_index"))
     end
 
+    test "flags Enum.filter followed by length" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def direct(items), do: length(Enum.filter(items, &active?/1))
+          def piped(items), do: items |> Enum.filter(&active?/1) |> length()
+          def active?(item), do: item.active
+        end
+        """)
+
+      assert length(Enum.filter(findings, &(&1.message =~ "Enum.filter → length"))) == 2
+    end
+
+    test "does not flag bare length or already idiomatic Enum.count predicate" do
+      findings =
+        run_smell_task("""
+        defmodule A do
+          def length_only(items), do: length(items)
+          def count_filtered(items), do: Enum.count(items, &active?/1)
+          def active?(item), do: item.active
+        end
+        """)
+
+      refute Enum.any?(findings, &(&1.message =~ "Enum.filter → length"))
+    end
+
     test "flags redundant map_join empty separator" do
       findings =
         run_smell_task("""
