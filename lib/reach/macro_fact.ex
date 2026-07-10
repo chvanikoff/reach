@@ -40,6 +40,7 @@ defmodule Reach.MacroFact do
   @family :macro_fact
   @kinds [
     :macro_dsl_declaration,
+    :typespec_declaration,
     :phoenix_router_use,
     :phoenix_component_use,
     :phoenix_live_view_use,
@@ -300,6 +301,49 @@ defmodule Reach.MacroFact do
   defp statements(nil), do: []
   defp statements(statement), do: [statement]
 
+  defp collect_declaration(
+         {:@, attribute_meta, [{kind, _meta, [{:"::", _type_meta, [head, return_type]}]}]},
+         module,
+         nesting,
+         file
+       )
+       when kind in [:spec, :callback] do
+    case typespec_head(head) do
+      {:ok, name, arguments} ->
+        arity = length(arguments)
+
+        broad_map_parameters =
+          arguments
+          |> Enum.with_index()
+          |> Enum.filter(fn {argument, _index} -> broad_map_type?(argument) end)
+          |> Enum.map(&elem(&1, 1))
+
+        [
+          %__MODULE__{
+            kind: :typespec_declaration,
+            source: location(attribute_meta, file),
+            owner_module: module,
+            target: {module, name, arity},
+            generated?: false,
+            framework: :elixir,
+            name: name,
+            arity: arity,
+            call_module: nil,
+            nesting: Enum.reverse(nesting),
+            data: %{
+              declaration_kind: kind,
+              broad_map_parameters: broad_map_parameters,
+              return_type: Macro.to_string(return_type)
+            },
+            confidence: :high
+          }
+        ]
+
+      :error ->
+        []
+    end
+  end
+
   defp collect_declaration({form, _meta, _args}, _module, _nesting, _file)
        when form in @definition_forms or form in @module_forms,
        do: []
@@ -324,6 +368,16 @@ defmodule Reach.MacroFact do
         [fact | child_facts]
     end
   end
+
+  defp typespec_head({:when, _meta, [head | _constraints]}), do: typespec_head(head)
+
+  defp typespec_head({name, _meta, arguments}) when is_atom(name) and is_list(arguments),
+    do: {:ok, name, arguments}
+
+  defp typespec_head(_head), do: :error
+
+  defp broad_map_type?({:map, _meta, []}), do: true
+  defp broad_map_type?(_type), do: false
 
   defp declaration_call({:use, meta, args}) when is_list(args) do
     {call_module, rest} = use_module_and_args(args)

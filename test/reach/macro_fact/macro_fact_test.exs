@@ -330,6 +330,43 @@ defmodule Reach.MacroFactTest do
            ] = MacroFact.collect_project(project)
   end
 
+  test "collects broad map types from specs and callbacks" do
+    source = ~S'''
+    defmodule MyApp.Contract do
+      @spec run(map(), integer()) :: :ok
+      def run(_options, _count), do: :ok
+
+      @callback handle(map()) :: :ok
+    end
+    '''
+
+    assert {:ok, facts} = MacroFact.collect_source(source)
+
+    assert Enum.any?(facts, fn
+             %MacroFact{
+               kind: :typespec_declaration,
+               target: {MyApp.Contract, :run, 2},
+               data: %{declaration_kind: :spec, broad_map_parameters: [0]}
+             } ->
+               true
+
+             _fact ->
+               false
+           end)
+
+    assert Enum.any?(facts, fn
+             %MacroFact{
+               kind: :typespec_declaration,
+               target: {MyApp.Contract, :handle, 1},
+               data: %{declaration_kind: :callback, broad_map_parameters: [0]}
+             } ->
+               true
+
+             _fact ->
+               false
+           end)
+  end
+
   test "keeps dynamic module names as nil instead of crashing" do
     source = ~S'''
     defmodule MyApp.Dynamic do
