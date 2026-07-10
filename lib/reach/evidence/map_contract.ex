@@ -35,6 +35,18 @@ defmodule Reach.Evidence.MapContract do
     ]
   end
 
+  defmodule KeyNormalization do
+    @moduledoc false
+    @type t :: %__MODULE__{}
+    defstruct [:node, :map_node, :function, :direction, :source_key, :location]
+  end
+
+  defmodule RepresentationChurn do
+    @moduledoc false
+    @type t :: %__MODULE__{}
+    defstruct [:node, :function, :first, :second, :location]
+  end
+
   defmodule Contract do
     @moduledoc false
     @type t :: %__MODULE__{
@@ -109,6 +121,33 @@ defmodule Reach.Evidence.MapContract do
 
   def collect_key_accesses(_project), do: []
 
+  def collect_key_normalizations(%{nodes: nodes, call_graph: _call_graph} = project)
+      when is_map(nodes) do
+    parent_index = parent_index(nodes)
+    function_index = Query.function_index(project)
+
+    nodes
+    |> Map.values()
+    |> Enum.flat_map(&key_normalizations(&1, project, parent_index, function_index))
+  end
+
+  def collect_key_normalizations(_project), do: []
+
+  def collect_representation_churn(project) do
+    collect_representation_churn(project, collect_key_normalizations(project))
+  end
+
+  def collect_representation_churn(_project, []), do: []
+
+  def collect_representation_churn(project, normalizations) do
+    function_index = Query.function_index(project)
+
+    normalizations
+    |> normalization_calls(project, function_index)
+    |> Enum.group_by(fn {call, _normalization} -> function_index.node_to_function[call.id] end)
+    |> Enum.flat_map(fn {function, calls} -> representation_churn(calls, function, project) end)
+  end
+
   def collect_fallbacks(project) do
     accesses_by_node = Map.new(collect_key_accesses(project), &{&1.node.id, &1})
     parent_index = parent_index(project.nodes)
@@ -182,6 +221,210 @@ defmodule Reach.Evidence.MapContract do
     with {:ok, source} <- File.read(file),
          {:ok, ast} <- Code.string_to_quoted(source, emit_warnings: false) do
       {:ok, file, ast}
+    end
+  end
+
+  defp key_normalizations(
+         %{type: :call, meta: %{module: Map, function: :new, arity: 2}, children: [map, mapper]},
+         project,
+         parent_index,
+         function_index
+       ) do
+    mapper
+    |> descendants()
+    |> Enum.flat_map(fn node ->
+      with {:ok, direction, source_key} <- key_conversion(node),
+           {:ok, conditional} <- identity_branch(node, source_key, parent_index),
+           true <- conversion_reaches_returned_key?(conditional, mapper, project) do
+        [
+          %KeyNormalization{
+            node: node,
+            map_node: map,
+            function: Map.get(function_index.node_to_function, node.id),
+            direction: direction,
+            source_key: source_key,
+            location: node_location(node)
+          }
+        ]
+      else
+        _other -> []
+      end
+    end)
+  end
+
+  defp key_normalizations(_node, _project, _parent_index, _function_index), do: []
+
+  defp key_conversion(%{
+         type: :call,
+         meta: %{module: Atom, function: :to_string},
+         children: [source]
+       }) do
+    with {:ok, name} <- ir_variable_name(source), do: {:ok, :atom_to_string, name}
+  end
+
+  defp key_conversion(%{
+         type: :call,
+         meta: %{module: String, function: function},
+         children: [source]
+       })
+       when function in [:to_atom, :to_existing_atom] do
+    with {:ok, name} <- ir_variable_name(source), do: {:ok, :string_to_atom, name}
+  end
+
+  defp key_conversion(_node), do: :error
+
+  defp ir_variable_name(%{type: :var, meta: %{name: name}}), do: {:ok, name}
+  defp ir_variable_name(_node), do: :error
+
+  defp identity_branch(conversion, source_key, parent_index) do
+    branch = ancestor_parent(conversion, parent_index, &(&1.type == :clause))
+
+    case ancestor_parent(branch, parent_index, &(&1.type in [:case, :fn])) do
+      %{type: :case} = conditional ->
+        case_identity_branch(conditional, branch, source_key)
+
+      %{type: :fn} = mapper ->
+        mapper_identity_branch(mapper, branch, conversion, source_key)
+
+      _other ->
+        :error
+    end
+  end
+
+  defp case_identity_branch(conditional, branch, source_key) do
+    if Enum.any?(
+         conditional.children,
+         &(&1.type == :clause and &1.id != branch.id and returned_variable(&1) == source_key)
+       ) do
+      {:ok, conditional}
+    else
+      :error
+    end
+  end
+
+  defp mapper_identity_branch(mapper, branch, conversion, source_key) do
+    if Enum.any?(
+         mapper.children,
+         &(&1.type == :clause and &1.id != branch.id and
+             returned_key_variable(&1) == source_key)
+       ) do
+      {:ok, conversion}
+    else
+      :error
+    end
+  end
+
+  defp returned_variable(node) do
+    node
+    |> returned_child()
+    |> ir_variable_name()
+    |> case do
+      {:ok, name} -> name
+      :error -> nil
+    end
+  end
+
+  defp returned_child(%{type: :block, children: children}),
+    do: children |> List.last() |> returned_child()
+
+  defp returned_child(%{type: :clause, children: children}),
+    do: children |> List.last() |> returned_child()
+
+  defp returned_child(node), do: node
+
+  defp returned_key_variable(node) do
+    case returned_child(node) do
+      %{type: :tuple, children: [key_node, _value_node]} ->
+        case ir_variable_name(key_node) do
+          {:ok, name} -> name
+          :error -> nil
+        end
+
+      _node ->
+        nil
+    end
+  end
+
+  defp conversion_reaches_returned_key?(conversion, mapper, project) do
+    descendants = descendants(mapper)
+
+    descendants
+    |> Enum.filter(&(&1.type == :tuple and length(&1.children) == 2))
+    |> Enum.any?(fn tuple ->
+      [key_node, _value_node] = tuple.children
+
+      not is_nil(Query.value_path(project, conversion, key_node)) or
+        assigned_to_key?(conversion, key_node, descendants)
+    end)
+  end
+
+  defp assigned_to_key?(conversion, key_node, descendants) do
+    case ir_variable_name(key_node) do
+      {:ok, key_name} ->
+        Enum.any?(descendants, fn
+          %{type: :match, children: [definition, value]} ->
+            value.id == conversion.id and ir_variable_name(definition) == {:ok, key_name}
+
+          _node ->
+            false
+        end)
+
+      :error ->
+        false
+    end
+  end
+
+  defp descendants(node), do: [node | Enum.flat_map(node.children, &descendants/1)]
+
+  defp ancestor_parent(nil, _parent_index, _predicate), do: nil
+
+  defp ancestor_parent(node, parent_index, predicate) do
+    parent_index
+    |> Map.get(node.id, [])
+    |> Enum.find_value(fn parent ->
+      if predicate.(parent), do: parent, else: ancestor_parent(parent, parent_index, predicate)
+    end)
+  end
+
+  defp normalization_calls(normalizations, project, function_index) do
+    for node <- Map.values(project.nodes),
+        node.type == :call,
+        normalization <- normalizations,
+        normalization_call?(node, normalization, function_index),
+        do: {node, normalization}
+  end
+
+  defp normalization_call?(call, normalization, function_index) do
+    case {normalization.function, call.meta} do
+      {{module, name, arity}, %{module: call_module, function: name, arity: arity}} ->
+        call_module == module or
+          (is_nil(call_module) and
+             match?(
+               {^module, _caller_name, _caller_arity},
+               function_index.node_to_function[call.id]
+             ))
+
+      _other ->
+        false
+    end
+  end
+
+  defp representation_churn(calls, function, project) do
+    for {first_call, first_normalization} <- calls,
+        {second_call, second_normalization} <- calls,
+        first_call.id != second_call.id,
+        first_normalization.direction != second_normalization.direction,
+        second_input = List.first(second_call.children),
+        not is_nil(second_input),
+        not is_nil(Query.value_path(project, first_call, second_input)),
+        uniq: true do
+      %RepresentationChurn{
+        node: second_call,
+        function: function,
+        first: first_normalization,
+        second: second_normalization,
+        location: node_location(second_call)
+      }
     end
   end
 
