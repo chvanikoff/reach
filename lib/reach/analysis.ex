@@ -53,6 +53,11 @@ defmodule Reach.Analysis do
 
   def data_edge?(_edge), do: false
 
+  def value_edge?(%Graph.Edge{label: label}) when label in [:containment, :match_binding],
+    do: true
+
+  def value_edge?(edge), do: data_edge?(edge)
+
   def call_target(%Node{children: [target | _]}) do
     case target do
       %Node{type: :literal, meta: %{value: mod}} when is_atom(mod) ->

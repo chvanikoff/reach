@@ -199,6 +199,43 @@ defmodule Reach.Evidence.MapContractTest do
     File.rm_rf(dir)
   end
 
+  test "collects graph-backed dynamic key fallback contracts" do
+    dir = Path.join(System.tmp_dir!(), "reach-map-fallback-#{System.unique_integer([:positive])}")
+    File.mkdir_p!(dir)
+    source = Path.join(dir, "map_access.ex")
+
+    File.write!(source, """
+    defmodule LooseContract do
+      def get(map, key, default) do
+        Map.get(map, key) || Map.get(map, Atom.to_string(key)) || default
+      end
+    end
+    """)
+
+    project = Reach.Project.from_sources([source], plugins: [])
+
+    assert [fallback] = MapContract.collect_fallbacks(project)
+    assert fallback.operator == :or
+    assert fallback.default?
+
+    assert Enum.map(fallback.accesses, & &1.representation) |> Enum.sort() == [
+             :derived_string,
+             :native
+           ]
+
+    assert contract =
+             project
+             |> MapContract.collect_project()
+             |> Enum.find(&(&1.source == :parameter))
+
+    assert contract.variable == :map
+    assert contract.confidence == :high
+    assert contract.read_count == 2
+    assert contract.representations == %{"key" => [:native, :derived_string]}
+
+    File.rm_rf(dir)
+  end
+
   test "ignores map literals without later flow evidence" do
     ast =
       Code.string_to_quoted!("""

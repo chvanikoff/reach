@@ -1,6 +1,9 @@
 defmodule Reach.QueryTest do
   use ExUnit.Case, async: true
 
+  alias Reach.Project
+  alias Reach.Project.Query
+
   defp build_graph(source) do
     Reach.string_to_graph!(source)
   end
@@ -94,5 +97,56 @@ defmodule Reach.QueryTest do
       [node] = Reach.IR.from_string!("IO.puts(x)")
       refute Reach.pure?(node)
     end
+  end
+
+  describe "value lineage" do
+    test "finds a shared parameter origin through a key conversion" do
+      project =
+        project_from_string("""
+        defmodule LooseContract do
+          def get(map, key) do
+            Map.get(map, key) || Map.get(map, Atom.to_string(key))
+          end
+        end
+        """)
+
+      key_use =
+        Enum.find(project.nodes, fn {_id, node} ->
+          node.type == :var and node.meta[:name] == :key and
+            node.meta[:binding_role] != :definition
+        end)
+        |> elem(1)
+
+      conversion =
+        Enum.find(project.nodes, fn {_id, node} ->
+          node.type == :call and node.meta[:module] == Atom and
+            node.meta[:function] == :to_string
+        end)
+        |> elem(1)
+
+      assert [%{type: :var, meta: %{name: :key, binding_role: :definition}}] =
+               Query.value_origins(project, key_use)
+
+      assert [%{type: :var, meta: %{name: :key, binding_role: :definition}} = definition] =
+               Query.value_origins(project, conversion)
+
+      assert Query.value_successors(project, definition) != []
+
+      assert [%{id: definition_id} | _] = path = Query.value_path(project, definition, conversion)
+      assert definition_id == definition.id
+      assert List.last(path).id == conversion.id
+    end
+  end
+
+  defp project_from_string(source) do
+    graph = Reach.string_to_graph!(source)
+
+    %Project{
+      modules: %{},
+      graph: Reach.to_graph(graph),
+      nodes: Map.new(Reach.nodes(graph), &{&1.id, &1}),
+      call_graph: graph.call_graph,
+      plugins: []
+    }
   end
 end

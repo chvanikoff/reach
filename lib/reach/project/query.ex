@@ -3,9 +3,93 @@ defmodule Reach.Project.Query do
 
   alias Reach.IR.Helpers, as: IRHelpers
 
+  @default_value_lineage_nodes 200
+
   def function_index(project), do: build_function_index(project)
 
   def reset_cache, do: :ok
+
+  @doc "Indexes direct value-producing predecessors for all project nodes."
+  @spec value_predecessor_index(Reach.Project.t()) :: %{
+          optional(Reach.IR.Node.id()) => [Reach.IR.Node.id()]
+        }
+  def value_predecessor_index(project) do
+    project.graph
+    |> Graph.edges()
+    |> Enum.filter(&Reach.Analysis.value_edge?/1)
+    |> Enum.reduce(%{}, fn edge, index ->
+      Map.update(index, edge.v2, [edge.v1], &[edge.v1 | &1])
+    end)
+    |> Map.new(fn {node_id, predecessors} -> {node_id, Enum.uniq(predecessors)} end)
+  end
+
+  @doc "Returns direct value-producing predecessors for a project node."
+  @spec value_predecessors(Reach.Project.t(), Reach.IR.Node.t() | Reach.IR.Node.id()) ::
+          [Reach.IR.Node.t()]
+  def value_predecessors(project, node_or_id) do
+    node_id = node_id(node_or_id)
+
+    project.graph
+    |> Graph.in_edges(node_id)
+    |> Enum.filter(&Reach.Analysis.value_edge?/1)
+    |> Enum.map(& &1.v1)
+    |> Enum.uniq()
+    |> Enum.sort()
+    |> Enum.map(&Map.get(project.nodes, &1))
+    |> Enum.reject(&is_nil/1)
+  end
+
+  @doc "Returns direct consumers of the value produced by a project node."
+  @spec value_successors(Reach.Project.t(), Reach.IR.Node.t() | Reach.IR.Node.id()) ::
+          [Reach.IR.Node.t()]
+  def value_successors(project, node_or_id) do
+    node_id = node_id(node_or_id)
+
+    project.graph
+    |> Graph.out_edges(node_id)
+    |> Enum.filter(&Reach.Analysis.value_edge?/1)
+    |> Enum.map(& &1.v2)
+    |> Enum.uniq()
+    |> Enum.sort()
+    |> Enum.map(&Map.get(project.nodes, &1))
+    |> Enum.reject(&is_nil/1)
+  end
+
+  @doc "Returns a bounded value-flow path between two project nodes, or nil."
+  @spec value_path(
+          Reach.Project.t(),
+          Reach.IR.Node.t() | Reach.IR.Node.id(),
+          Reach.IR.Node.t() | Reach.IR.Node.id(),
+          keyword()
+        ) :: [Reach.IR.Node.t()] | nil
+  def value_path(project, from, to, opts \\ []) do
+    max_nodes = Keyword.get(opts, :max_nodes, @default_value_lineage_nodes)
+    from_id = node_id(from)
+    to_id = node_id(to)
+
+    case collect_value_path(project, [{from_id, [from_id]}], MapSet.new(), to_id, max_nodes) do
+      nil -> nil
+      path -> Enum.map(path, &Map.fetch!(project.nodes, &1))
+    end
+  end
+
+  @doc "Returns terminal value origins that flow into a project node."
+  @spec value_origins(Reach.Project.t(), Reach.IR.Node.t() | Reach.IR.Node.id(), keyword()) ::
+          [Reach.IR.Node.t()]
+  def value_origins(project, node_or_id, opts \\ []) do
+    max_nodes = Keyword.get(opts, :max_nodes, @default_value_lineage_nodes)
+
+    predecessor_index =
+      Keyword.get_lazy(opts, :predecessor_index, fn -> value_predecessor_index(project) end)
+
+    start_id = node_id(node_or_id)
+
+    predecessor_index
+    |> collect_value_origins([start_id], MapSet.new(), MapSet.new(), max_nodes)
+    |> Enum.map(&Map.get(project.nodes, &1))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.sort_by(& &1.id)
+  end
 
   def find_function(project, target) do
     index = function_index(project)
@@ -381,6 +465,77 @@ defmodule Reach.Project.Query do
   defp index_node_descendants(node, current_function, acc) do
     acc = if current_function, do: Map.put_new(acc, node.id, current_function), else: acc
     Enum.reduce(node.children, acc, &index_node_function(&1, current_function, &2))
+  end
+
+  defp node_id(%{id: id}), do: id
+  defp node_id(id), do: id
+
+  defp collect_value_path(_project, [], _visited, _target, _remaining), do: nil
+  defp collect_value_path(_project, _pending, _visited, _target, 0), do: nil
+
+  defp collect_value_path(project, [{node_id, path} | pending], visited, target, remaining) do
+    cond do
+      node_id == target ->
+        Enum.reverse(path)
+
+      MapSet.member?(visited, node_id) ->
+        collect_value_path(project, pending, visited, target, remaining)
+
+      true ->
+        successors =
+          project.graph
+          |> Graph.out_edges(node_id)
+          |> Enum.filter(&Reach.Analysis.value_edge?/1)
+          |> Enum.map(& &1.v2)
+          |> Enum.uniq()
+          |> Enum.reject(&MapSet.member?(visited, &1))
+          |> Enum.map(&{&1, [&1 | path]})
+
+        collect_value_path(
+          project,
+          pending ++ successors,
+          MapSet.put(visited, node_id),
+          target,
+          remaining - 1
+        )
+    end
+  end
+
+  defp collect_value_origins(_predecessor_index, [], _visited, origins, _remaining), do: origins
+  defp collect_value_origins(_predecessor_index, _pending, _visited, origins, 0), do: origins
+
+  defp collect_value_origins(
+         predecessor_index,
+         [node_id | pending],
+         visited,
+         origins,
+         remaining
+       ) do
+    if MapSet.member?(visited, node_id) do
+      collect_value_origins(predecessor_index, pending, visited, origins, remaining)
+    else
+      predecessors = Map.get(predecessor_index, node_id, [])
+
+      visited = MapSet.put(visited, node_id)
+
+      if predecessors == [] do
+        collect_value_origins(
+          predecessor_index,
+          pending,
+          visited,
+          MapSet.put(origins, node_id),
+          remaining - 1
+        )
+      else
+        collect_value_origins(
+          predecessor_index,
+          predecessors ++ pending,
+          visited,
+          origins,
+          remaining - 1
+        )
+      end
+    end
   end
 
   defp do_find_callers(_cg, [], _depth, _visited, acc), do: Enum.reverse(acc)

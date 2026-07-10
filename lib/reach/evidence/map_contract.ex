@@ -2,6 +2,38 @@ defmodule Reach.Evidence.MapContract do
   @moduledoc "Collects evidence for maps that behave like implicit contracts."
 
   alias Reach.Evidence.AST
+  alias Reach.Project.Query
+
+  defmodule KeyAccess do
+    @moduledoc false
+    @type t :: %__MODULE__{}
+    defstruct [
+      :node,
+      :function,
+      :map_origins,
+      :key_origins,
+      :logical_key,
+      :key_label,
+      :representation,
+      :operation,
+      :default_node,
+      :location
+    ]
+  end
+
+  defmodule Fallback do
+    @moduledoc false
+    @type t :: %__MODULE__{}
+    defstruct [
+      :node,
+      :function,
+      :accesses,
+      :location,
+      :operator,
+      default?: false,
+      returned?: false
+    ]
+  end
 
   defmodule Contract do
     @moduledoc false
@@ -23,7 +55,10 @@ defmodule Reach.Evidence.MapContract do
             escaped?: boolean(),
             escapes: [term()],
             consumer: term(),
-            file: String.t() | nil
+            file: String.t() | nil,
+            representations: map(),
+            accesses: [KeyAccess.t()],
+            parameter: term()
           }
 
     defstruct [
@@ -44,7 +79,10 @@ defmodule Reach.Evidence.MapContract do
       :escaped?,
       :escapes,
       :consumer,
-      :file
+      :file,
+      :representations,
+      :accesses,
+      :parameter
     ]
   end
 
@@ -58,6 +96,28 @@ defmodule Reach.Evidence.MapContract do
 
   def family, do: :map_contract
   def kinds, do: [:implicit_map_contract]
+
+  def collect_key_accesses(%{nodes: nodes, call_graph: _call_graph} = project)
+      when is_map(nodes) do
+    function_index = Query.function_index(project)
+    predecessor_index = Query.value_predecessor_index(project)
+
+    nodes
+    |> Map.values()
+    |> Enum.flat_map(&classify_key_access(&1, project, function_index, predecessor_index))
+  end
+
+  def collect_key_accesses(_project), do: []
+
+  def collect_fallbacks(project) do
+    accesses_by_node = Map.new(collect_key_accesses(project), &{&1.node.id, &1})
+    parent_index = parent_index(project.nodes)
+
+    project.nodes
+    |> Map.values()
+    |> Enum.flat_map(&fallback_for_node(&1, accesses_by_node, parent_index))
+    |> Enum.filter(&dual_representation_fallback?/1)
+  end
 
   def collect_ast(ast, opts \\ []) do
     plugins = Keyword.get(opts, :plugins, [])
@@ -87,17 +147,20 @@ defmodule Reach.Evidence.MapContract do
       |> List.flatten()
       |> collect_module_return_shapes()
 
-    Enum.flat_map(files, fn {:ok, file, ast} ->
-      contracts =
-        collect_file_project_contracts(
-          file,
-          ast,
-          Map.fetch!(definitions_by_file, file),
-          return_shapes
-        )
+    ast_contracts =
+      Enum.flat_map(files, fn {:ok, file, ast} ->
+        contracts =
+          collect_file_project_contracts(
+            file,
+            ast,
+            Map.fetch!(definitions_by_file, file),
+            return_shapes
+          )
 
-      refine_contracts(contracts, plugins, %{file: file, project: project})
-    end)
+        refine_contracts(contracts, plugins, %{file: file, project: project})
+      end)
+
+    ast_contracts ++ fallback_contracts(project)
   end
 
   defp collect_ast_contracts(definitions) do
@@ -121,6 +184,295 @@ defmodule Reach.Evidence.MapContract do
       {:ok, file, ast}
     end
   end
+
+  defp classify_key_access(
+         %{type: :call, meta: %{module: Map, function: function, arity: arity}} = node,
+         project,
+         function_index,
+         predecessor_index
+       )
+       when function in [:get, :fetch, :fetch!, :has_key?] and arity in [2, 3] do
+    classify_key_access_node(node, project, function_index, predecessor_index, function)
+  end
+
+  defp classify_key_access(
+         %{type: :call, meta: %{module: Access, function: :get, arity: arity}} = node,
+         project,
+         function_index,
+         predecessor_index
+       )
+       when arity in [2, 3] do
+    classify_key_access_node(node, project, function_index, predecessor_index, :get)
+  end
+
+  defp classify_key_access(_node, _project, _function_index, _predecessor_index), do: []
+
+  defp classify_key_access_node(
+         node,
+         project,
+         function_index,
+         predecessor_index,
+         function
+       ) do
+    case node.children do
+      [map_node, key_node | rest] ->
+        {logical_key, key_label, representation, key_origins} =
+          classify_key_expression(key_node, project, predecessor_index)
+
+        [
+          %KeyAccess{
+            node: node,
+            function: Map.get(function_index.node_to_function, node.id),
+            map_origins: origin_ids(project, map_node, predecessor_index),
+            key_origins: key_origins,
+            logical_key: logical_key,
+            key_label: key_label,
+            representation: representation,
+            operation: function,
+            default_node: List.first(rest),
+            location: node_location(node)
+          }
+        ]
+
+      _children ->
+        []
+    end
+  end
+
+  defp classify_key_expression(
+         %{type: :literal, meta: %{value: key}} = node,
+         _project,
+         _predecessor_index
+       )
+       when is_atom(key) do
+    {{:literal, Atom.to_string(key)}, Atom.to_string(key), :atom, [node.id]}
+  end
+
+  defp classify_key_expression(
+         %{type: :literal, meta: %{value: key}} = node,
+         _project,
+         _predecessor_index
+       )
+       when is_binary(key) do
+    {{:literal, key}, key, :string, [node.id]}
+  end
+
+  defp classify_key_expression(
+         %{type: :call, meta: %{module: Atom, function: :to_string}, children: [source]},
+         project,
+         predecessor_index
+       ) do
+    origins = origin_ids(project, source, predecessor_index)
+    {{:flow, origins}, dynamic_key_label(project, origins), :derived_string, origins}
+  end
+
+  defp classify_key_expression(
+         %{
+           type: :call,
+           meta: %{module: String, function: function},
+           children: [source]
+         },
+         project,
+         predecessor_index
+       )
+       when function in [:to_existing_atom, :to_atom] do
+    origins = origin_ids(project, source, predecessor_index)
+    {{:flow, origins}, dynamic_key_label(project, origins), :derived_atom, origins}
+  end
+
+  defp classify_key_expression(node, project, predecessor_index) do
+    origins = origin_ids(project, node, predecessor_index)
+    {{:flow, origins}, dynamic_key_label(project, origins), :native, origins}
+  end
+
+  defp origin_ids(project, node, predecessor_index) do
+    project
+    |> Query.value_origins(node, predecessor_index: predecessor_index)
+    |> Enum.map(& &1.id)
+    |> Enum.sort()
+  end
+
+  defp dynamic_key_label(project, origins) do
+    names =
+      Enum.flat_map(origins, fn origin ->
+        case Map.get(project.nodes, origin) do
+          %{type: :var, meta: %{name: name}} -> [to_string(name)]
+          _node -> []
+        end
+      end)
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    case names do
+      [] -> "dynamic-key"
+      names -> Enum.join(names, "|")
+    end
+  end
+
+  defp parent_index(nodes) do
+    Enum.reduce(nodes, %{}, fn {_id, node}, index ->
+      Enum.reduce(node.children, index, fn child, index ->
+        Map.update(index, child.id, [node], &[node | &1])
+      end)
+    end)
+  end
+
+  defp fallback_for_node(
+         %{type: :binary_op, meta: %{operator: :||}} = node,
+         accesses_by_node,
+         parent_index
+       ) do
+    if nested_or?(node, parent_index) do
+      []
+    else
+      operands = flatten_or_operands(node)
+      accesses = Enum.flat_map(operands, &List.wrap(Map.get(accesses_by_node, &1.id)))
+      default? = Enum.any?(operands, &(not Map.has_key?(accesses_by_node, &1.id)))
+
+      fallback_groups(
+        node,
+        accesses,
+        :or,
+        default?,
+        returned_expression?(node, parent_index)
+      )
+    end
+  end
+
+  defp fallback_for_node(
+         %{type: :call, meta: %{module: Map, function: :get, arity: 3}, children: children} =
+           node,
+         accesses_by_node,
+         parent_index
+       ) do
+    case children do
+      [_map, _key, %{type: :call} = nested] ->
+        accesses =
+          [Map.get(accesses_by_node, node.id), Map.get(accesses_by_node, nested.id)]
+          |> Enum.reject(&is_nil/1)
+
+        fallback_groups(
+          node,
+          accesses,
+          :default,
+          false,
+          returned_expression?(node, parent_index)
+        )
+
+      _children ->
+        []
+    end
+  end
+
+  defp fallback_for_node(_node, _accesses_by_node, _parent_index), do: []
+
+  defp nested_or?(node, parent_index) do
+    parent_index
+    |> Map.get(node.id, [])
+    |> Enum.any?(&match?(%{type: :binary_op, meta: %{operator: :||}}, &1))
+  end
+
+  defp returned_expression?(node, parent_index) do
+    parent_index
+    |> Map.get(node.id, [])
+    |> Enum.any?(fn parent ->
+      cond do
+        parent.type == :function_def ->
+          true
+
+        parent.type in [:block, :clause, :case, :cond, :with] and
+            List.last(parent.children).id == node.id ->
+          returned_expression?(parent, parent_index)
+
+        true ->
+          false
+      end
+    end)
+  end
+
+  defp flatten_or_operands(%{type: :binary_op, meta: %{operator: :||}, children: children}) do
+    Enum.flat_map(children, &flatten_or_operands/1)
+  end
+
+  defp flatten_or_operands(node), do: [node]
+
+  defp fallback_groups(node, accesses, operator, default?, returned?) do
+    accesses
+    |> Enum.group_by(&{&1.function, &1.map_origins, &1.logical_key})
+    |> Enum.map(fn {_identity, grouped_accesses} ->
+      %Fallback{
+        node: node,
+        function: List.first(grouped_accesses).function,
+        accesses: grouped_accesses,
+        location: node_location(node),
+        operator: operator,
+        default?: default?,
+        returned?: returned?
+      }
+    end)
+  end
+
+  defp dual_representation_fallback?(%Fallback{accesses: accesses}) do
+    representations = MapSet.new(accesses, & &1.representation)
+
+    (MapSet.member?(representations, :atom) and MapSet.member?(representations, :string)) or
+      (MapSet.member?(representations, :native) and
+         (MapSet.member?(representations, :derived_atom) or
+            MapSet.member?(representations, :derived_string)))
+  end
+
+  defp fallback_contracts(project) do
+    project
+    |> collect_fallbacks()
+    |> Enum.map(&fallback_contract(&1, project))
+  end
+
+  defp fallback_contract(%Fallback{} = fallback, project) do
+    first = List.first(fallback.accesses)
+    variable = origin_variable(project, first.map_origins)
+    key = first.key_label
+    representations = fallback.accesses |> Enum.map(& &1.representation) |> Enum.uniq()
+    source_span = fallback.node.source_span || %{}
+
+    %Contract{
+      variable: variable,
+      keys: [key],
+      location: fallback.location,
+      reads: Enum.map(fallback.accesses, &Map.put(&1.location, :key, key)),
+      updates: [],
+      confidence: :high,
+      source: :parameter,
+      producer: {:parameter, fallback.function, variable},
+      role: classify_role(variable, :parameter),
+      key_coverage: 1.0,
+      observed_keys: [key],
+      unused_keys: [],
+      read_count: length(fallback.accesses),
+      mutation_count: 0,
+      escaped?: false,
+      escapes: [],
+      consumer: fallback.function,
+      file: source_span[:file],
+      representations: %{key => representations},
+      accesses: fallback.accesses,
+      parameter: variable
+    }
+  end
+
+  defp origin_variable(project, origins) do
+    Enum.find_value(origins, fn origin ->
+      case Map.get(project.nodes, origin) do
+        %{type: :var, meta: %{name: name}} -> name
+        _node -> nil
+      end
+    end)
+  end
+
+  defp node_location(%{source_span: span}) when is_map(span) do
+    %{line: span[:start_line], column: span[:start_col]}
+  end
+
+  defp node_location(_node), do: %{line: nil, column: nil}
 
   defp collect_file_project_contracts(file, ast, module_definitions, return_shapes) do
     local_contracts = ast |> collect_function_definitions() |> collect_ast_contracts()
