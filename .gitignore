@@ -16,7 +16,10 @@
 assets/node_modules/
 erl_crash.dump
 ex_pdg-*.tar
-priv/static/
+# Built report bundles are committed so git/Hex consumers get a working
+# report without running the asset build; only local noise is ignored.
+priv/static/js/reach.js.map
+priv/static/js/manifest.json
 reach-*.tar
 Elixir.Test.beam
 reach_report/

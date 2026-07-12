@@ -97,6 +97,11 @@ Framework-specific semantics must stay in plugins. Generic modules such as `Reac
 - `mix reach.check --smells` may call the smell engine, but smell rules themselves must live under `Reach.Smell.*`, not `Reach.CLI.*`.
 - `Reach.Evidence.*` contains reusable evidence providers consumed by smells, checks, and refactoring candidates. Evidence is an observed fact; smells/checks/candidates are user-facing policy decisions. Evidence modules must not emit user-facing findings directly. ExDNA integration must emit Reach-owned clone evidence consumed by semantic checks; ExDNA must not appear as a user-facing smell kind. See `docs/evidence-heuristics.md` for the evidence-first promotion path.
 
+## Frontend Assets
+
+- `priv/static` bundles (reach.js, elk.bundled.js, vue-flow.css) are COMMITTED so git/Hex consumers get a working report without Node.
+- After changing `assets/js/**` or asset dependencies, run `mix assets.build` and commit the updated bundles — CI rebuilds them and fails on drift.
+
 ## Release and Docs
 
 - Keep `ex_doc` available in the `:docs` Mix environment (`only: [:dev, :docs]`).
