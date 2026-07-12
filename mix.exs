@@ -15,7 +15,11 @@ defmodule Reach.MixProject do
       elixirc_options: [
         no_warn_undefined: [
           {Makeup, :highlight_inner_html, 2},
-          {Makeup, :stylesheet, 0}
+          {Makeup, :stylesheet, 0},
+          {Makeup.Lexer, :split_into_lines, 1},
+          {Makeup.Formatters.HTML.HTMLFormatter, :format_inner_as_binary, 2},
+          {Makeup.Lexers.ElixirLexer, :lex, 1},
+          {Makeup.Lexers.JsLexer, :lex, 1}
         ]
       ],
       dialyzer: [
