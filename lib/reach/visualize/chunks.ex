@@ -139,6 +139,10 @@ defmodule Reach.Visualize.Chunks do
           external: m not in internal
         }
       end)
+      # Two distinct {m, f, a} tuples can sanitize to the same string id
+      # (e.g. names differing only by characters sanitize_id strips), which
+      # would otherwise emit duplicate node ids and crash the ELK layouter.
+      |> Enum.uniq_by(& &1.id)
 
     edge_maps =
       edges

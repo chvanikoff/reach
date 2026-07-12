@@ -38,7 +38,11 @@ defmodule Reach.Visualize.ChunksTest do
   end
 
   defp write_file(rel, content) do
-    path = Path.join(@tmp_dir, rel)
+    write_file_in(@tmp_dir, rel, content)
+  end
+
+  defp write_file_in(tmp_dir, rel, content) do
+    path = Path.join(tmp_dir, rel)
     File.mkdir_p!(Path.dirname(path))
     File.write!(path, content)
     path
@@ -120,6 +124,75 @@ defmodule Reach.Visualize.ChunksTest do
         assert MapSet.member?(fn_ids, edge.source)
         assert MapSet.member?(fn_ids, edge.target)
       end
+    end
+  end
+
+  describe "declared module names differing from file paths" do
+    setup do
+      tmp_dir =
+        Path.join(
+          System.tmp_dir!(),
+          "reach_chunks_declared_test_#{:erlang.unique_integer([:positive])}"
+        )
+
+      File.mkdir_p!(Path.join(tmp_dir, "lib"))
+
+      alpha =
+        write_file_in(tmp_dir, "lib/alpha_impl.ex", """
+        defmodule Renamed.Alpha do
+          def run(x) do
+            y = Renamed.Beta.transform(x)
+            y + 1
+          end
+        end
+        """)
+
+      beta =
+        write_file_in(tmp_dir, "lib/beta_impl.ex", """
+        defmodule Renamed.Beta do
+          def transform(v) do
+            w = v * 2
+            w + 1
+          end
+        end
+        """)
+
+      on_exit(fn -> File.rm_rf!(tmp_dir) end)
+
+      project = Reach.Project.from_sources([alpha, beta])
+      output = Chunks.build(project, project: "declared_fixture")
+
+      {:ok, output: output}
+    end
+
+    test "manifest call graph edges use declared module names", %{output: output} do
+      edges = output.manifest.call_graph.edges
+
+      assert %{source: "Renamed.Alpha", target: "Renamed.Beta", count: 1} in edges
+    end
+
+    test "manifest module ids are declared names, not path-derived", %{output: output} do
+      ids = Enum.map(output.manifest.modules, & &1.id)
+
+      assert "Renamed.Alpha" in ids
+      assert "Renamed.Beta" in ids
+      refute Enum.any?(ids, &String.contains?(&1, "Impl"))
+    end
+
+    test "chunk calls attribute callers using declared module names", %{output: output} do
+      beta_chunk = chunk(output, "Renamed.Beta")
+
+      assert Enum.any?(
+               beta_chunk.calls.edges,
+               &(&1.source == "Renamed.Alpha.run/1" and &1.target == "Renamed.Beta.transform/1")
+             )
+    end
+
+    test "data flow edges land in declared-name chunks", %{output: output} do
+      alpha_chunk = chunk(output, "Renamed.Alpha")
+      beta_chunk = chunk(output, "Renamed.Beta")
+
+      assert alpha_chunk.data_flow.edges != [] or beta_chunk.data_flow.edges != []
     end
   end
 end
