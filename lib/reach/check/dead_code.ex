@@ -35,6 +35,7 @@ defmodule Reach.Check.DeadCode do
     |> Enum.reject(&value_discard_safe?(&1, declaration_lines))
     |> Enum.sort_by(&{&1.file, &1.line})
     |> Enum.uniq_by(&{&1.file, &1.line})
+    |> Reach.Suppressions.filter(fn _finding -> ["dead_code", "all"] end)
   end
 
   defp value_discard_safe_lines(files, plugins) do

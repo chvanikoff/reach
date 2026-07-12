@@ -57,6 +57,60 @@ defmodule Reach.Check.DeadCodeTest do
            )
   end
 
+  test "disable-next-line dead_code suppresses a finding" do
+    path =
+      temp_source(~S'''
+      defmodule Repro.Suppressed do
+        def run(value) do
+          # reach:disable-next-line dead_code
+          String.trim(value)
+          value
+        end
+      end
+      ''')
+
+    refute Enum.any?(
+             DeadCode.run([path]),
+             &String.contains?(&1.description, "String.trim result unused")
+           )
+  end
+
+  test "disable-for-this-file dead_code suppresses the whole file" do
+    path =
+      temp_source(~S'''
+      # reach:disable-for-this-file dead_code
+      defmodule Repro.SuppressedFile do
+        def run(value) do
+          String.trim(value)
+          value
+        end
+      end
+      ''')
+
+    refute Enum.any?(
+             DeadCode.run([path]),
+             &String.contains?(&1.description, "String.trim result unused")
+           )
+  end
+
+  test "unrelated suppression tokens keep dead code findings" do
+    path =
+      temp_source(~S'''
+      defmodule Repro.WrongToken do
+        def run(value) do
+          # reach:disable-next-line smells
+          String.trim(value)
+          value
+        end
+      end
+      ''')
+
+    assert Enum.any?(
+             DeadCode.run([path]),
+             &String.contains?(&1.description, "String.trim result unused")
+           )
+  end
+
   defp temp_source(source) do
     path = Path.join(System.tmp_dir!(), "reach-dead-code-#{System.unique_integer()}.ex")
     File.write!(path, source)
