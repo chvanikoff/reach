@@ -75,6 +75,17 @@ defmodule Reach.EffectsTest do
     test "unknown calls default to :unknown" do
       assert Effects.classify(node_for("some_function(x)")) == :unknown
     end
+
+    test "Gettext locale functions are process-dictionary effects" do
+      assert Effects.classify(node_for("Gettext.put_locale(backend, locale)")) == :write
+      assert Effects.classify(node_for("Gettext.put_locale(locale)")) == :write
+      assert Effects.classify(node_for("Gettext.get_locale(backend)")) == :read
+      assert Effects.classify(node_for("Gettext.get_locale()")) == :read
+    end
+
+    test "Logger.metadata stays effectful" do
+      assert Effects.classify(node_for("Logger.metadata(request_id: id)")) == :io
+    end
   end
 
   describe "pure?" do

@@ -609,6 +609,7 @@ defmodule Reach.Effects do
     DynamicSupervisor,
     Registry,
     GenServer,
+    Gettext,
     Supervisor
   ]
 
@@ -982,10 +983,12 @@ defmodule Reach.Effects do
 
   defp process_dict_write?(Process, :put), do: true
   defp process_dict_write?(Process, :delete), do: true
+  defp process_dict_write?(Gettext, :put_locale), do: true
   defp process_dict_write?(_, _), do: false
 
   defp process_dict_read?(Process, :get), do: true
   defp process_dict_read?(Process, :get_keys), do: true
+  defp process_dict_read?(Gettext, :get_locale), do: true
   defp process_dict_read?(_, _), do: false
 
   defp atomics_write?(mod, f)

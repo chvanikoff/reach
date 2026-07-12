@@ -106,6 +106,20 @@ defmodule Reach.Smell.SuppressionsTest do
     assert_raise ArgumentError, fn -> :erlang.binary_to_existing_atom(token, :utf8) end
   end
 
+  test "bare disable-next-line comment suppresses the next line's findings" do
+    path =
+      fixture("bare_directive", """
+      defmodule Generated.BareDirective do
+        # reach:disable-next-line
+        def run(items), do: items |> Enum.reverse() |> Enum.reverse()
+      end
+      """)
+
+    project = Project.from_sources([path])
+
+    refute Enum.any?(Smells.run(project, []), &(&1.kind == :redundant_traversal))
+  end
+
   defp fixture(name, source) do
     dir = Path.join(System.tmp_dir!(), "reach-suppressions-#{name}-#{System.unique_integer()}")
     File.mkdir_p!(dir)

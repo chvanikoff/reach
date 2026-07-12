@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Changed
+
+- **Per-occurrence suppressions everywhere** — `# reach:disable-next-line` and `# reach:disable-for-this-file` comments are now honored by `mix reach.check --dead-code`, `mix reach.check --arch`, and `mix reach.otp` findings in addition to smells, with check-group tokens (`smells`, `dead_code`, `otp`, `arch`) and `all`. A bare directive with no tokens now suppresses all checks for its scope (previously a silent no-op).
+
+### Fixed
+
+- **Gettext locale effects** — `Gettext.put_locale/1,2` and `Gettext.get_locale/0,1` are now classified as process-dictionary effects, so `mix reach.check --dead-code` no longer flags discarded `put_locale` calls as dead code.
+
 ## 2.7.5 - 2026-06-12
 
 ### Changed

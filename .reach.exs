@@ -39,6 +39,7 @@ layers = [
     "Reach.Map.*",
     "Reach.OTP",
     "Reach.OTP.*",
+    "Reach.Suppressions",
     "Reach.SystemDependence",
     "Reach.Trace.*"
   ]

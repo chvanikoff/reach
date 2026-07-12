@@ -23,6 +23,9 @@ defmodule Mix.Tasks.Reach.Check do
     * `--candidates` — emit advisory refactoring candidates
     * `--top` — limit candidate output for `--candidates`
 
+  Findings can be suppressed per occurrence with `# reach:disable-next-line <token>`
+  and `# reach:disable-for-this-file <token>` comments; see the configuration guide.
+
   """
 
   use Mix.Task
