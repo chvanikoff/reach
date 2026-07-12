@@ -5,6 +5,12 @@ defmodule Reach.Visualize.Chunks do
 
   One chunk per module is the deliberate unit of future incremental caching
   and of a future `Reach.Plug` serving the report directory.
+
+  Note: a chunk's content depends on OTHER modules too — cross-module call
+  edges (`calls`) and data-flow endpoints (`data_flow`) can change when a
+  different module changes — so any future incremental caching must key a
+  chunk on its module's inbound/outbound edge set, not just its own source
+  hash.
   """
 
   alias Reach.Visualize
@@ -24,6 +30,7 @@ defmodule Reach.Visualize.Chunks do
 
     node_owner = node_owner_map(project)
     df_by_chunk = partition_data_flow(data_flow, node_owner)
+    edges_by_module = group_edges_by_module(raw_edges)
 
     chunks =
       Enum.map(module_entries, fn {mod_atom, module_map, lines_html} ->
@@ -34,7 +41,7 @@ defmodule Reach.Visualize.Chunks do
            module: id,
            source: %{file: module_map.file, lines_html: lines_html},
            functions: module_map.functions,
-           calls: calls_for(raw_edges, mod_atom, internal),
+           calls: calls_for(edges_by_module, mod_atom, internal),
            data_flow: Map.get(df_by_chunk, id, %{functions: [], edges: []})
          }}
       end)
@@ -121,11 +128,22 @@ defmodule Reach.Visualize.Chunks do
     end)
   end
 
-  defp calls_for(raw_edges, mod_atom, internal) do
-    edges =
-      Enum.filter(raw_edges, fn {{sm, _, _}, {tm, _, _}} ->
-        sm == mod_atom or tm == mod_atom
-      end)
+  # Groups raw MFA-pair edges under BOTH endpoint modules once, so
+  # `calls_for/3` can look up a module's edges directly instead of scanning
+  # the full edge list per module (that scan is O(modules × edges) — tens
+  # of millions of comparisons on large projects).
+  defp group_edges_by_module(raw_edges) do
+    raw_edges
+    |> Enum.reduce(%{}, fn {{sm, _, _}, {tm, _, _}} = edge, acc ->
+      acc
+      |> Map.update(sm, [edge], &[edge | &1])
+      |> Map.update(tm, [edge], &[edge | &1])
+    end)
+    |> Map.new(fn {mod, edges} -> {mod, edges |> Enum.reverse() |> Enum.uniq()} end)
+  end
+
+  defp calls_for(edges_by_module, mod_atom, internal) do
+    edges = Map.get(edges_by_module, mod_atom, [])
 
     functions =
       edges
@@ -135,7 +153,11 @@ defmodule Reach.Visualize.Chunks do
         %{
           id: Visualize.call_id(m, f, a),
           name: "#{f}/#{a}",
-          module: Visualize.safe_module_name(m),
+          # Use the same sanitization as manifest module ids (chunk_id/1)
+          # rather than Visualize.safe_module_name/1 directly — otherwise an
+          # exotic module name could sanitize differently here than in the
+          # manifest, silently no-op'ing the frontend's ego drill-down.
+          module: chunk_id(m),
           external: m not in internal
         }
       end)
