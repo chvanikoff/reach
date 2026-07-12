@@ -14,6 +14,9 @@ defmodule Mix.Tasks.Reach.Otp do
     * `--messages` — focus on message-handler output (accepted for canonical CLI compatibility)
     * `--supervision` — focus on supervision output (accepted for canonical CLI compatibility)
 
+  Findings can be suppressed per occurrence with `# reach:disable-next-line <token>`
+  and `# reach:disable-for-this-file <token>` comments; see the configuration guide.
+
   """
 
   use Mix.Task
