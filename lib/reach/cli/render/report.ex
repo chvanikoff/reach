@@ -3,26 +3,14 @@ defmodule Reach.CLI.Render.Report do
 
   alias Reach.CLI.Requirements
 
-  @priv_dir Application.app_dir(:reach, "priv")
-
-  @template_path Path.join(@priv_dir, "template.html.eex")
-  @js_bundle_path Path.join([@priv_dir, "static", "js", "reach.js"])
-  @elk_bundle_path Path.join([@priv_dir, "static", "js", "elk.bundled.js"])
-  @vue_flow_css_path Path.join([@priv_dir, "static", "css", "vue-flow.css"])
-
-  for path <- [
-        @template_path,
-        @js_bundle_path,
-        @elk_bundle_path,
-        @vue_flow_css_path
-      ] do
-    @external_resource path
-  end
-
+  @template_path Path.join(Application.app_dir(:reach, "priv"), "template.html.eex")
+  @external_resource @template_path
   @template File.read!(@template_path)
-  @js_bundle if File.exists?(@js_bundle_path), do: File.read!(@js_bundle_path), else: ""
-  @elk_bundle if File.exists?(@elk_bundle_path), do: File.read!(@elk_bundle_path), else: ""
-  @vue_flow_css if File.exists?(@vue_flow_css_path), do: File.read!(@vue_flow_css_path), else: ""
+
+  # The JS/CSS bundles are read at render time rather than baked in at compile
+  # time: `priv/static` is a build artifact (`mix assets.build`), so embedding
+  # it during compilation silently produces blank reports whenever the module
+  # compiles before the assets exist.
 
   def render_html(%{manifest: manifest, chunks: chunks}, output_dir, opts) do
     Requirements.json!("HTML/JSON output")
@@ -49,9 +37,9 @@ defmodule Reach.CLI.Render.Report do
     html =
       EEx.eval_string(@template,
         project: manifest.project,
-        elk_bundle: @elk_bundle,
-        js_bundle: @js_bundle,
-        vue_flow_css: @vue_flow_css,
+        elk_bundle: static_asset!(["js", "elk.bundled.js"]),
+        js_bundle: static_asset!(["js", "reach.js"]),
+        vue_flow_css: static_asset!(["css", "vue-flow.css"]),
         makeup_css: Reach.Visualize.makeup_stylesheet()
       )
 
@@ -82,6 +70,28 @@ defmodule Reach.CLI.Render.Report do
     File.write!(path, JSON.encode!(graph_data))
 
     Mix.shell().info("JSON file: #{path}")
+  end
+
+  defp static_asset!(relative_parts) do
+    path = Path.join([Application.app_dir(:reach, "priv"), "static" | relative_parts])
+
+    case File.read(path) do
+      {:ok, content} when byte_size(content) > 0 ->
+        content
+
+      _missing_or_empty ->
+        Mix.raise("""
+        Reach frontend asset missing or empty: #{path}
+
+        The HTML report needs Reach's built frontend assets. From the Reach
+        project directory, run:
+
+            (cd assets && npm install) && mix assets.build
+
+        Hex releases of Reach ship these assets prebuilt; this only affects
+        path/git checkouts that have not built them yet.
+        """)
+    end
   end
 
   defp open_browser(path) do

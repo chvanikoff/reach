@@ -7,6 +7,7 @@
 - **Per-occurrence suppressions everywhere** — `# reach:disable-next-line` and `# reach:disable-for-this-file` comments are now honored by `mix reach.check --dead-code`, `mix reach.check --arch`, and `mix reach.otp` findings in addition to smells, with check-group tokens (`smells`, `dead_code`, `otp`, `arch`) and `all`. A bare directive with no tokens now suppresses all checks for its scope (previously a silent no-op).
 - **Report performance** — fixed a quadratic data-flow membership check, moved syntax highlighting to a single pass per source file, and parallelized the per-module visualization build. On a ~1,300-file project the visualization build drops from ~94s to seconds.
 - **Chunked HTML report** — `mix reach` now writes a report directory (`index.html`, `manifest.js`, and one lazily-loaded `chunks/<Module>.js` per module) instead of a single self-contained HTML file. The browser renders the selected module/function instead of the entire project, so reports open instantly on large codebases. `--format json` and `--format dot` still produce single files; control-flow block nodes in JSON now carry `start_line`/`end_line`/`source_text` instead of pre-rendered `source_html`.
+- **Report assets are loaded at render time** — `mix reach` now reads the frontend bundles when writing the report and raises with build instructions when they are missing, instead of silently embedding empty bundles at compile time and producing a blank page from checkouts that never ran `mix assets.build`.
 
 ### Fixed
 

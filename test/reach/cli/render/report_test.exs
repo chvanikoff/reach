@@ -35,6 +35,11 @@ defmodule Reach.CLI.Render.ReportTest do
     assert index =~ "Reach — fixture"
     refute index =~ "window.graphData"
 
+    # The JS bundles must be genuinely embedded (elk alone is >1MB) — a
+    # missing assets build must raise in render_html, never silently
+    # produce a blank report.
+    assert byte_size(index) > 1_000_000
+
     manifest_js = File.read!(Path.join(out, "manifest.js"))
     assert String.starts_with?(manifest_js, "window.__reachManifest = ")
 

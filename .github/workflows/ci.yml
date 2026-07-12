@@ -46,6 +46,10 @@ jobs:
           restore-keys: plt-${{ matrix.otp }}-${{ matrix.elixir }}-
 
       - run: mix deps.get
+      # The HTML report tests need built frontend assets; volt is a dev-only
+      # dependency, so the asset build runs in the dev environment.
+      - run: npm ci --prefix assets
+      - run: MIX_ENV=dev mix assets.build
       - run: mix ci
         if: matrix.elixir == '1.20'
       - run: mix compile --warnings-as-errors && mix test
