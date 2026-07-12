@@ -14,8 +14,9 @@ const props = defineProps({
   manifest: { type: Object, required: true },
 })
 
-// ELK layered layout degrades badly beyond a few hundred edges, so ego and
-// data-flow graphs are capped to keep interactions on the main thread snappy.
+// ELK layered layout degrades badly beyond a few hundred edges, so graph
+// views are capped to keep interactions on the main thread snappy.
+const LANDING_EDGE_LIMIT = 300
 const EGO_EDGE_LIMIT = 300
 const DATA_FLOW_EDGE_LIMIT = 300
 
@@ -101,6 +102,15 @@ async function buildCallGraph() {
     expandedGroups.value
   )
 
+  // Keep all nodes (bounded by namespace grouping) but cap edges to the
+  // strongest inter-module dependencies so ELK stays responsive.
+  let graphEdges = graph.edges
+  if (graphEdges.length > LANDING_EDGE_LIMIT) {
+    const total = graphEdges.length
+    graphEdges = [...graphEdges].sort((a, b) => b.count - a.count).slice(0, LANDING_EDGE_LIMIT)
+    limitNote.value = `Showing strongest ${LANDING_EDGE_LIMIT} of ${total} module dependencies`
+  }
+
   const rawNodes = graph.nodes.map((n) => ({
     id: n.id,
     type: "compact",
@@ -112,7 +122,7 @@ async function buildCallGraph() {
     },
   }))
 
-  const rawEdges = graph.edges.map((e) => ({
+  const rawEdges = graphEdges.map((e) => ({
     id: `mod_${e.source}_${e.target}`,
     source: e.source,
     target: e.target,
