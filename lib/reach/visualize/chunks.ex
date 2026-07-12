@@ -49,8 +49,7 @@ defmodule Reach.Visualize.Chunks do
       call_graph: %{edges: module_level_edges(raw_edges, internal)},
       counts: %{
         modules: length(module_entries),
-        functions:
-          module_entries |> Enum.map(fn {_, map, _} -> length(map.functions) end) |> Enum.sum()
+        functions: Enum.sum_by(module_entries, fn {_, map, _} -> length(map.functions) end)
       }
     }
 

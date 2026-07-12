@@ -176,12 +176,20 @@ defmodule Reach.Visualize do
 
   defp resolve_nil_module(mfa, _), do: mfa
 
-  @doc false
+  @doc """
+  Builds the frontend node id for a function reference, e.g.
+  `"MyApp.Foo.bar/2"`.
+  """
   def call_id(mod, func, arity) do
     "#{safe_module_name(mod)}.#{safe_name(func)}/#{arity}"
   end
 
-  @doc false
+  @doc """
+  Sanitizes a module (or module-like) name for use as a frontend id.
+
+  Strips the `Elixir.` prefix and removes characters that are unsafe in
+  DOM ids (`<`, `>`, `"`, `:`). Returns `"_"` for `nil`.
+  """
   def safe_module_name(nil), do: "_"
 
   def safe_module_name(mod) when is_atom(mod) do

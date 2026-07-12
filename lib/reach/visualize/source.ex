@@ -1,6 +1,7 @@
 defmodule Reach.Visualize.Source do
   @moduledoc "Extracts and highlights source code snippets for blocks."
 
+  alias Makeup.Formatters.HTML.HTMLFormatter
   alias Reach.Frontend.Gleam
 
   @def_cache_key :reach_def_end_cache
@@ -113,7 +114,7 @@ defmodule Reach.Visualize.Source do
         |> Enum.join("\n")
         |> lexer.lex()
         |> Makeup.Lexer.split_into_lines()
-        |> Enum.map(&Makeup.Formatters.HTML.HTMLFormatter.format_inner_as_binary(&1, []))
+        |> Enum.map(&HTMLFormatter.format_inner_as_binary(&1, []))
     end
   end
 

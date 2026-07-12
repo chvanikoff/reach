@@ -17,6 +17,7 @@ defmodule Reach.CLI.Commands.Report do
   """
 
   alias Reach.CLI.Render.Report, as: ReportRender
+  alias Reach.Visualize.Chunks
 
   def run(opts, files \\ []) do
     Reach.CLI.Project.compile()
@@ -28,8 +29,7 @@ defmodule Reach.CLI.Commands.Report do
 
     case format do
       "html" ->
-        chunked =
-          Reach.Visualize.Chunks.build(graph, build_viz_opts(opts) ++ [project: project_name()])
+        chunked = Chunks.build(graph, build_viz_opts(opts) ++ [project: project_name()])
 
         ReportRender.render_html(chunked, output_dir, opts)
 
