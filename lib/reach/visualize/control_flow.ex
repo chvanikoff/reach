@@ -102,18 +102,10 @@ defmodule Reach.Visualize.ControlFlow do
     existing = Process.get(cache_key, [])
     padded = existing ++ List.duplicate("", max(window_end - length(existing), 0))
 
-    merged =
-      padded
-      |> Enum.with_index(1)
-      |> Enum.map(fn {line, idx} ->
-        if idx >= start_line and idx < start_line + length(source_lines) do
-          Enum.at(source_lines, idx - start_line)
-        else
-          line
-        end
-      end)
+    prefix = Enum.take(padded, start_line - 1)
+    suffix = Enum.drop(padded, window_end)
 
-    Process.put(cache_key, merged)
+    Process.put(cache_key, prefix ++ source_lines ++ suffix)
     Process.put({:reach_file_lang, file}, :javascript)
   end
 
