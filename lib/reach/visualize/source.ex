@@ -1,6 +1,7 @@
 defmodule Reach.Visualize.Source do
   @moduledoc "Extracts and highlights source code snippets for blocks."
 
+  alias Makeup.Formatters.HTML.HTMLFormatter
   alias Reach.Frontend.Gleam
 
   @def_cache_key :reach_def_end_cache
@@ -80,6 +81,50 @@ defmodule Reach.Visualize.Source do
   end
 
   def highlight_lines(_, _, _), do: nil
+
+  @doc """
+  Highlights an entire source file once, returning one inner-HTML string per
+  line (index 0 = line 1, aligned 1:1 with the file's lines).
+
+  Returns `nil` when the file has no readable source lines. Falls back to
+  HTML-escaped plain lines when Makeup (or a suitable lexer) is unavailable.
+  """
+  def highlight_file_lines(file) do
+    case cached_file_lines(file) do
+      nil -> nil
+      lines -> highlight_lines_list(lines, lang_for_file(file))
+    end
+  end
+
+  @doc false
+  def escape_html(text) do
+    text
+    |> String.replace("&", "&amp;")
+    |> String.replace("<", "&lt;")
+    |> String.replace(">", "&gt;")
+  end
+
+  defp highlight_lines_list(lines, lang) do
+    case lexer_for(lang) do
+      nil ->
+        Enum.map(lines, &escape_html/1)
+
+      lexer ->
+        lines
+        |> Enum.join("\n")
+        |> lexer.lex()
+        |> Makeup.Lexer.split_into_lines()
+        |> Enum.map(&HTMLFormatter.format_inner_as_binary(&1, []))
+    end
+  end
+
+  defp lexer_for(:javascript) do
+    if Code.ensure_loaded?(Makeup.Lexers.JsLexer), do: Makeup.Lexers.JsLexer
+  end
+
+  defp lexer_for(_lang) do
+    if Code.ensure_loaded?(Makeup.Lexers.ElixirLexer), do: Makeup.Lexers.ElixirLexer
+  end
 
   def dedent(lines) do
     min_indent =

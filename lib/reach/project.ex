@@ -275,7 +275,7 @@ defmodule Reach.Project do
 
     case parse_source_file(path, parse_opts) do
       {:ok, ir_nodes} ->
-        {module_name || extract_module_name(ir_nodes), path, ir_nodes}
+        {extract_module_name(ir_nodes) || module_name, path, ir_nodes}
 
       {:error, _} ->
         nil

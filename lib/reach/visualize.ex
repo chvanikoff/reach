@@ -8,8 +8,8 @@ defmodule Reach.Visualize do
   def to_graph_json(graph, opts \\ []) do
     %Reach.Visualize.Graph.JSON{
       control_flow: ControlFlow.build(Reach.nodes(graph), graph),
-      call_graph: call_graph_data(graph),
-      data_flow: data_flow_data(graph, opts)
+      call_graph: call_graph(graph).view,
+      data_flow: data_flow(graph, opts)
     }
   end
 
@@ -27,7 +27,7 @@ defmodule Reach.Visualize do
 
   # ── Call Graph ──
 
-  defp call_graph_data(graph) do
+  def call_graph(graph) do
     all_nodes = Reach.nodes(graph)
     call_graph = extract_call_graph(graph)
     call_graph = add_cross_language_edges(call_graph, graph, all_nodes)
@@ -42,20 +42,25 @@ defmodule Reach.Visualize do
       end)
       |> MapSet.new()
 
-    raw_edges = Graph.edges(call_graph)
+    graph_edges = Graph.edges(call_graph)
     plugins = Reach.Plugin.detect()
 
     clean_edges =
-      raw_edges
+      graph_edges
       |> Enum.reject(&garbage_call?(&1, plugins))
       |> Enum.map(fn e ->
-        # Resolve nil module to the detected module
+        # Resolve a nil CALLER module to the project-detected module, and a
+        # nil CALLEE module to the CALLER's own (resolved) module — an
+        # unqualified local call always targets a function in the calling
+        # module, never in whichever module happens to be detected first.
         src = resolve_nil_module(e.v1, module_name)
-        tgt = resolve_nil_module(e.v2, module_name)
+        tgt = resolve_nil_module(e.v2, elem(src, 0))
         {src, tgt}
       end)
       |> Enum.reject(fn {src, tgt} -> src == tgt end)
       |> Enum.uniq()
+
+    internal_modules = MapSet.new(internal_funcs, fn {mod, _f, _a} -> mod end)
 
     # Build module groups
     all_func_ids =
@@ -98,7 +103,11 @@ defmodule Reach.Visualize do
       end)
       |> Enum.uniq_by(& &1.id)
 
-    %{modules: modules, edges: edges}
+    %{
+      view: %{modules: modules, edges: edges},
+      raw_edges: clean_edges,
+      internal_modules: internal_modules
+    }
   end
 
   defp add_cross_language_edges(call_graph, sdg_graph, all_nodes) do
@@ -170,17 +179,27 @@ defmodule Reach.Visualize do
 
   defp resolve_nil_module(mfa, _), do: mfa
 
-  defp call_id(mod, func, arity) do
+  @doc """
+  Builds the frontend node id for a function reference, e.g.
+  `"MyApp.Foo.bar/2"`.
+  """
+  def call_id(mod, func, arity) do
     "#{safe_module_name(mod)}.#{safe_name(func)}/#{arity}"
   end
 
-  defp safe_module_name(nil), do: "_"
+  @doc """
+  Sanitizes a module (or module-like) name for use as a frontend id.
 
-  defp safe_module_name(mod) when is_atom(mod) do
+  Strips the `Elixir.` prefix and removes characters that are unsafe in
+  DOM ids (`<`, `>`, `"`, `:`). Returns `"_"` for `nil`.
+  """
+  def safe_module_name(nil), do: "_"
+
+  def safe_module_name(mod) when is_atom(mod) do
     mod |> Atom.to_string() |> String.replace("Elixir.", "") |> sanitize_id()
   end
 
-  defp safe_module_name(mod), do: mod |> to_string() |> sanitize_id()
+  def safe_module_name(mod), do: mod |> to_string() |> sanitize_id()
 
   defp safe_name(name) when is_atom(name), do: name |> Atom.to_string() |> sanitize_id()
   defp safe_name(name), do: name |> to_string() |> sanitize_id()
@@ -192,7 +211,7 @@ defmodule Reach.Visualize do
 
   # ── Data Flow ──
 
-  defp data_flow_data(graph, opts) do
+  def data_flow(graph, opts \\ []) do
     taint_results =
       case Keyword.get(opts, :taint) do
         nil -> []
@@ -211,6 +230,7 @@ defmodule Reach.Visualize do
     involved_ids =
       data_edges
       |> Enum.flat_map(&[&1.v1, &1.v2])
+      |> MapSet.new()
 
     functions = build_data_flow_nodes(all_nodes, involved_ids, node_to_func, node_map)
 
@@ -264,8 +284,7 @@ defmodule Reach.Visualize do
         id: to_string(n.id),
         label: "#{prefix}L#{n.source_span[:start_line]}: #{ir_node_label(n)}",
         module: nil,
-        start_line: n.source_span[:start_line],
-        source_html: nil
+        start_line: n.source_span[:start_line]
       }
     end
   end

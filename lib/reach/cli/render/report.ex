@@ -24,42 +24,46 @@ defmodule Reach.CLI.Render.Report do
   @elk_bundle if File.exists?(@elk_bundle_path), do: File.read!(@elk_bundle_path), else: ""
   @vue_flow_css if File.exists?(@vue_flow_css_path), do: File.read!(@vue_flow_css_path), else: ""
 
-  def render("html", graph_data, _graph, output_dir, opts),
-    do: render_html(graph_data, output_dir, opts)
-
-  def render("dot", _graph_data, graph, output_dir, _opts), do: render_dot(graph, output_dir)
-
-  def render("json", graph_data, _graph, output_dir, _opts),
-    do: render_json(graph_data, output_dir)
-
-  defp render_html(graph_data, output_dir, opts) do
+  def render_html(%{manifest: manifest, chunks: chunks}, output_dir, opts) do
     Requirements.json!("HTML/JSON output")
 
-    File.mkdir_p!(output_dir)
+    chunks_dir = Path.join(output_dir, "chunks")
+    # Clear out chunks from a previous run — modules can be renamed, merged,
+    # or removed between runs, and a stale chunk file left behind would keep
+    # being served alongside the current manifest.
+    File.rm_rf!(chunks_dir)
+    File.mkdir_p!(chunks_dir)
 
-    graph_json = JSON.encode!(graph_data)
-    makeup_css = Reach.Visualize.makeup_stylesheet()
+    File.write!(
+      Path.join(output_dir, "manifest.js"),
+      ["window.__reachManifest = ", JSON.encode!(manifest), ";\n"]
+    )
+
+    Enum.each(chunks, fn {chunk_id, data} ->
+      File.write!(
+        Path.join(chunks_dir, "#{chunk_id}.js"),
+        ["window.__reachChunk(", JSON.encode!(chunk_id), ", ", JSON.encode!(data), ");\n"]
+      )
+    end)
 
     html =
       EEx.eval_string(@template,
-        graph_json: graph_json,
+        project: manifest.project,
         elk_bundle: @elk_bundle,
         js_bundle: @js_bundle,
         vue_flow_css: @vue_flow_css,
-        makeup_css: makeup_css,
-        file: nil,
-        module: nil
+        makeup_css: Reach.Visualize.makeup_stylesheet()
       )
 
     path = Path.join(output_dir, "index.html")
     File.write!(path, html)
 
-    Mix.shell().info("Reach report: #{path}")
+    Mix.shell().info("Reach report directory: #{output_dir} (entry: #{path})")
 
     if Keyword.get(opts, :open, true), do: open_browser(path)
   end
 
-  defp render_dot(graph, output_dir) do
+  def render_dot(graph, output_dir) do
     File.mkdir_p!(output_dir)
     path = Path.join(output_dir, "reach.dot")
 
@@ -69,7 +73,7 @@ defmodule Reach.CLI.Render.Report do
     Mix.shell().info("DOT file: #{path}")
   end
 
-  defp render_json(graph_data, output_dir) do
+  def render_json(graph_data, output_dir) do
     Requirements.json!("HTML/JSON output")
 
     File.mkdir_p!(output_dir)

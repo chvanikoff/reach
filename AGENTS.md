@@ -13,7 +13,7 @@ Key modules:
 - `Reach.Effects` — per-call side-effect classification (pure/io/read/write/send/exception/nif/unknown)
 - `Reach.DependencySummary` — compiled dependency parameter-to-return summaries
 - `Reach.Visualize.ControlFlow` — CFG → visualization blocks/edges
-- `Reach.Visualize.Source` — source extraction, highlighting, line helpers
+- `Reach.Visualize.Source` — source extraction, once-per-file highlighting, line helpers
 - `Reach.Visualize.Helpers` — IR label and pattern rendering helpers
 - `assets/js/components/ReachGraph.vue` — frontend (Vue Flow + ELK layout)
 
@@ -147,7 +147,7 @@ Every change to visualization code MUST maintain these invariants, tested across
 5. Anonymous fn bodies are decomposed — `Enum.reduce(fn ... end)` callbacks with internal branching get split into blocks. Multi-clause `fn` dispatches like `case`.
 
 ### Block Content
-6. No empty blocks — every block has `source_html`. Clauses with no compiler source spans show the pattern label as fallback.
+6. No empty blocks — every block's line range (`start_line..end_line`; `branch`/`entry`/`exit` display `start_line` only) resolves to non-blank source, or the block carries a `source_text` fallback. Clauses with no compiler source spans show the pattern label as fallback.
 7. No nil labels — every block has a meaningful label.
 
 ### Structural
@@ -171,7 +171,7 @@ Multi-clause functions with bodies use `build_multi_clause_cfg` — the CFG incl
 Run the block quality test after visualization changes:
 
 ```bash
-mix test test/reach/visualize/block_quality_test.exs
+mix test test/reach/visualize/control_flow/block_quality_test.exs
 ```
 
 Smoke test across real codebases — clone first if needed:

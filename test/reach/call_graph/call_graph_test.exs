@@ -65,6 +65,25 @@ defmodule Reach.CallGraphTest do
     end
   end
 
+  describe "Reach.Graph.merge/1 across modules" do
+    test "keeps same-named callers from different modules distinct after merge" do
+      source = """
+      def run(x), do: Enum.count(x)
+      """
+
+      graph_a = CallGraph.build(IR.from_string!(source), module: ModA)
+      graph_b = CallGraph.build(IR.from_string!(source), module: ModB)
+
+      merged = Reach.Graph.merge([graph_a, graph_b])
+
+      a_callees = merged |> Graph.out_edges({ModA, :run, 1}) |> Enum.map(& &1.v2)
+      b_callees = merged |> Graph.out_edges({ModB, :run, 1}) |> Enum.map(& &1.v2)
+
+      assert {Enum, :count, 1} in a_callees
+      assert {Enum, :count, 1} in b_callees
+    end
+  end
+
   describe "find_enclosing_function/2" do
     test "finds the function containing a node" do
       nodes =

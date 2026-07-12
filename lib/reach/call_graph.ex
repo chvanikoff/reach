@@ -18,7 +18,7 @@ defmodule Reach.CallGraph do
     all_nodes = Keyword.get_lazy(opts, :all_nodes, fn -> IR.all_nodes(ir_nodes) end)
 
     func_defs = collect_function_defs(all_nodes, module_name)
-    call_sites = collect_call_sites(all_nodes)
+    call_sites = collect_call_sites(all_nodes, module_name)
 
     graph =
       Enum.reduce(func_defs, Graph.new(), fn {fun_id, _node}, g ->
@@ -77,14 +77,29 @@ defmodule Reach.CallGraph do
     end
   end
 
-  defp collect_call_sites(all_nodes) do
+  defp collect_call_sites(all_nodes, module_name) do
     parent_map = build_parent_map(all_nodes)
 
     for call_node <- all_nodes,
         call_node.type == :call,
         caller_def = Map.get(parent_map, call_node.id),
         caller_def != nil do
-      caller_id = {nil, caller_def.meta[:name], caller_def.meta[:arity]}
+      # Prefer the enclosing function_def's own declared module (set from the
+      # actual `defmodule` it's nested in) over the passed-in module_name
+      # option, falling back to the option when the node carries none. This
+      # keeps caller identity correct even when module_name is derived from
+      # something unreliable (e.g. a file path that doesn't match the
+      # declared module — see Reach.Project.parse_path/3) or absent, while
+      # still agreeing with collect_function_defs/2's vertex in the common
+      # case where they match — critical once graphs from multiple modules
+      # are merged (Reach.Project), where a bare `nil` module would collide
+      # across every module's same-named function.
+      caller_id = {
+        caller_def.meta[:module] || module_name,
+        caller_def.meta[:name],
+        caller_def.meta[:arity]
+      }
+
       callee_id = call_target(call_node)
       {caller_id, callee_id, call_node.id}
     end

@@ -37,6 +37,30 @@ defmodule Reach.VisualizeTest do
       assert is_list(func.edges)
     end
 
+    test "control flow blocks reference line ranges instead of embedded HTML" do
+      graph =
+        Reach.string_to_graph!("""
+        defmodule Ranges do
+          def f(x) do
+            y = x + 1
+            y * 2
+          end
+        end
+        """)
+
+      %{control_flow: [mod | _]} = Reach.Visualize.to_graph_json(graph)
+      [func | _] = mod.functions
+
+      assert func.nodes != []
+
+      for node <- func.nodes do
+        assert is_integer(node.start_line)
+        assert is_integer(node.end_line)
+        assert node.end_line >= node.start_line
+        refute Map.has_key?(node, :source_html)
+      end
+    end
+
     test "call graph has modules and edges" do
       graph =
         Reach.string_to_graph!("""
@@ -83,6 +107,55 @@ defmodule Reach.VisualizeTest do
       assert is_binary(json)
       assert {:ok, parsed} = JSON.decode(json)
       assert is_list(parsed["control_flow"])
+    end
+  end
+
+  describe "call_graph/1" do
+    test "returns view plus raw MFA edges and internal module set" do
+      graph =
+        Reach.string_to_graph!("""
+        defmodule RawCg do
+          def caller, do: RawCg.callee()
+          def callee, do: Enum.count([1])
+        end
+        """)
+
+      %{view: view, raw_edges: raw_edges, internal_modules: internal} =
+        Reach.Visualize.call_graph(graph)
+
+      assert is_list(view.modules)
+      assert is_list(view.edges)
+      assert MapSet.member?(internal, RawCg)
+
+      assert Enum.any?(raw_edges, fn {_src, {tm, tf, ta}} -> {tm, tf, ta} == {Enum, :count, 1} end)
+    end
+
+    test "unqualified local call in a non-first module is attributed to its own module, not the first-detected module" do
+      # ModA is declared (and its nodes are assigned lower IDs) before ModB.
+      # detect_module/1 picks the first module_def by node order, so before
+      # the fix ModB's unqualified local call to `helper()` would have its
+      # nil callee module resolved to ModA instead of ModB.
+      graph =
+        Reach.string_to_graph!("""
+        defmodule LocalCallModA do
+          def unrelated, do: :ok
+        end
+
+        defmodule LocalCallModB do
+          def caller, do: helper()
+          defp helper, do: :ok
+        end
+        """)
+
+      %{raw_edges: raw_edges} = Reach.Visualize.call_graph(graph)
+
+      refute Enum.any?(raw_edges, fn {_src, {tm, tf, _ta}} ->
+               tm == LocalCallModA and tf == :helper
+             end)
+
+      assert Enum.any?(raw_edges, fn {{sm, sf, _sa}, {tm, tf, _ta}} ->
+               sm == LocalCallModB and sf == :caller and tm == LocalCallModB and tf == :helper
+             end)
     end
   end
 

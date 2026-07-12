@@ -15,7 +15,11 @@ defmodule Reach.MixProject do
       elixirc_options: [
         no_warn_undefined: [
           {Makeup, :highlight_inner_html, 2},
-          {Makeup, :stylesheet, 0}
+          {Makeup, :stylesheet, 0},
+          {Makeup.Lexer, :split_into_lines, 1},
+          {Makeup.Formatters.HTML.HTMLFormatter, :format_inner_as_binary, 2},
+          {Makeup.Lexers.ElixirLexer, :lex, 1},
+          {Makeup.Lexers.JsLexer, :lex, 1}
         ]
       ],
       dialyzer: [
@@ -54,9 +58,30 @@ defmodule Reach.MixProject do
         "test"
       ],
       "assets.build": [
-        "volt.build --name reach"
+        "volt.build --name reach",
+        &copy_vendor_assets/1
       ]
     ]
+  end
+
+  defp copy_vendor_assets(_args) do
+    File.mkdir_p!("priv/static/css")
+
+    File.cp!(
+      "assets/node_modules/elkjs/lib/elk.bundled.js",
+      "priv/static/js/elk.bundled.js"
+    )
+
+    vendor_css =
+      [
+        "assets/node_modules/@vue-flow/core/dist/style.css",
+        "assets/node_modules/@vue-flow/core/dist/theme-default.css",
+        "assets/node_modules/@vue-flow/minimap/dist/style.css",
+        "assets/node_modules/@vue-flow/controls/dist/style.css"
+      ]
+      |> Enum.map_join("\n", &File.read!/1)
+
+    File.write!("priv/static/css/vue-flow.css", vendor_css)
   end
 
   defp deps do

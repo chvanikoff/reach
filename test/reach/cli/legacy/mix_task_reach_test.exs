@@ -36,7 +36,10 @@ defmodule Mix.Tasks.ReachTest do
     assert File.exists?(html_path)
 
     content = File.read!(html_path)
-    assert content =~ "graphData"
+    assert content =~ ~s(<script src="manifest.js"></script>)
+
+    assert File.exists?(Path.join(@output_dir, "manifest.js"))
+    assert File.exists?(Path.join([@output_dir, "chunks", "TaskTestMod.js"]))
   end
 
   test "generates DOT output" do
