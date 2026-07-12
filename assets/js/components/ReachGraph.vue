@@ -7,7 +7,7 @@ import CodeNode from "@reach/components/CodeNode.vue"
 import CompactNode from "@reach/components/CompactNode.vue"
 import { computeLayout } from "@reach/layout"
 import { loadChunk } from "@reach/chunks"
-import { buildModuleGraph } from "@reach/grouping"
+import { LANDING_EDGE_LIMIT, buildNamespaceLevel } from "@reach/grouping"
 import { dedentHtmlLines, escapeHtml, lineText, sliceLines } from "@reach/source"
 
 const props = defineProps({
@@ -15,8 +15,9 @@ const props = defineProps({
 })
 
 // ELK layered layout degrades badly beyond a few hundred edges, so graph
-// views are capped to keep interactions on the main thread snappy.
-const LANDING_EDGE_LIMIT = 300
+// views are capped to keep interactions on the main thread snappy. The
+// landing view's node/edge budget (LANDING_EDGE_LIMIT, MAX_LANDING_NODES)
+// lives in grouping.ts alongside the namespace-zoom logic.
 const EGO_EDGE_LIMIT = 300
 const DATA_FLOW_EDGE_LIMIT = 300
 
@@ -29,7 +30,7 @@ const limitNote = ref("")
 const search = ref("")
 const selectedModuleId = ref(null)
 const selectedFunctionId = ref(null)
-const expandedGroups = ref(new Set())
+const scopePrefix = ref(null)
 const expandedModules = ref(new Set())
 const { fitView } = useVueFlow()
 
@@ -37,6 +38,18 @@ const moduleById = computed(() => new Map(props.manifest.modules.map((m) => [m.i
 const selectedModule = computed(() =>
   selectedModuleId.value ? moduleById.value.get(selectedModuleId.value) : null
 )
+
+// Ancestor prefixes of the current scope, e.g. "GN.Payments.Migration" ->
+// ["GN", "GN.Payments"], for the breadcrumb's clickable zoom-out segments.
+const scopeAncestors = computed(() => {
+  if (!scopePrefix.value) return []
+  const parts = scopePrefix.value.split(".")
+  const ancestors = []
+  for (let i = 1; i < parts.length; i++) {
+    ancestors.push(parts.slice(0, i).join("."))
+  }
+  return ancestors
+})
 
 // ── Layout ──
 
@@ -96,22 +109,22 @@ async function buildCallGraph() {
   limitNote.value = ""
   if (selectedModule.value) return buildModuleEgoGraph(selectedModule.value)
 
-  const graph = buildModuleGraph(
+  const level = buildNamespaceLevel(
     props.manifest.modules,
     props.manifest.call_graph.edges,
-    expandedGroups.value
+    scopePrefix.value
   )
 
-  // Keep all nodes (bounded by namespace grouping) but cap edges to the
-  // strongest inter-module dependencies so ELK stays responsive.
-  let graphEdges = graph.edges
-  if (graphEdges.length > LANDING_EDGE_LIMIT) {
-    const total = graphEdges.length
-    graphEdges = [...graphEdges].sort((a, b) => b.count - a.count).slice(0, LANDING_EDGE_LIMIT)
-    limitNote.value = `Showing strongest ${LANDING_EDGE_LIMIT} of ${total} module dependencies`
+  // Node count is already bounded by the adaptive namespace depth; still
+  // cap edges to the strongest dependencies so ELK stays responsive.
+  let levelEdges = level.edges
+  if (levelEdges.length > LANDING_EDGE_LIMIT) {
+    const total = levelEdges.length
+    levelEdges = levelEdges.slice(0, LANDING_EDGE_LIMIT)
+    limitNote.value = `Showing strongest ${LANDING_EDGE_LIMIT} of ${total} dependencies`
   }
 
-  const rawNodes = graph.nodes.map((n) => ({
+  const rawNodes = level.nodes.map((n) => ({
     id: n.id,
     type: "compact",
     position: { x: 0, y: 0 },
@@ -119,15 +132,16 @@ async function buildCallGraph() {
       label: n.kind === "group" ? `${n.label} (${n.size})` : n.label,
       nodeType: "compact",
       kind: n.kind,
+      prefix: n.prefix,
     },
   }))
 
-  const rawEdges = graphEdges.map((e) => ({
+  const rawEdges = levelEdges.map((e) => ({
     id: `mod_${e.source}_${e.target}`,
     source: e.source,
     target: e.target,
-    type: "default",
-    style: { stroke: "#94a3b8", strokeWidth: Math.min(1 + Math.log2(1 + e.count) * 0.5, 4) },
+    type: "straight",
+    style: { stroke: "#94a3b8", strokeWidth: Math.min(1 + Math.log2(1 + e.count) * 0.6, 5) },
   }))
 
   await applyLayout(rawNodes, rawEdges, {
@@ -340,7 +354,7 @@ async function rebuild() {
   }
 }
 
-watch([mode, selectedModuleId, selectedFunctionId], rebuild)
+watch([mode, selectedModuleId, selectedFunctionId, scopePrefix], rebuild)
 onMounted(rebuild)
 
 function selectModule(id) {
@@ -364,17 +378,19 @@ function clearSelection() {
   selectedFunctionId.value = null
 }
 
-async function onNodeClick({ node }) {
+function goToRoot() {
+  selectedModuleId.value = null
+  selectedFunctionId.value = null
+  scopePrefix.value = null
+}
+
+function onNodeClick({ node }) {
   if (mode.value !== "call_graph") return
 
   if (!selectedModuleId.value) {
     if (node.data.kind === "group") {
-      const next = new Set(expandedGroups.value)
-      if (next.has(node.id)) next.delete(node.id)
-      else next.add(node.id)
-      expandedGroups.value = next
-      await rebuild()
-    } else if (moduleById.value.has(node.id)) {
+      scopePrefix.value = node.data.prefix
+    } else if (node.data.kind === "module") {
       selectModule(node.id)
     }
     return
@@ -433,6 +449,17 @@ const filteredModules = computed(() => {
           <span>·</span>
           <span>{{ selectedModule.name }}</span>
           <button @click="clearSelection">back to overview</button>
+          <button @click="goToRoot">root</button>
+        </template>
+        <template v-else-if="scopePrefix">
+          <span>·</span>
+          <button @click="goToRoot">root</button>
+          <template v-for="crumb in scopeAncestors" :key="crumb">
+            <span>·</span>
+            <button @click="scopePrefix = crumb">{{ crumb }}</button>
+          </template>
+          <span>·</span>
+          <span>{{ scopePrefix }}</span>
         </template>
       </div>
     </div>
@@ -468,6 +495,7 @@ const filteredModules = computed(() => {
           :min-zoom="0.1"
           :max-zoom="3"
           :nodes-draggable="false"
+          :only-render-visible-elements="true"
           class="reach-flow"
           @node-click="onNodeClick"
         >
