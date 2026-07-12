@@ -11,37 +11,48 @@ defmodule Reach.Visualize.ControlFlow do
     modules =
       all_nodes
       |> Enum.filter(&(&1.type == :module_def))
-      |> Enum.map(fn mod ->
-        file = span_field(mod, :file)
+      |> Task.async_stream(&build_module/1,
+        max_concurrency: System.schedulers_online(),
+        timeout: :infinity
+      )
+      |> Enum.map(fn {:ok, module_map} -> module_map end)
 
-        func_nodes =
-          IR.all_nodes(mod)
-          |> Enum.filter(&(&1.type == :function_def))
-          |> Enum.sort_by(&(span_field(&1, :start_line) || 0))
+    case build_top_level(all_nodes, modules) do
+      nil -> modules
+      top -> [top | modules]
+    end
+  end
 
-        functions = Enum.map(func_nodes, &build_function(&1, file))
+  @doc "Builds the visualization map for a single module definition node."
+  def build_module(mod) do
+    file = span_field(mod, :file)
+
+    func_nodes =
+      IR.all_nodes(mod)
+      |> Enum.filter(&(&1.type == :function_def))
+      |> Enum.sort_by(&(span_field(&1, :start_line) || 0))
+
+    %{
+      module: inspect(mod.meta[:name]),
+      file: file,
+      functions: Enum.map(func_nodes, &build_function(&1, file))
+    }
+  end
+
+  @doc "Builds the top-level (module-less) function group, or nil if none exist."
+  def build_top_level(all_nodes, modules) do
+    case find_top_level_functions(all_nodes, modules) do
+      [] ->
+        nil
+
+      top_funcs ->
+        file = Enum.find_value(top_funcs, &span_field(&1, :file))
 
         %{
-          module: inspect(mod.meta[:name]),
+          module: nil,
           file: file,
-          functions: functions
+          functions: Enum.map(top_funcs, &build_function(&1, file))
         }
-      end)
-
-    top_funcs = find_top_level_functions(all_nodes, modules)
-
-    if top_funcs != [] do
-      file = Enum.find_value(top_funcs, &span_field(&1, :file))
-
-      top = %{
-        module: nil,
-        file: file,
-        functions: Enum.map(top_funcs, &build_function(&1, file))
-      }
-
-      [top | modules]
-    else
-      modules
     end
   end
 
