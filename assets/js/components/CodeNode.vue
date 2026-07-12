@@ -24,11 +24,7 @@ const TYPE_COLORS = {
 }
 
 const colors = TYPE_COLORS[props.data.nodeType] ?? TYPE_COLORS.expression
-const lines = props.data.sourceHtml
-  ? props.data.sourceHtml.split("\n")
-  : props.data.sourceText
-    ? props.data.sourceText.split("\n")
-    : props.data.lines || []
+const lines = props.data.lines || []
 const showLabel = props.data.label && props.data.nodeType !== "expression"
 </script>
 
