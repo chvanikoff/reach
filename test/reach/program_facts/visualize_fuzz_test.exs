@@ -60,8 +60,13 @@ defmodule Reach.ProgramFactsVisualizeFuzzTest do
     assert node["label"] != ""
 
     if node["type"] not in ["entry", "exit"] do
-      assert is_binary(node["source_html"])
-      assert node["source_html"] != ""
+      if node["source_text"] do
+        assert node["source_text"] != ""
+      else
+        assert is_integer(node["start_line"])
+        assert is_integer(node["end_line"])
+        assert node["end_line"] >= node["start_line"]
+      end
     end
   end
 

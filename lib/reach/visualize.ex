@@ -265,8 +265,7 @@ defmodule Reach.Visualize do
         id: to_string(n.id),
         label: "#{prefix}L#{n.source_span[:start_line]}: #{ir_node_label(n)}",
         module: nil,
-        start_line: n.source_span[:start_line],
-        source_html: nil
+        start_line: n.source_span[:start_line]
       }
     end
   end

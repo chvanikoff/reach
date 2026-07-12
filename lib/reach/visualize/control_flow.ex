@@ -172,8 +172,7 @@ defmodule Reach.Visualize.ControlFlow do
         :entry,
         "#{name}/#{arity}",
         func_start,
-        func_start,
-        highlight_line(file, func_start)
+        func_start
       )
 
     {exit_node, exit_edges} = build_exit_node(cfg, block_for_vertex, file, func_id, func_end)
@@ -217,30 +216,19 @@ defmodule Reach.Visualize.ControlFlow do
 
   defp build_exit_node(cfg, block_for_vertex, file, func_id, exit_line) do
     exit_id = "#{func_id}_exit"
+    source_text = if blank_line?(file, exit_line), do: "end"
 
-    exit_node =
-      make_node(
-        exit_id,
-        :exit,
-        "end",
-        exit_line,
-        exit_line,
-        exit_source_html(file, exit_line)
-      )
-
+    exit_node = make_node(exit_id, :exit, "end", exit_line, exit_line, source_text: source_text)
     exit_edges = build_exit_edges(find_exit_predecessors(cfg, block_for_vertex), exit_id)
 
     {exit_node, exit_edges}
   end
 
-  defp exit_source_html(file, line) do
-    file
-    |> highlight_line(line)
-    |> fallback_html("end")
-  end
-
-  defp fallback_html(html, text) do
-    if source_blank?(html), do: Source.highlight_source(text), else: html
+  defp blank_line?(file, line) do
+    case Source.read_line(file, line) do
+      nil -> true
+      text -> String.trim(text) == ""
+    end
   end
 
   defp build_exit_edges(exit_targets, exit_id) do
@@ -306,8 +294,7 @@ defmodule Reach.Visualize.ControlFlow do
           :entry,
           "#{func.meta[:name]}/#{func.meta[:arity]}",
           func_start,
-          func_start,
-          highlight_line(file, func_start)
+          func_start
         )
 
       {exit_node, exit_edges} = build_exit_node(cfg, block_for_vertex, file, func_id, func_end)
@@ -465,28 +452,28 @@ defmodule Reach.Visualize.ControlFlow do
       label = block_label(type, node, block, node_map, cfg)
       block_id = "b_" <> Enum.map_join(block, "_", &to_string/1)
 
-      source =
-        if(type == :branch,
-          do: highlight_line(file, start_l),
-          else: highlight_lines(file, start_l, end_l)
-        )
-
-      make_node(block_id, type, label, start_l, end_l, source)
+      make_node(block_id, type, label, start_l, end_l)
     end)
-    |> Enum.reject(&(source_blank?(&1.source_html) and &1.type not in [:entry, :exit]))
+    |> Enum.reject(&(&1.type not in [:entry, :exit] and blank_block_range?(file, &1)))
+  end
+
+  defp blank_block_range?(file, %{type: :branch, start_line: start_l}),
+    do: blank_line?(file, start_l)
+
+  defp blank_block_range?(file, %{start_line: start_l, end_line: end_l}) do
+    case Source.cached_file_lines(file) do
+      nil ->
+        true
+
+      lines ->
+        lines
+        |> Enum.slice((start_l - 1)..max(start_l - 1, end_l - 1))
+        |> Enum.all?(&(String.trim(&1) == ""))
+    end
   end
 
   defp last_in([last]), do: last
   defp last_in([_head | tail]), do: last_in(tail)
-
-  defp source_blank?(nil), do: true
-
-  defp source_blank?(html) do
-    html
-    |> String.replace(~r/<[^>]+>/, "")
-    |> String.trim()
-    |> Kernel.==("")
-  end
 
   defp block_type(block, branch_vertices, node_map) do
     cond do
@@ -695,8 +682,6 @@ defmodule Reach.Visualize.ControlFlow do
   # ── Fallback ──
 
   defp fallback_single_block(func, source, start_line) do
-    lang = if func.meta[:language] == :javascript, do: :javascript, else: :elixir
-
     node =
       make_node(
         to_string(func.id),
@@ -704,7 +689,7 @@ defmodule Reach.Visualize.ControlFlow do
         "#{func.meta[:name]}/#{func.meta[:arity]}",
         start_line,
         start_line,
-        Source.highlight_source(source, lang)
+        source_text: source
       )
 
     {[node], []}
@@ -712,14 +697,14 @@ defmodule Reach.Visualize.ControlFlow do
 
   # ── Node/edge constructors ──
 
-  defp make_node(id, type, label, start_line, end_line, source_html) do
+  defp make_node(id, type, label, start_line, end_line, opts \\ []) do
     %{
       id: id,
       type: type,
       label: label,
       start_line: start_line,
       end_line: end_line,
-      source_html: source_html,
+      source_text: opts[:source_text],
       parent_id: nil
     }
   end

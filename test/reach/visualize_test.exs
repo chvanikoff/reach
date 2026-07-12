@@ -37,6 +37,30 @@ defmodule Reach.VisualizeTest do
       assert is_list(func.edges)
     end
 
+    test "control flow blocks reference line ranges instead of embedded HTML" do
+      graph =
+        Reach.string_to_graph!("""
+        defmodule Ranges do
+          def f(x) do
+            y = x + 1
+            y * 2
+          end
+        end
+        """)
+
+      %{control_flow: [mod | _]} = Reach.Visualize.to_graph_json(graph)
+      [func | _] = mod.functions
+
+      assert func.nodes != []
+
+      for node <- func.nodes do
+        assert is_integer(node.start_line)
+        assert is_integer(node.end_line)
+        assert node.end_line >= node.start_line
+        refute Map.has_key?(node, :source_html)
+      end
+    end
+
     test "call graph has modules and edges" do
       graph =
         Reach.string_to_graph!("""

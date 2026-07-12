@@ -58,8 +58,8 @@ defmodule Reach.Visualize.BlockQualityTest do
     |> check_coverage(name, nodes, func_start, func_end, source_lines)
     # R2: No two blocks share the same source line range (excluding entry/exit overlap)
     |> check_disjointness(name, nodes)
-    # R5: No empty blocks — every non-entry/exit block has source_html
-    |> check_source_html(name, nodes)
+    # R5: No empty blocks — every non-entry/exit block resolves to non-blank source
+    |> check_block_content(name, nodes, source_lines)
     # R6: No nil labels
     |> check_labels(name, nodes)
     # R7: Entry/exit structure
@@ -146,18 +146,36 @@ defmodule Reach.Visualize.BlockQualityTest do
     end ++ violations
   end
 
-  # R5: No empty blocks
-  defp check_source_html(violations, name, nodes) do
+  # R5: No empty blocks — every non-entry/exit block resolves to non-blank
+  # source lines (or carries a source_text fallback)
+  defp check_block_content(violations, name, nodes, source_lines) do
     empty =
-      nodes
-      |> Enum.filter(fn n ->
-        n["type"] not in ["entry", "exit"] and
-          (n["source_html"] == nil or n["source_html"] == "")
+      Enum.filter(nodes, fn n ->
+        n["type"] not in ["entry", "exit"] and blank_block?(n, source_lines)
       end)
 
     for b <- empty do
       {:empty_block, name, "#{b["id"]} [#{b["type"]}] label=#{inspect(b["label"])}"}
     end ++ violations
+  end
+
+  defp blank_block?(n, source_lines) do
+    cond do
+      is_binary(n["source_text"]) and String.trim(n["source_text"]) != "" ->
+        false
+
+      source_lines == nil ->
+        n["source_text"] in [nil, ""]
+
+      true ->
+        start_l = n["start_line"]
+        end_l = if n["type"] == "branch", do: start_l, else: n["end_line"]
+
+        start_l == nil or end_l == nil or
+          source_lines
+          |> Enum.slice((start_l - 1)..max(start_l - 1, end_l - 1))
+          |> Enum.all?(&(String.trim(&1) == ""))
+    end
   end
 
   # R6: No nil labels
