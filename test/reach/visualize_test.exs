@@ -129,6 +129,34 @@ defmodule Reach.VisualizeTest do
 
       assert Enum.any?(raw_edges, fn {_src, {tm, tf, ta}} -> {tm, tf, ta} == {Enum, :count, 1} end)
     end
+
+    test "unqualified local call in a non-first module is attributed to its own module, not the first-detected module" do
+      # ModA is declared (and its nodes are assigned lower IDs) before ModB.
+      # detect_module/1 picks the first module_def by node order, so before
+      # the fix ModB's unqualified local call to `helper()` would have its
+      # nil callee module resolved to ModA instead of ModB.
+      graph =
+        Reach.string_to_graph!("""
+        defmodule LocalCallModA do
+          def unrelated, do: :ok
+        end
+
+        defmodule LocalCallModB do
+          def caller, do: helper()
+          defp helper, do: :ok
+        end
+        """)
+
+      %{raw_edges: raw_edges} = Reach.Visualize.call_graph(graph)
+
+      refute Enum.any?(raw_edges, fn {_src, {tm, tf, _ta}} ->
+               tm == LocalCallModA and tf == :helper
+             end)
+
+      assert Enum.any?(raw_edges, fn {{sm, sf, _sa}, {tm, tf, _ta}} ->
+               sm == LocalCallModB and sf == :caller and tm == LocalCallModB and tf == :helper
+             end)
+    end
   end
 
   describe "struct and map pattern rendering" do

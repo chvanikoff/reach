@@ -42,16 +42,19 @@ defmodule Reach.Visualize do
       end)
       |> MapSet.new()
 
-    raw_edges = Graph.edges(call_graph)
+    graph_edges = Graph.edges(call_graph)
     plugins = Reach.Plugin.detect()
 
     clean_edges =
-      raw_edges
+      graph_edges
       |> Enum.reject(&garbage_call?(&1, plugins))
       |> Enum.map(fn e ->
-        # Resolve nil module to the detected module
+        # Resolve a nil CALLER module to the project-detected module, and a
+        # nil CALLEE module to the CALLER's own (resolved) module — an
+        # unqualified local call always targets a function in the calling
+        # module, never in whichever module happens to be detected first.
         src = resolve_nil_module(e.v1, module_name)
-        tgt = resolve_nil_module(e.v2, module_name)
+        tgt = resolve_nil_module(e.v2, elem(src, 0))
         {src, tgt}
       end)
       |> Enum.reject(fn {src, tgt} -> src == tgt end)
