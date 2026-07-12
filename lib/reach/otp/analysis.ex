@@ -24,12 +24,27 @@ defmodule Reach.OTP.Analysis do
     Result.new(
       behaviours: behaviours,
       state_machines: state_machines,
-      hidden_coupling: hidden_coupling,
-      missing_handlers: missing_handlers,
+      hidden_coupling: filter_hidden_coupling(hidden_coupling),
+      missing_handlers: filter_findings(missing_handlers, "missing_handler"),
       supervision: supervision,
-      dead_replies: dead_replies,
-      cross_process: cross_process
+      dead_replies: filter_findings(dead_replies, "dead_reply"),
+      cross_process: filter_findings(cross_process, "cross_process")
     )
+  end
+
+  defp filter_findings(entries, kind) do
+    Reach.Suppressions.filter(entries, fn _entry -> [kind, "otp", "all"] end)
+  end
+
+  defp filter_hidden_coupling(%{ets: ets, process_dict: process_dict}) do
+    %{ets: filter_grouped(ets), process_dict: filter_grouped(process_dict)}
+  end
+
+  defp filter_grouped(groups) do
+    groups
+    |> Enum.map(fn {key, ops} -> {key, filter_findings(ops, "hidden_coupling")} end)
+    |> Enum.reject(fn {_key, ops} -> ops == [] end)
+    |> Map.new()
   end
 
   defp find_gen_servers(nodes, scope, plugins) do
