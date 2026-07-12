@@ -14,11 +14,17 @@ const props = defineProps({
   manifest: { type: Object, required: true },
 })
 
+// ELK layered layout degrades badly beyond a few hundred edges, so ego and
+// data-flow graphs are capped to keep interactions on the main thread snappy.
+const EGO_EDGE_LIMIT = 300
+const DATA_FLOW_EDGE_LIMIT = 300
+
 const nodeTypes = { code: CodeNode, compact: CompactNode }
 const mode = ref("call_graph")
 const nodes = ref([])
 const edges = ref([])
 const hint = ref("")
+const limitNote = ref("")
 const search = ref("")
 const selectedModuleId = ref(null)
 const selectedFunctionId = ref(null)
@@ -34,6 +40,15 @@ const selectedModule = computed(() =>
 // ── Layout ──
 
 async function applyLayout(rawNodes, rawEdges, layoutOverrides = {}) {
+  // Defensively dedupe by id before sizing/layout: duplicate ids reaching ELK
+  // are the classic cause of "Cannot read properties of null" layout crashes.
+  const seenIds = new Set()
+  rawNodes = rawNodes.filter((n) => {
+    if (seenIds.has(n.id)) return false
+    seenIds.add(n.id)
+    return true
+  })
+
   const nodeSizes = new Map()
   for (const n of rawNodes) nodeSizes.set(n.id, estimateSize(n.data))
 
@@ -77,6 +92,7 @@ function estimateSize(data) {
 
 async function buildCallGraph() {
   hint.value = ""
+  limitNote.value = ""
   if (selectedModule.value) return buildModuleEgoGraph(selectedModule.value)
 
   const graph = buildModuleGraph(
@@ -113,7 +129,24 @@ async function buildCallGraph() {
 async function buildModuleEgoGraph(mod) {
   const chunk = await loadChunk(mod.id, mod.chunk)
 
-  const rawNodes = chunk.calls.functions.map((f) => ({
+  let callFunctions = chunk.calls.functions
+  let callEdges = chunk.calls.edges
+
+  if (callEdges.length > EGO_EDGE_LIMIT) {
+    const total = callEdges.length
+    callEdges = callEdges.slice(0, EGO_EDGE_LIMIT)
+    const endpointIds = new Set()
+    for (const e of callEdges) {
+      endpointIds.add(e.source)
+      endpointIds.add(e.target)
+    }
+    callFunctions = callFunctions.filter((f) => endpointIds.has(f.id))
+    limitNote.value = `Showing ${EGO_EDGE_LIMIT} of ${total} call edges`
+  } else {
+    limitNote.value = ""
+  }
+
+  const rawNodes = callFunctions.map((f) => ({
     id: f.id,
     type: "compact",
     position: { x: 0, y: 0 },
@@ -124,7 +157,7 @@ async function buildModuleEgoGraph(mod) {
     },
   }))
 
-  const rawEdges = chunk.calls.edges.map((e) => ({
+  const rawEdges = callEdges.map((e) => ({
     id: e.id,
     source: e.source,
     target: e.target,
@@ -142,6 +175,7 @@ async function buildModuleEgoGraph(mod) {
 // ── Control Flow: one function at a time ──
 
 async function buildControlFlow() {
+  limitNote.value = ""
   if (!selectedModule.value || !selectedFunctionId.value) {
     nodes.value = []
     edges.value = []
@@ -230,6 +264,7 @@ function edgeVisualStyle(edge) {
 // ── Data Flow: module-scoped ──
 
 async function buildDataFlow() {
+  limitNote.value = ""
   if (!selectedModule.value) {
     nodes.value = []
     edges.value = []
@@ -240,14 +275,29 @@ async function buildDataFlow() {
   hint.value = ""
   const chunk = await loadChunk(selectedModule.value.id, selectedModule.value.chunk)
 
-  const rawNodes = chunk.data_flow.functions.map((f) => ({
+  let dataFunctions = chunk.data_flow.functions
+  let dataEdges = chunk.data_flow.edges
+
+  if (dataEdges.length > DATA_FLOW_EDGE_LIMIT) {
+    const total = dataEdges.length
+    dataEdges = dataEdges.slice(0, DATA_FLOW_EDGE_LIMIT)
+    const endpointIds = new Set()
+    for (const e of dataEdges) {
+      endpointIds.add(e.source)
+      endpointIds.add(e.target)
+    }
+    dataFunctions = dataFunctions.filter((f) => endpointIds.has(f.id))
+    limitNote.value = `Showing ${DATA_FLOW_EDGE_LIMIT} of ${total} data flow edges`
+  }
+
+  const rawNodes = dataFunctions.map((f) => ({
     id: f.id,
     type: "code",
     position: { x: 0, y: 0 },
     data: { label: f.label, nodeType: "data", lines: [], startLine: f.start_line ?? 1 },
   }))
 
-  const rawEdges = chunk.data_flow.edges.map((e) => ({
+  const rawEdges = dataEdges.map((e) => ({
     id: e.id,
     source: e.source,
     target: e.target,
@@ -415,6 +465,7 @@ const filteredModules = computed(() => {
           <Controls />
         </VueFlow>
         <div v-if="hint" class="hint-overlay">{{ hint }}</div>
+        <div v-if="limitNote" class="limit-note">{{ limitNote }}</div>
       </div>
     </div>
   </div>
