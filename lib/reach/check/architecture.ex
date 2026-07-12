@@ -22,8 +22,15 @@ defmodule Reach.Check.Architecture do
         {:error, errors} -> Enum.map(errors, &Config.Error.to_violation/1)
       end
 
+    violations = Reach.Suppressions.filter(violations, &violation_tokens/1)
+
     %Result{status: if(violations == [], do: "ok", else: "failed"), violations: violations}
   end
+
+  defp violation_tokens(%Violation{type: type}) when is_atom(type) and not is_nil(type),
+    do: [Atom.to_string(type), "arch", "all"]
+
+  defp violation_tokens(_violation), do: ["arch", "all"]
 
   def violations(project, config) do
     graph = layer_graph(project, config)
