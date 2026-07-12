@@ -8,6 +8,7 @@
 - **Report performance** — fixed a quadratic data-flow membership check, moved syntax highlighting to a single pass per source file, and parallelized the per-module visualization build. On a ~1,300-file project the visualization build drops from ~94s to seconds.
 - **Chunked HTML report** — `mix reach` now writes a report directory (`index.html`, `manifest.js`, and one lazily-loaded `chunks/<Module>.js` per module) instead of a single self-contained HTML file. The browser renders the selected module/function instead of the entire project, so reports open instantly on large codebases. `--format json` and `--format dot` still produce single files; control-flow block nodes in JSON now carry `start_line`/`end_line`/`source_text` instead of pre-rendered `source_html`.
 - **Report assets are loaded at render time** — `mix reach` now reads the frontend bundles when writing the report and raises with build instructions when they are missing, instead of silently embedding empty bundles at compile time and producing a blank page from checkouts that never ran `mix assets.build`.
+- **Prebuilt report bundles ship in the repo** — `priv/static` (reach.js, elk.bundled.js, vue-flow.css) is now committed, so consuming Reach as a git dependency works out of the box; CI rebuilds the bundles and fails when they drift from the frontend sources.
 
 ### Fixed
 
