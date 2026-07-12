@@ -195,4 +195,77 @@ defmodule Reach.Visualize.ChunksTest do
       assert alpha_chunk.data_flow.edges != [] or beta_chunk.data_flow.edges != []
     end
   end
+
+  if Code.ensure_loaded?(QuickBEAM) do
+    describe "javascript file with multiple functions (regression)" do
+      setup do
+        tmp_dir =
+          Path.join(
+            System.tmp_dir!(),
+            "reach_chunks_js_test_#{:erlang.unique_integer([:positive])}"
+          )
+
+        File.mkdir_p!(tmp_dir)
+
+        js_path =
+          write_file_in(tmp_dir, "app.js", """
+          function addNumbers(a, b) {
+            const sum = a + b;
+            return sum;
+          }
+
+          function subtractNumbers(a, b) {
+            const diff = a - b;
+            return diff;
+          }
+          """)
+
+        on_exit(fn -> File.rm_rf!(tmp_dir) end)
+
+        project = Reach.Project.from_sources([js_path], plugins: [Reach.Plugins.QuickBEAM])
+        output = Chunks.build(project, project: "js_fixture")
+
+        {:ok, output: output}
+      end
+
+      # Regression: build_function/2 injected each JS function's source into
+      # the process-local file-line cache by REPLACING the whole cached
+      # entry (Process.put(cache_key, padding ++ source_lines)). Chunks now
+      # highlights the file once, after all of a module's functions have
+      # been built, so only the LAST injected function's source survived —
+      # every earlier JS function in the same file rendered blank blocks.
+      test "highlights source for every function in the file, not just the last one injected",
+           %{output: output} do
+        chunk_data = chunk(output, "_top_level")
+
+        add_fn = Enum.find(chunk_data.functions, &(&1.name == "addNumbers"))
+        sub_fn = Enum.find(chunk_data.functions, &(&1.name == "subtractNumbers"))
+
+        assert add_fn
+        assert sub_fn
+
+        lines = chunk_data.source.lines_html
+
+        assert has_visible_content_in_range?(lines, add_fn.nodes),
+               "expected non-blank highlighted source within addNumbers' line range"
+
+        assert has_visible_content_in_range?(lines, sub_fn.nodes),
+               "expected non-blank highlighted source within subtractNumbers' line range"
+      end
+    end
+  end
+
+  defp has_visible_content_in_range?(lines, nodes) do
+    Enum.any?(nodes, fn node ->
+      Enum.any?(node.start_line..node.end_line, fn line_no ->
+        lines
+        |> Enum.at(line_no - 1, "")
+        |> strip_html_tags()
+        |> String.trim()
+        |> Kernel.!=("")
+      end)
+    end)
+  end
+
+  defp strip_html_tags(html), do: Regex.replace(~r/<[^>]*>/, html, "")
 end

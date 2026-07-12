@@ -88,11 +88,32 @@ defmodule Reach.Visualize.ControlFlow do
     }
   end
 
+  # Merges this function's source into the process-local cache for `file`
+  # instead of replacing it outright. `Reach.Visualize.Chunks` highlights a
+  # file once, after ALL of its functions have been built — so a plain
+  # `Process.put` here would let each JS function in the same file
+  # overwrite the last, leaving only the final function's source behind and
+  # every other one rendering blank blocks.
   defp inject_js_source_cache(file, source, start_line) do
     cache_key = {:reach_file_lines, file}
     source_lines = String.split(source, "\n")
-    padding = List.duplicate("", max(start_line - 1, 0))
-    Process.put(cache_key, padding ++ source_lines)
+    window_end = start_line - 1 + length(source_lines)
+
+    existing = Process.get(cache_key, [])
+    padded = existing ++ List.duplicate("", max(window_end - length(existing), 0))
+
+    merged =
+      padded
+      |> Enum.with_index(1)
+      |> Enum.map(fn {line, idx} ->
+        if idx >= start_line and idx < start_line + length(source_lines) do
+          Enum.at(source_lines, idx - start_line)
+        else
+          line
+        end
+      end)
+
+    Process.put(cache_key, merged)
     Process.put({:reach_file_lang, file}, :javascript)
   end
 
