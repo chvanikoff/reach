@@ -111,6 +111,23 @@ defmodule Reach.Check.DeadCodeTest do
            )
   end
 
+  test "does not flag discarded Gettext.put_locale calls" do
+    path =
+      temp_source(~S'''
+      defmodule Repro.Locale do
+        def set(locale) do
+          Gettext.put_locale(GNWeb.Gettext, locale)
+          :ok
+        end
+      end
+      ''')
+
+    refute Enum.any?(
+             DeadCode.run([path]),
+             &String.contains?(&1.description, "put_locale")
+           )
+  end
+
   defp temp_source(source) do
     path = Path.join(System.tmp_dir!(), "reach-dead-code-#{System.unique_integer()}.ex")
     File.write!(path, source)
