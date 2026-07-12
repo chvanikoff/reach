@@ -30,6 +30,36 @@ defmodule Reach.Check.Architecture.SuppressionsTest do
     assert result.violations == []
   end
 
+  test "control: a forbidden file produces a violation with no line" do
+    project = project_for(forbidden_file_source(nil))
+    config = [source: [forbidden_files: ["**/sample.ex"]]]
+
+    result = Architecture.run(project, config)
+
+    assert result.status == "failed"
+    assert Enum.any?(result.violations, &(&1.type == :forbidden_file and is_nil(&1.line)))
+  end
+
+  test "disable-for-this-file suppresses a forbidden_file violation with no line" do
+    project = project_for(forbidden_file_source("# reach:disable-for-this-file forbidden_file"))
+    config = [source: [forbidden_files: ["**/sample.ex"]]]
+
+    result = Architecture.run(project, config)
+
+    assert result.status == "ok"
+    assert result.violations == []
+  end
+
+  defp forbidden_file_source(comment) do
+    comment_line = if comment, do: "#{comment}\n", else: ""
+
+    """
+    #{comment_line}defmodule Fixture.Suppressions.ForbiddenFile do
+      def run, do: :ok
+    end
+    """
+  end
+
   defp command_source(comment) do
     comment_line = if comment, do: "    #{comment}\n", else: ""
 

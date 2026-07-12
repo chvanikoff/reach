@@ -28,14 +28,17 @@ defmodule Reach.Suppressions do
 
   @doc "Returns true when the finding's file:line is covered by a matching directive."
   def suppressed?(finding, suppressions, tokens_fun) do
-    with {file, line} when is_binary(file) and is_integer(line) <- location(finding),
+    with {file, line} when is_binary(file) <- location(finding),
          %{file: file_tokens, lines: lines} <- Map.get(suppressions, file) do
-      active = MapSet.union(file_tokens, Map.get(lines, line, MapSet.new()))
+      active = MapSet.union(file_tokens, line_tokens(lines, line))
       not MapSet.disjoint?(active, MapSet.new(tokens_fun.(finding)))
     else
       _ -> false
     end
   end
+
+  defp line_tokens(lines, line) when is_integer(line), do: Map.get(lines, line, MapSet.new())
+  defp line_tokens(_lines, _line), do: MapSet.new()
 
   @doc "Parses suppression directives for each file, once per file."
   def parse_files(files) do

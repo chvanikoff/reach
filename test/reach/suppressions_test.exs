@@ -121,6 +121,32 @@ defmodule Reach.SuppressionsTest do
     assert Suppressions.filter(findings, &tokens_fun/1) == findings
   end
 
+  test "disable-for-this-file suppresses a finding with a binary file but no line" do
+    path =
+      fixture("""
+      # reach:disable-for-this-file some_kind
+      line two
+      line three
+      """)
+
+    findings = [%{kind: "some_kind", file: path, line: nil}]
+
+    assert Suppressions.filter(findings, &tokens_fun/1) == []
+  end
+
+  test "disable-next-line elsewhere in the file does not suppress a finding with no line" do
+    path =
+      fixture("""
+      line one
+      # reach:disable-next-line some_kind
+      line three
+      """)
+
+    findings = [%{kind: "some_kind", file: path, line: nil}]
+
+    assert Suppressions.filter(findings, &tokens_fun/1) == findings
+  end
+
   defp fixture(source) do
     dir = Path.join(System.tmp_dir!(), "reach-suppressions-core-#{System.unique_integer()}")
     File.mkdir_p!(dir)

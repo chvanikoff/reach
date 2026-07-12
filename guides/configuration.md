@@ -480,29 +480,6 @@ Paths use glob patterns. Modules use glob patterns matched against the inspected
 
 For local, source-level exceptions, see the source-level suppression comments section below — smell kinds work as tokens there.
 
-### Source-level suppression comments
-
-For per-occurrence exceptions in any check surface, use Credo-style comments on their own line:
-
-```elixir
-# reach:disable-for-this-file fixed_shape_map
-# reach:disable-next-line bare_rescue
-def run, do: rescue_fallback()
-
-# reach:disable-next-line dead_code
-Gettext.put_locale(MyAppWeb.Gettext, locale)
-```
-
-Comments are honored by `mix reach.check --smells`, `mix reach.check --dead-code`, `mix reach.check --arch`, and the finding-like `mix reach.otp` reports (dead replies, hidden coupling, missing handlers, cross-process coupling). Each finding accepts three tiers of token:
-
-| Tier | Examples | Meaning |
-|---|---|---|
-| Finding kind | `bare_rescue`, `dead_reply`, `forbidden_call` | one specific finding kind |
-| Check group | `smells`, `dead_code`, `otp`, `arch` | any finding from that surface |
-| Global | `all` | any Reach finding |
-
-Tokens are space- or comma-separated. A directive with no tokens is equivalent to `all`. Unknown tokens are ignored without creating atoms. Suppressions are applied before baseline filtering and strict/gate failure checks, so a suppressed architecture violation no longer fails `--arch`. Findings without a source location (project-level violations such as `layer_cycle`, OTP reports with unknown locations) cannot be comment-suppressed.
-
 ### `smells[:custom_checks]`
 
 Projects can add local smell checks by implementing `Reach.Smell.Check` in their own application and listing the modules in `.reach.exs`.
@@ -541,6 +518,29 @@ smells: [
 ```
 
 Custom checks run alongside Reach's built-in smell checks and participate in `--strict` and baseline filtering. A custom check must implement `Reach.Smell.Check` and define `run/1`. See the custom smells guide for a deeper walkthrough.
+
+### Source-level suppression comments
+
+For per-occurrence exceptions in any check surface, use Credo-style comments on their own line:
+
+```elixir
+# reach:disable-for-this-file fixed_shape_map
+# reach:disable-next-line bare_rescue
+def run, do: rescue_fallback()
+
+# reach:disable-next-line dead_code
+Gettext.put_locale(MyAppWeb.Gettext, locale)
+```
+
+Comments are honored by `mix reach.check --smells`, `mix reach.check --dead-code`, `mix reach.check --arch`, and the finding-like `mix reach.otp` reports (dead replies, hidden coupling, missing handlers, cross-process coupling). Each finding accepts three tiers of token:
+
+| Tier | Examples | Meaning |
+|---|---|---|
+| Finding kind | `bare_rescue`, `dead_reply`, `forbidden_call` | one specific finding kind |
+| Check group | `smells`, `dead_code`, `otp`, `arch` | any finding from that surface |
+| Global | `all` | any Reach finding |
+
+Tokens are space- or comma-separated. A directive with no tokens is equivalent to `all`. Unknown tokens are ignored without creating atoms. Suppressions are applied before baseline filtering and strict/gate failure checks, so a suppressed architecture violation no longer fails `--arch`. Findings without a source location (project-level violations such as `layer_cycle`, OTP reports with unknown locations) cannot be comment-suppressed.
 
 ### Built-in smell examples
 
