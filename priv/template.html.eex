@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reach — <%= module || file || "Graph" %></title>
+<title>Reach — <%= project %></title>
 <style>
 <%= vue_flow_css %>
 <%= makeup_css %>
@@ -28,6 +28,14 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Ro
 .attr-name { color: #7c3aed; }
 .attr-value { color: #64748b; }
 .reach-flow { flex: 1; }
+.reach-flow-wrap { flex: 1; position: relative; }
+.reach-flow { width: 100%; height: 100%; }
+.hint-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 14px; pointer-events: none; }
+.sidebar-search { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+.sidebar-search input { width: 100%; box-sizing: border-box; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 12px; }
+.sidebar-module-name { display: block; width: 100%; text-align: left; border: none; cursor: pointer; }
+.breadcrumb { margin-left: auto; color: #94a3b8; font-size: 12px; display: flex; gap: 8px; align-items: center; }
+.breadcrumb button { background: none; border: none; color: #60a5fa; cursor: pointer; font-size: 12px; }
 
 /* Code node styling */
 .code-node { border: 2px solid #94a3b8; border-radius: 6px; background: #fff; min-width: 180px; max-width: 600px; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); overflow: hidden; }
@@ -49,7 +57,7 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Ro
 </head>
 <body>
 <div id="app"></div>
-<script>window.graphData = <%= graph_json %></script>
+<script src="manifest.js"></script>
 <script><%= elk_bundle %></script>
 <script><%= js_bundle %></script>
 </body>

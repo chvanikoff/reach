@@ -25,14 +25,30 @@ defmodule Reach.CLI.Commands.Report do
     output_dir = opts[:output] || "reach_report"
 
     graph = build_graph(files)
-    graph_data = Reach.Visualize.to_graph_json(graph, build_viz_opts(opts))
 
     case format do
-      value when value in ["html", "dot", "json"] ->
-        ReportRender.render(value, graph_data, graph, output_dir, opts)
+      "html" ->
+        chunked =
+          Reach.Visualize.Chunks.build(graph, build_viz_opts(opts) ++ [project: project_name()])
+
+        ReportRender.render_html(chunked, output_dir, opts)
+
+      "json" ->
+        graph_data = Reach.Visualize.to_graph_json(graph, build_viz_opts(opts))
+        ReportRender.render_json(graph_data, output_dir)
+
+      "dot" ->
+        ReportRender.render_dot(graph, output_dir)
 
       other ->
         Mix.raise("Unknown format: #{other}. Use html, dot, or json.")
+    end
+  end
+
+  defp project_name do
+    case Mix.Project.config()[:app] do
+      nil -> File.cwd!() |> Path.basename()
+      app -> to_string(app)
     end
   end
 
