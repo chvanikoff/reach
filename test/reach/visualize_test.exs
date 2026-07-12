@@ -110,6 +110,26 @@ defmodule Reach.VisualizeTest do
     end
   end
 
+  describe "call_graph/1" do
+    test "returns view plus raw MFA edges and internal module set" do
+      graph =
+        Reach.string_to_graph!("""
+        defmodule RawCg do
+          def caller, do: RawCg.callee()
+          def callee, do: Enum.count([1])
+        end
+        """)
+
+      %{view: view, raw_edges: raw_edges, internal_modules: internal} =
+        Reach.Visualize.call_graph(graph)
+
+      assert is_list(view.modules)
+      assert is_list(view.edges)
+      assert MapSet.member?(internal, RawCg)
+      assert Enum.any?(raw_edges, fn {_src, {tm, tf, ta}} -> {tm, tf, ta} == {Enum, :count, 1} end)
+    end
+  end
+
   describe "struct and map pattern rendering" do
     # Regression: the :map and :struct render_pattern clauses used to split
     # children with Enum.chunk_every(2), but the IR actually wraps each pair
