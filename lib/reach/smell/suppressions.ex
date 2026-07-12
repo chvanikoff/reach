@@ -1,38 +1,21 @@
 defmodule Reach.Smell.Suppressions do
-  @moduledoc "Filters smell findings using config and source-level suppressions."
+  @moduledoc "Filters smell findings using config ignores and shared source-level suppressions."
 
   alias Reach.Check.Architecture
-
-  @all_tokens MapSet.new(["all", "smells"])
-  @next_line_prefix "# reach:disable-next-line"
-  @this_file_prefix "# reach:disable-for-this-file"
+  alias Reach.Suppressions
 
   def filter(findings, project, config) do
-    source_suppressions = source_suppressions(findings)
-
-    Enum.reject(findings, fn finding ->
-      suppressed_by_config?(finding, config) or
-        suppressed_by_source?(finding, source_suppressions) or
-        suppressed_by_module?(finding, project, config)
+    findings
+    |> Suppressions.filter(&tokens/1)
+    |> Enum.reject(fn finding ->
+      suppressed_by_config?(finding, config) or suppressed_by_module?(finding, project, config)
     end)
   end
 
-  def suppressed_by_source?(finding, source_suppressions) do
-    with {file, line} when is_binary(file) and is_integer(line) <- location(finding),
-         suppression <- Map.get(source_suppressions, file) do
-      token = kind_token(finding)
-
-      token_allowed?(
-        MapSet.union(suppression.file, Map.get(suppression.lines, line, MapSet.new())),
-        token
-      )
-    else
-      _ -> false
-    end
-  end
+  defp tokens(finding), do: [Atom.to_string(finding.kind), "smells", "all"]
 
   def suppressed_by_config?(finding, config) do
-    case location(finding) do
+    case Suppressions.location(finding) do
       {file, _line} when is_binary(file) ->
         finding
         |> ignore_configs(config)
@@ -83,59 +66,6 @@ defmodule Reach.Smell.Suppressions do
     end
   end
 
-  defp source_suppressions(findings) do
-    findings
-    |> Enum.flat_map(fn finding ->
-      case location(finding) do
-        {file, _line} when is_binary(file) -> [file]
-        _ -> []
-      end
-    end)
-    |> Enum.uniq()
-    |> Map.new(&{&1, parse_file(&1)})
-  end
-
-  defp parse_file(file) do
-    if File.regular?(file) do
-      file
-      |> File.stream!(:line, [])
-      |> Stream.with_index(1)
-      |> Enum.reduce(%{file: MapSet.new(), lines: %{}}, &parse_line/2)
-    else
-      %{file: MapSet.new(), lines: %{}}
-    end
-  end
-
-  defp parse_line({line, number}, acc) do
-    trimmed = String.trim_leading(line)
-
-    cond do
-      String.starts_with?(trimmed, @this_file_prefix) ->
-        %{acc | file: MapSet.union(acc.file, tokens(trimmed, @this_file_prefix))}
-
-      String.starts_with?(trimmed, @next_line_prefix) ->
-        tokens = tokens(trimmed, @next_line_prefix)
-        %{acc | lines: Map.update(acc.lines, number + 1, tokens, &MapSet.union(&1, tokens))}
-
-      true ->
-        acc
-    end
-  end
-
-  defp tokens(line, prefix) do
-    line
-    |> String.trim()
-    |> String.replace_prefix(prefix, "")
-    |> String.split([",", " ", "\t"], trim: true)
-    |> MapSet.new()
-  end
-
-  defp token_allowed?(tokens, kind) do
-    not MapSet.disjoint?(tokens, @all_tokens) or MapSet.member?(tokens, kind)
-  end
-
-  defp kind_token(finding), do: Atom.to_string(finding.kind)
-
   defp finding_module(finding, project) do
     module_from_finding(finding) || module_from_location(finding, project)
   end
@@ -144,7 +74,7 @@ defmodule Reach.Smell.Suppressions do
   defp module_from_finding(_finding), do: nil
 
   defp module_from_location(finding, project) do
-    case location(finding) do
+    case Suppressions.location(finding) do
       {file, line} when is_binary(file) and is_integer(line) ->
         project.nodes
         |> Enum.map(fn {_id, node} -> node end)
@@ -165,26 +95,6 @@ defmodule Reach.Smell.Suppressions do
 
     if line >= span.start_line and (is_nil(span.end_line) or line <= span.end_line) do
       node.meta[:name]
-    end
-  end
-
-  def location(%{location: %{file: file, line: line}}), do: {file, line}
-  def location(%{location: %{file: file, start_line: line}}), do: {file, line}
-
-  def location(%{location: location}) when is_binary(location) do
-    case String.split(location, ":", parts: 3) do
-      [file, line] -> {file, parse_line_number(line)}
-      [file, line, _column] -> {file, parse_line_number(line)}
-      _ -> {nil, nil}
-    end
-  end
-
-  def location(_finding), do: {nil, nil}
-
-  defp parse_line_number(line) do
-    case Integer.parse(line) do
-      {line, _rest} -> line
-      :error -> nil
     end
   end
 end
