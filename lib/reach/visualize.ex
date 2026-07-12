@@ -211,6 +211,7 @@ defmodule Reach.Visualize do
     involved_ids =
       data_edges
       |> Enum.flat_map(&[&1.v1, &1.v2])
+      |> MapSet.new()
 
     functions = build_data_flow_nodes(all_nodes, involved_ids, node_to_func, node_map)
 
