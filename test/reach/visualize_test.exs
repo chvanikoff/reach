@@ -126,6 +126,7 @@ defmodule Reach.VisualizeTest do
       assert is_list(view.modules)
       assert is_list(view.edges)
       assert MapSet.member?(internal, RawCg)
+
       assert Enum.any?(raw_edges, fn {_src, {tm, tf, ta}} -> {tm, tf, ta} == {Enum, :count, 1} end)
     end
   end
