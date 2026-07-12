@@ -56,4 +56,31 @@ defmodule Reach.CLI.Render.ReportTest do
     assert %{"functions" => [_ | _], "source" => %{"lines_html" => [_ | _]}} =
              JSON.decode!(payload_json)
   end
+
+  test "render_html removes stale chunks left over from a previous run" do
+    path = Path.join(@tmp_dir, "lib/render_fixture.ex")
+
+    File.write!(path, """
+    defmodule RenderFixture do
+      def go(x), do: x + 1
+    end
+    """)
+
+    project = Reach.Project.from_sources([path])
+    chunked = Chunks.build(project, project: "fixture")
+    out = Path.join(@tmp_dir, "report")
+
+    Report.render_html(chunked, out, open: false)
+
+    stale_chunk = Path.join([out, "chunks", "StaleModule.js"])
+    File.write!(stale_chunk, "window.__reachChunk(\"StaleModule\", {});\n")
+    assert File.exists?(stale_chunk)
+
+    # Re-render (e.g. after StaleModule was renamed/removed from the source
+    # project) must not leave the old chunk file behind.
+    Report.render_html(chunked, out, open: false)
+
+    refute File.exists?(stale_chunk)
+    assert File.exists?(Path.join([out, "chunks", "RenderFixture.js"]))
+  end
 end

@@ -28,6 +28,10 @@ defmodule Reach.CLI.Render.Report do
     Requirements.json!("HTML/JSON output")
 
     chunks_dir = Path.join(output_dir, "chunks")
+    # Clear out chunks from a previous run — modules can be renamed, merged,
+    # or removed between runs, and a stale chunk file left behind would keep
+    # being served alongside the current manifest.
+    File.rm_rf!(chunks_dir)
     File.mkdir_p!(chunks_dir)
 
     File.write!(
@@ -35,12 +39,12 @@ defmodule Reach.CLI.Render.Report do
       ["window.__reachManifest = ", JSON.encode!(manifest), ";\n"]
     )
 
-    for {chunk_id, data} <- chunks do
+    Enum.each(chunks, fn {chunk_id, data} ->
       File.write!(
         Path.join(chunks_dir, "#{chunk_id}.js"),
         ["window.__reachChunk(", JSON.encode!(chunk_id), ", ", JSON.encode!(data), ");\n"]
       )
-    end
+    end)
 
     html =
       EEx.eval_string(@template,
