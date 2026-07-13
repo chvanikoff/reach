@@ -1,14 +1,1 @@
-{
-  "version": 1,
-  "tool": "reach",
-  "findings": [
-    {
-      "line": null,
-      "message": "layer cycle: check -> config -> core -> evidence -> frontend -> plugin -> project -> smell -> check",
-      "file": null,
-      "source": "arch",
-      "kind": "layer_cycle",
-      "fingerprint": "sha256:d971c1162b499af6d420a3fcc66ddc2367f10c0ffae19132f29d0f978d1a7fa7"
-    }
-  ]
-}
+{"version":1,"tool":"reach","findings":[{"source":"arch","kind":"layer_cycle","fingerprint":"sha256:d971c1162b499af6d420a3fcc66ddc2367f10c0ffae19132f29d0f978d1a7fa7","message":"layer cycle: check -> config -> core -> evidence -> frontend -> plugin -> project -> smell -> check","file":null,"line":null},{"source":"smells","kind":"fixed_shape_map","fingerprint":"sha256:eee05f785e6f2493a5e00a0eaa215194d764bf5c295b69a57fe7356df31413e8","message":"map shape [:children, :meta, :type] appears 24 times; consider a struct or explicit contract if it is domain data","file":"lib/reach.ex","line":1065}]}

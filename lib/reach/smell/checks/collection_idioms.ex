@@ -3,6 +3,8 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
 
   use Reach.Smell.Check.Source
 
+  alias Reach.Smell.Helpers
+
   smell(
     ~p[Enum.reverse(_) |> hd()],
     :suboptimal,
@@ -326,14 +328,14 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
 
   smell(
     from(~p[Enum.map(Enum.chunk_by(_, callback), first_fn)])
-    |> where(identity_fn?(^callback) and first_element_fn?(^first_fn)),
+    |> where(Helpers.identity_fn?(^callback) and first_element_fn?(^first_fn)),
     :suboptimal,
     "Enum.chunk_by/2 with identity followed by first-element mapping reimplements Enum.dedup/1"
   )
 
   smell(
     from(~p[Enum.map_join(Enum.chunk_by(_, callback), first_fn)])
-    |> where(identity_fn?(^callback) and first_element_fn?(^first_fn)),
+    |> where(Helpers.identity_fn?(^callback) and first_element_fn?(^first_fn)),
     :suboptimal,
     "Enum.chunk_by/2 with identity followed by map_join reimplements Enum.dedup/1 |> Enum.join/1"
   )
@@ -391,7 +393,8 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
 
   defp definitely_not_pair?({:%{}, _meta, _fields}), do: true
   defp definitely_not_pair?({:<<>>, _meta, _parts}), do: true
-  defp definitely_not_pair?({:{}, _meta, elements}) when length(elements) != 2, do: true
+  defp definitely_not_pair?({:{}, _meta, [_left, _right]}), do: false
+  defp definitely_not_pair?({:{}, _meta, elements}) when is_list(elements), do: true
   defp definitely_not_pair?(_value), do: false
 
   defp constant_map_key?(value), do: literal_atom_or_binary?(value) or module_literal?(value)
@@ -520,14 +523,6 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
     :suboptimal,
     "Enum.take_while/2 |> Enum.count/1 materializes a prefix just to count it; use Enum.reduce_while/3"
   )
-
-  defp identity_fn?({:fn, _, [{:->, _, [[{var, _, ctx}], {var, _, ctx}]}]})
-       when is_atom(var) and is_atom(ctx),
-       do: true
-
-  defp identity_fn?({:&, _, [{:&, _, [1]}]}), do: true
-  defp identity_fn?({:&, _, [{:&, _, [{:__block__, _, [1]}]}]}), do: true
-  defp identity_fn?(_callback), do: false
 
   defp first_element_fn?(
          {:&, _,
