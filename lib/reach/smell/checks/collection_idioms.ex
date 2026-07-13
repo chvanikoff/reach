@@ -391,7 +391,8 @@ defmodule Reach.Smell.Checks.CollectionIdioms do
 
   defp definitely_not_pair?({:%{}, _meta, _fields}), do: true
   defp definitely_not_pair?({:<<>>, _meta, _parts}), do: true
-  defp definitely_not_pair?({:{}, _meta, elements}) when length(elements) != 2, do: true
+  defp definitely_not_pair?({:{}, _meta, [_left, _right]}), do: false
+  defp definitely_not_pair?({:{}, _meta, elements}) when is_list(elements), do: true
   defp definitely_not_pair?(_value), do: false
 
   defp constant_map_key?(value), do: literal_atom_or_binary?(value) or module_literal?(value)
