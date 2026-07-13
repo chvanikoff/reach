@@ -3,6 +3,8 @@ defmodule Reach.Smell.Checks.PipelineWaste do
 
   use Reach.Smell.Check.Source
 
+  alias Reach.Smell.Helpers
+
   smell(
     ~p[Enum.reverse(_) |> Enum.reverse()],
     :redundant_traversal,
@@ -180,7 +182,7 @@ defmodule Reach.Smell.Checks.PipelineWaste do
 
   smell(
     from(~p[Enum.flat_map(_, callback)])
-    |> where(identity_fn?(^callback)),
+    |> where(Helpers.identity_fn?(^callback)),
     :suboptimal,
     "Enum.flat_map/2 with identity function; use Enum.concat/1"
   )
@@ -319,12 +321,4 @@ defmodule Reach.Smell.Checks.PipelineWaste do
   defp wildcard?(node), do: match?({:_, _, _}, unwrap_literal(node))
   defp unwrap_literal({:__block__, _meta, [value]}), do: value
   defp unwrap_literal(value), do: value
-
-  defp identity_fn?({:fn, _, [{:->, _, [[{var, _, ctx}], {var, _, ctx}]}]})
-       when is_atom(var) and is_atom(ctx),
-       do: true
-
-  defp identity_fn?({:&, _, [{:&, _, [1]}]}), do: true
-  defp identity_fn?({:&, _, [{:&, _, [{:__block__, _, [1]}]}]}), do: true
-  defp identity_fn?(_callback), do: false
 end

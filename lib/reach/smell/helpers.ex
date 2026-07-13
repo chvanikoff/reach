@@ -58,6 +58,15 @@ defmodule Reach.Smell.Helpers do
 
   def callback_body(_), do: []
 
+  @doc "Returns true when an AST node is an identity anonymous function."
+  def identity_fn?({:fn, _, [{:->, _, [[{var, _, ctx}], {var, _, ctx}]}]})
+      when is_atom(var) and is_atom(ctx),
+      do: true
+
+  def identity_fn?({:&, _, [{:&, _, [1]}]}), do: true
+  def identity_fn?({:&, _, [{:&, _, [{:__block__, _, [1]}]}]}), do: true
+  def identity_fn?(_callback), do: false
+
   @doc "Returns adjacent top-level statement pairs from a function body."
   def statement_pairs(function) do
     function
