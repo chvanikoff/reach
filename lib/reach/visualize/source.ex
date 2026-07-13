@@ -106,10 +106,10 @@ defmodule Reach.Visualize.Source do
 
   defp highlight_lines_list(lines, lang) do
     case lexer_for(lang) do
-      nil ->
+      :error ->
         Enum.map(lines, &escape_html/1)
 
-      lexer ->
+      {:ok, lexer} ->
         lines
         |> Enum.join("\n")
         |> lexer.lex()
@@ -119,11 +119,15 @@ defmodule Reach.Visualize.Source do
   end
 
   defp lexer_for(:javascript) do
-    if Code.ensure_loaded?(Makeup.Lexers.JsLexer), do: Makeup.Lexers.JsLexer
+    if Code.ensure_loaded?(Makeup.Lexers.JsLexer),
+      do: {:ok, Makeup.Lexers.JsLexer},
+      else: :error
   end
 
   defp lexer_for(_lang) do
-    if Code.ensure_loaded?(Makeup.Lexers.ElixirLexer), do: Makeup.Lexers.ElixirLexer
+    if Code.ensure_loaded?(Makeup.Lexers.ElixirLexer),
+      do: {:ok, Makeup.Lexers.ElixirLexer},
+      else: :error
   end
 
   def dedent(lines) do
