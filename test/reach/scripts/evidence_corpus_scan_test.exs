@@ -1,5 +1,5 @@
 defmodule Reach.Scripts.EvidenceCorpusScanTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   test "evidence corpus scanner supports text and json output" do
     dir =
