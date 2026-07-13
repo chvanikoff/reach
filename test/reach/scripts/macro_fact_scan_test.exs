@@ -1,5 +1,5 @@
 defmodule Reach.Scripts.MacroFactScanTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   test "macro fact scanner supports text and json output" do
     dir =
