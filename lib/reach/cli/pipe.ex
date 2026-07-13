@@ -3,6 +3,7 @@ defmodule Reach.CLI.Pipe do
 
   def safely(fun) when is_function(fun, 0) do
     previous_level = Logger.level()
+    previous_configured_level = Application.fetch_env(:logger, :level)
     Logger.configure(level: :emergency)
 
     try do
@@ -27,6 +28,11 @@ defmodule Reach.CLI.Pipe do
         if broken_pipe_reason?(reason), do: :ok, else: exit(reason)
     after
       Logger.configure(level: previous_level)
+
+      case previous_configured_level do
+        {:ok, level} -> Application.put_env(:logger, :level, level)
+        :error -> Application.delete_env(:logger, :level)
+      end
     end
   end
 
